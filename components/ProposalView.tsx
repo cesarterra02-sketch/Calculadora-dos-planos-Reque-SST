@@ -34,29 +34,29 @@ const A4Page: React.FC<{
   title = "Proposta Técnica Comercial",
   isLast = false
 }) => (
-  <div className={`w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl mb-8 relative flex flex-col print:shadow-none print:w-full print:mb-0 ${!isLast ? 'print:break-after-page' : ''} pdf-page`}>
+  <div className={`w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl mb-8 relative flex flex-col print:shadow-none print:w-[210mm] print:h-[297mm] print:mb-0 ${!isLast ? 'print:break-after-page' : ''} pdf-page overflow-hidden`}>
     {/* Header - Repeated on every page */}
-    <div className="h-24 bg-reque-navy flex items-center justify-between px-12 border-b-4 border-reque-orange print:h-24 print:bg-reque-navy print:print-color-adjust-exact pdf-header">
+    <div className="h-20 bg-reque-navy flex items-center justify-between px-8 border-b-4 border-reque-orange print:h-20 print:bg-reque-navy print:print-color-adjust-exact pdf-header shrink-0">
        <div className="flex flex-col leading-none text-white">
-          <span className="font-extrabold text-3xl tracking-tight">Reque</span>
+          <span className="font-extrabold text-2xl tracking-tight">Reque</span>
           <span className="text-[0.55rem] font-medium tracking-wide uppercase opacity-80 mt-1">
             Saúde e Segurança do Trabalho
           </span>
        </div>
        
        <div className="text-right text-white">
-         <h1 className="text-sm font-bold uppercase tracking-wider">{title}</h1>
-         <p className="text-[10px] opacity-80 mt-0.5 font-light">REF: {planRef}</p>
+         <h1 className="text-xs font-bold uppercase tracking-wider">{title}</h1>
+         <p className="text-[9px] opacity-80 mt-0.5 font-light">REF: {planRef}</p>
        </div>
     </div>
 
-    {/* Content */}
-    <div className="flex-1 px-12 py-10 text-slate-800 font-sans flex flex-col">
+    {/* Content - Flex grow to fill space, but with padding that respects A4 limits */}
+    <div className="flex-1 px-8 py-6 text-slate-800 font-sans flex flex-col">
       {children}
     </div>
 
     {/* Footer */}
-    <div className="h-12 border-t border-slate-200 mx-12 flex items-center justify-between text-[9px] text-slate-400">
+    <div className="h-10 border-t border-slate-200 mx-8 flex items-center justify-between text-[8px] text-slate-400 shrink-0">
        <span>Reque SST - Proposta Comercial</span>
        <span>Pg {pageNumber} de {totalPages}</span>
     </div>
@@ -155,10 +155,10 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
     ];
 
     return (
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2 mt-3">
+      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
         {items.map((item, idx) => (
-          <div key={idx} className="flex items-start gap-2 text-[10px] text-slate-700 leading-tight">
-            <CheckSquare className="w-3 h-3 text-reque-blue shrink-0 mt-0.5" />
+          <div key={idx} className="flex items-start gap-1.5 text-[9px] text-slate-700 leading-tight">
+            <CheckSquare className="w-2.5 h-2.5 text-reque-blue shrink-0 mt-0.5" />
             <span>{item}</span>
           </div>
         ))}
@@ -261,39 +261,39 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
         <A4Page pageNumber={1} totalPages={3} planRef={plan.toUpperCase()}>
           
           {/* Client Info Block */}
-          <div className="mb-6 p-4 bg-slate-50 border border-slate-200 rounded grid grid-cols-2 gap-6">
+          <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded grid grid-cols-2 gap-4">
             <div>
-              <span className="block text-[9px] font-bold uppercase text-slate-400">Contratante</span>
-              <span className="block text-sm font-bold text-reque-navy">
+              <span className="block text-[8px] font-bold uppercase text-slate-400">Contratante</span>
+              <span className="block text-xs font-bold text-reque-navy truncate">
                 {companyName || 'EMPRESA CLIENTE'}
               </span>
-               <span className="block text-[10px] text-slate-700 font-medium mt-0.5">
+               <span className="block text-[9px] text-slate-700 font-medium mt-0.5 truncate">
                  A/C: {contactName || 'Responsável'}
                </span>
-              <span className="block text-[10px] text-slate-600 mt-0.5">
+              <span className="block text-[9px] text-slate-600 mt-0.5">
                 CNPJ: {cnpj || '00.000.000/0001-00'}
               </span>
             </div>
             <div className="text-right">
-               <span className="block text-[9px] font-bold uppercase text-slate-400">Data de Emissão</span>
-               <span className="block text-sm font-bold text-reque-navy">{currentDate}</span>
-               <span className="block text-[10px] text-slate-600 mt-0.5">Validade: 10 dias</span>
+               <span className="block text-[8px] font-bold uppercase text-slate-400">Data de Emissão</span>
+               <span className="block text-xs font-bold text-reque-navy">{currentDate}</span>
+               <span className="block text-[9px] text-slate-600 mt-0.5">Validade: 10 dias</span>
             </div>
           </div>
 
           {/* 2-Column Grid for Scope & Pre-reqs */}
-          <div className="grid grid-cols-2 gap-8 mb-6">
+          <div className="grid grid-cols-2 gap-6 mb-4">
             {/* 1. ESCOPO */}
             <section>
-              <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+              <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
                 1. Escopo de Serviços
               </h3>
-              <p className="text-[10px] text-slate-600 mb-2">
+              <p className="text-[9px] text-slate-600 mb-1.5">
                 Serviços inclusos no plano <strong>{plan}</strong>:
               </p>
-              <ul className="space-y-1.5">
+              <ul className="space-y-1">
                 {PLAN_SERVICES[plan].map((service, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-[10px] text-slate-700 leading-tight">
+                  <li key={idx} className="flex items-start gap-1.5 text-[9px] text-slate-700 leading-tight">
                     <div className="mt-1 w-1 h-1 bg-reque-orange rounded-full shrink-0"></div>
                     {service}
                   </li>
@@ -303,10 +303,10 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
 
             {/* 2. FASE PRÉ-ELABORAÇÃO */}
             <section>
-              <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+              <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
                 2. Pré-Elaboração
               </h3>
-              <ol className="list-decimal list-inside space-y-1.5 text-[10px] text-slate-700 text-justify leading-tight">
+              <ol className="list-decimal list-inside space-y-1 text-[9px] text-slate-700 text-justify leading-tight">
                 <li>
                   Envio obrigatório dos dados cadastrais de todos os funcionários (modelo Reque SST).
                 </li>
@@ -321,47 +321,47 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
           </div>
 
           {/* 3. FUNCIONALIDADES */}
-          <section className="mb-6">
-             <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-2">
+          <section className="mb-4">
+             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-1">
               3. Funcionalidades do Sistema de Gestão
             </h3>
             {renderChecklist()}
           </section>
 
           {/* 4. SERVIÇOS E VALORES */}
-          <section className="mb-8">
-             <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+          <section className="mb-5">
+             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
               4. Investimento e Condições Comerciais
             </h3>
 
             <div className="border border-slate-800">
               {/* Table Header */}
-              <div className="grid grid-cols-12 bg-slate-200 text-[10px] font-bold text-center border-b border-slate-800 divide-x divide-slate-800">
-                 <div className="col-span-2 py-2">Nº Vidas</div>
-                 <div className="col-span-10 py-2">Plano Selecionado</div>
+              <div className="grid grid-cols-12 bg-slate-200 text-[9px] font-bold text-center border-b border-slate-800 divide-x divide-slate-800">
+                 <div className="col-span-2 py-1.5">Nº Vidas</div>
+                 <div className="col-span-10 py-1.5">Plano Selecionado</div>
               </div>
-              <div className="grid grid-cols-12 bg-white text-[10px] text-center border-b border-slate-800 divide-x divide-slate-800">
-                 <div className="col-span-2 py-2 font-bold">{result.rangeLabel}</div>
-                 <div className="col-span-10 py-2 font-bold text-reque-blue uppercase">{plan}</div>
+              <div className="grid grid-cols-12 bg-white text-[9px] text-center border-b border-slate-800 divide-x divide-slate-800">
+                 <div className="col-span-2 py-1.5 font-bold">{result.rangeLabel}</div>
+                 <div className="col-span-10 py-1.5 font-bold text-reque-blue uppercase">{plan}</div>
               </div>
 
               {/* Main Pricing Table Body */}
-              <div className="text-[10px]">
+              <div className="text-[9px]">
                 {/* Row 1: Programs */}
                 <div className="grid grid-cols-12 border-b border-slate-300">
-                   <div className="col-span-3 p-3 font-bold border-r border-slate-300 flex items-center">Programas e Laudos</div>
-                   <div className="col-span-5 p-3 border-r border-slate-300">
+                   <div className="col-span-3 p-2 font-bold border-r border-slate-300 flex items-center">Programas e Laudos</div>
+                   <div className="col-span-5 p-2 border-r border-slate-300">
                       Elaboração de PGR<br/>Elaboração de PCMSO
                    </div>
-                   <div className="col-span-2 p-3 border-r border-slate-300 text-center flex items-center justify-center font-bold">
+                   <div className="col-span-2 p-2 border-r border-slate-300 text-center flex items-center justify-center font-bold">
                       {result.isCustomQuote ? (
                          <span className="text-reque-orange font-bold">SOB CONSULTA</span>
                       ) : result.programFeeDiscounted ? (
                         <div className="flex flex-col items-center justify-center leading-none">
-                          <span className="text-[9px] text-slate-400 line-through">
+                          <span className="text-[8px] text-slate-400 line-through">
                              {formatCurrency(result.originalProgramFee)}
                           </span>
-                          <span className="text-green-600 font-extrabold text-[10px]">
+                          <span className="text-green-600 font-extrabold text-[9px]">
                              ISENTO*
                           </span>
                         </div>
@@ -369,54 +369,54 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
                         formatCurrency(result.programFee)
                       )}
                    </div>
-                   <div className="col-span-2 p-3 text-center flex items-center justify-center text-slate-500">
+                   <div className="col-span-2 p-2 text-center flex items-center justify-center text-slate-500">
                       Serviços pontuais
                    </div>
                 </div>
 
                 {/* Row 2: Subscription */}
                 <div className="grid grid-cols-12 border-b border-slate-300 bg-reque-blue/5">
-                   <div className="col-span-3 p-3 font-bold border-r border-slate-300 flex items-center uppercase">Assinatura</div>
-                   <div className="col-span-5 p-3 border-r border-slate-300">
+                   <div className="col-span-3 p-2 font-bold border-r border-slate-300 flex items-center uppercase">Assinatura</div>
+                   <div className="col-span-5 p-2 border-r border-slate-300">
                       Gestão SST, Eventos eSocial, Risco<br/>
-                      <span className="text-[9px] italic text-slate-500">
+                      <span className="text-[8px] italic text-slate-500">
                         {fidelity === FidelityModel.WITH_FIDELITY ? 'Plano com Fidelidade (Anual Antecipado)' : 'Plano sem Fidelidade'}
                       </span>
                    </div>
-                   <div className="col-span-2 p-3 border-r border-slate-300 text-center flex items-center justify-center font-bold text-lg text-reque-navy">
+                   <div className="col-span-2 p-2 border-r border-slate-300 text-center flex items-center justify-center font-bold text-sm text-reque-navy">
                       {result.isCustomQuote ? (
-                         <span className="text-sm">SOB CONSULTA</span>
+                         <span className="text-xs">SOB CONSULTA</span>
                       ) : (
                          formatCurrency(result.monthlyValue)
                       )}
                    </div>
-                   <div className="col-span-2 p-3 text-center flex items-center justify-center text-slate-500 leading-tight">
+                   <div className="col-span-2 p-2 text-center flex items-center justify-center text-slate-500 leading-tight">
                       Ref. Mensal
                    </div>
                 </div>
 
                 {/* Row 3: Exams */}
                 <div className="grid grid-cols-12">
-                   <div className="col-span-3 p-3 font-bold border-r border-slate-300 flex items-center">Exames Ocupacionais</div>
-                   <div className="col-span-5 p-3 border-r border-slate-300">
+                   <div className="col-span-3 p-2 font-bold border-r border-slate-300 flex items-center">Exames Ocupacionais</div>
+                   <div className="col-span-5 p-2 border-r border-slate-300">
                       Por demanda (Clínico, Audiometria, etc)
                    </div>
-                   <div className="col-span-2 p-3 border-r border-slate-300 text-center flex items-center justify-center italic">
+                   <div className="col-span-2 p-2 border-r border-slate-300 text-center flex items-center justify-center italic">
                       Tabela Anexa (Pg. 3)
                    </div>
-                   <div className="col-span-2 p-3 text-center flex items-center justify-center text-slate-500">
+                   <div className="col-span-2 p-2 text-center flex items-center justify-center text-slate-500">
                       Por demanda
                    </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 text-right">
-               <p className="text-[10px] font-bold uppercase text-slate-500">Valor Total Inicial (A pagar no aceite)</p>
-               <p className="text-xl font-extrabold text-reque-navy border-t-2 border-reque-orange inline-block pt-1 mt-1">
+            <div className="mt-3 text-right">
+               <p className="text-[9px] font-bold uppercase text-slate-500">Valor Total Inicial (A pagar no aceite)</p>
+               <p className="text-lg font-extrabold text-reque-navy border-t-2 border-reque-orange inline-block pt-1 mt-0.5">
                  {result.isCustomQuote ? 'SOB CONSULTA' : formatCurrency(result.initialPaymentAmount)}
                </p>
-               <p className="text-[9px] text-slate-400 italic mt-1">
+               <p className="text-[8px] text-slate-400 italic mt-0.5">
                  {fidelity === FidelityModel.WITH_FIDELITY ? 'Ref. 12 meses de assinatura antecipada' : 'Ref. Programas + 1ª Mensalidade'}
                </p>
             </div>
@@ -424,11 +424,11 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
 
           {/* 5. PRAZOS E CONSIDERAÇÕES (Moved up and updated) */}
           <section>
-             <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
               5. Prazos e Considerações Importantes
             </h3>
-            <div className="space-y-2.5 text-[10px] text-slate-700 text-justify leading-relaxed">
-              <p className="p-3 bg-indigo-50 border-l-2 border-indigo-500 rounded-r font-medium">
+            <div className="space-y-1.5 text-[9px] text-slate-700 text-justify leading-relaxed">
+              <p className="p-2 bg-indigo-50 border-l-2 border-indigo-500 rounded-r font-medium">
                  <strong>a. Prazo de elaboração:</strong> Considerando a entrega das descrições de atividade detalhada dos cargos pelo cliente (Modelo 1) em <strong>{formatDate(result.clientDeliveryDate)}</strong> e o prazo combinado para entrega dos documentos (PGR/PCMSO) em <strong>{formatDate(result.docDeliveryDate)}</strong>, o prazo de elaboração será de <strong>{result.businessDays} dias úteis</strong>.
               </p>
               <p>
@@ -458,11 +458,11 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
         <A4Page pageNumber={2} totalPages={3} planRef={plan.toUpperCase()}>
           
           {/* 6. FATURAMENTO */}
-          <section className="mb-8">
-             <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+          <section className="mb-6">
+             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
               6. Faturamento e Forma de Pagamento
             </h3>
-            <div className="text-[10px] text-slate-700 text-justify space-y-3">
+            <div className="text-[9px] text-slate-700 text-justify space-y-2">
               <p><strong>a) Plano SST Express</strong></p>
               <p className="pl-3 border-l-2 border-slate-300 py-1">
                  Cobrança exclusivamente via <strong>Cartão de Crédito</strong>.
@@ -481,36 +481,36 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
           </section>
 
           {/* 7. REAJUSTE */}
-          <section className="mb-8">
-             <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+          <section className="mb-6">
+             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
               7. Reajuste de Valores
             </h3>
-            <p className="text-[10px] text-slate-700 text-justify leading-relaxed">
+            <p className="text-[9px] text-slate-700 text-justify leading-relaxed">
               Reajuste anual (cada 12 meses) com base na variação acumulada do IPCA (IBGE).
             </p>
           </section>
 
            {/* 8. VIGÊNCIA E RESCISÃO (UPDATED TEXT) */}
-          <section className="mb-8">
-             <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+          <section className="mb-6">
+             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
               8. Vigência e Rescisão Contratual
             </h3>
-            <div className="text-[10px] text-slate-700 text-justify space-y-3 border-l-2 border-reque-orange pl-4 bg-reque-orange/5 py-3 pr-3 rounded-r-md">
+            <div className="text-[9px] text-slate-700 text-justify space-y-2 border-l-2 border-reque-orange pl-4 bg-reque-orange/5 py-2 pr-2 rounded-r-md">
                <p>
                  <strong>Vigência:</strong> O contrato terá vigência de 12 (doze) meses a partir da data de assinatura.
                </p>
                
                {fidelity === FidelityModel.WITH_FIDELITY ? (
-                 <div className="mt-2">
-                   <p className="font-bold text-reque-navy mb-1">CANCELAMENTO ANTECIPADO (CLÁUSULA DE FIDELIDADE):</p>
+                 <div className="mt-1.5">
+                   <p className="font-bold text-reque-navy mb-0.5">CANCELAMENTO ANTECIPADO (CLÁUSULA DE FIDELIDADE):</p>
                    <p className="leading-relaxed">
                      A modalidade {plan} Fidelidade exige fidelidade mínima de 24 (vinte e quatro) meses.
                      <strong> Em caso de cancelamento antecipado (rescisão antes do prazo contratual), será cobrado o valor integral do desconto concedido (isenção dos programas), conforme previsto na proposta comercial aceita.</strong>
                    </p>
                  </div>
                ) : (
-                 <div className="mt-2">
-                   <p className="font-bold text-reque-navy mb-1">CANCELAMENTO SEM FIDELIDADE:</p>
+                 <div className="mt-1.5">
+                   <p className="font-bold text-reque-navy mb-0.5">CANCELAMENTO SEM FIDELIDADE:</p>
                    <p className="leading-relaxed">
                      Para contratos sem fidelidade, não há multa sobre mensalidades futuras, devendo ser quitados apenas os serviços já prestados.
                    </p>
@@ -521,11 +521,11 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
 
           {/* 9. SERVIÇOS ADICIONAIS (Brief) */}
           <section>
-             <h3 className="text-sm font-bold text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3">
+             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
               9. Serviços Adicionais
             </h3>
-            <p className="text-[10px] text-slate-600 mb-2">Valores sob demanda:</p>
-            <ul className="list-disc list-inside text-[10px] text-slate-700 space-y-1">
+            <p className="text-[9px] text-slate-600 mb-1.5">Valores sob demanda:</p>
+            <ul className="list-disc list-inside text-[9px] text-slate-700 space-y-0.5">
                <li>Emissão de PPP (Extemporâneo): R$ 250,00</li>
                <li>Visita Técnica: R$ 100,00/h + deslocamento (Obrigatória para Risco > 1)</li>
             </ul>
@@ -542,38 +542,38 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
           isLast={true}
         >
           
-          <div className="text-center mb-8">
-             <h2 className="text-lg font-bold text-reque-navy uppercase border-b-4 border-reque-orange inline-block pb-1">
+          <div className="text-center mb-6">
+             <h2 className="text-sm font-bold text-reque-navy uppercase border-b-4 border-reque-orange inline-block pb-1">
                Tabela de Exames - {selectedUnit.replace('Unidade Reque ', '')}
              </h2>
-             <p className="text-[10px] text-slate-500 mt-2">
+             <p className="text-[9px] text-slate-500 mt-1.5">
                Valores referenciais para a unidade selecionada.
              </p>
           </div>
 
           <div className="border border-slate-800 rounded-sm overflow-hidden">
              {/* Table Header */}
-             <div className="grid grid-cols-12 bg-reque-navy text-white text-[10px] font-bold text-center border-b border-slate-800 divide-x divide-slate-700">
-                <div className="col-span-3 py-3">TIPO DE EXAME</div>
-                <div className="col-span-5 py-3">NOME DO EXAME</div>
-                <div className="col-span-2 py-3">VALOR (R$)</div>
-                <div className="col-span-2 py-3">PRAZO</div>
+             <div className="grid grid-cols-12 bg-reque-navy text-white text-[9px] font-bold text-center border-b border-slate-800 divide-x divide-slate-700">
+                <div className="col-span-3 py-2">TIPO DE EXAME</div>
+                <div className="col-span-5 py-2">NOME DO EXAME</div>
+                <div className="col-span-2 py-2">VALOR (R$)</div>
+                <div className="col-span-2 py-2">PRAZO</div>
              </div>
 
              {/* Table Body */}
              <div className="divide-y divide-slate-200">
                {selectedExams.map((exam, index) => (
-                 <div key={index} className={`grid grid-cols-12 text-[10px] border-b border-slate-200 divide-x divide-slate-200 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                    <div className="col-span-3 py-2 px-2 font-bold text-slate-700 flex items-center justify-center text-center">
+                 <div key={index} className={`grid grid-cols-12 text-[9px] border-b border-slate-200 divide-x divide-slate-200 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                    <div className="col-span-3 py-1.5 px-2 font-bold text-slate-700 flex items-center justify-center text-center">
                       {exam.category}
                     </div>
-                    <div className="col-span-5 py-2 px-3 text-slate-800 flex items-center">
+                    <div className="col-span-5 py-1.5 px-3 text-slate-800 flex items-center">
                       {exam.name}
                     </div>
-                    <div className="col-span-2 py-2 px-2 text-center font-bold text-reque-blue flex items-center justify-center">
+                    <div className="col-span-2 py-1.5 px-2 text-center font-bold text-reque-blue flex items-center justify-center">
                       {formatCurrency(exam.price)}
                     </div>
-                    <div className="col-span-2 py-2 px-2 text-center text-slate-500 flex items-center justify-center italic leading-tight">
+                    <div className="col-span-2 py-1.5 px-2 text-center text-slate-500 flex items-center justify-center italic leading-tight">
                       {exam.deadline}
                     </div>
                  </div>
