@@ -77,6 +77,15 @@ export interface ProposalHistoryItem {
   docDeliveryDate?: string;
 }
 
+export interface AccessLogEntry {
+  id: string;
+  timestamp: string;
+  userName: string;
+  userEmail: string;
+  userAgent: string;
+  action: 'LOGIN' | 'LOGOUT' | 'PASSWORD_CHANGE';
+}
+
 export interface User {
   name: string;
   email: string;

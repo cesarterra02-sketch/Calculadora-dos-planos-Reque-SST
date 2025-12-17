@@ -34,21 +34,18 @@ export const EMPLOYEE_RANGES: EmployeeRange[] = [
   { id: 'R30', min: 191, max: 200, label: '191 a 200 Vidas' },
 ];
 
-// Valores para Express e Essencial (são idênticos conforme o Book)
 export const MONTHLY_VALUES_EXPRESS: PricingTable = {
   R1: 55, R2: 75, R3: 100, R4: 125, R5: 145, R6: 160, R7: 175, R8: 190, R9: 205, R10: 220,
   R11: 235, R12: 250, R13: 265, R14: 275, R15: 285, R16: 295, R17: 310, R18: 320, R19: 335, R20: 345,
   R21: 370, R22: 395, R23: 420, R24: 445, R25: 470, R26: 495, R27: 520, R28: 545, R29: 570, R30: 595,
 };
 
-// Valores para o plano Pró (tem reduções pontuais a partir da R12)
 export const MONTHLY_VALUES_PRO: PricingTable = {
   R5: 145, R6: 160, R7: 175, R8: 190, R9: 205, R10: 220, R11: 235, R12: 245, R13: 260, R14: 270,
   R15: 285, R16: 295, R17: 310, R18: 320, R19: 335, R20: 345, R21: 370, R22: 395, R23: 420, R24: 445,
   R25: 470, R26: 495, R27: 520, R28: 545, R29: 570, R30: 595,
 };
 
-// Tabela de Programas (PGR + PCMSO)
 export const PROGRAM_FEES_TABLE: ProgramFeeTable = {
   R1: 350, R2: 400, R3: 450, R4: 500, R5: 550, R6: 600, R7: 650, R8: 700, R9: 750, R10: 800,
   R11: 850, R12: 900, R13: 950, R14: 1000, R15: 1050, R16: 1100, R17: 1150, R18: 1200, R19: 1250, R20: 1300,
@@ -57,39 +54,88 @@ export const PROGRAM_FEES_TABLE: ProgramFeeTable = {
 
 export const PLAN_SERVICES: Record<PlanType, string[]> = {
   [PlanType.EXPRESS]: [
-    'Exclusivo para Grau de Risco 1',
-    'Agendamento Online de Exames',
-    'Mensageria eSocial inclusa',
-    'PGR e PCMSO via antecipação',
-    'Acesso ao Sistema de Gestão'
+    'Elaboração de PGR',
+    'Elaboração de PCMSO',
+    'eSocial/PPP eletrônico',
+    'Exames Ocupacionais',
+    'Sistema de Gestão de SST',
+    'Ordem de Serviço',
+    'Controle de entrega de EPI',
+    'Gestão de Treinamentos',
+    'Relatórios de Convocação de Periódicos',
+    'Agendamento Online'
   ],
   [PlanType.ESSENCIAL]: [
-    'Destinado a Riscos 2, 3 e 4',
-    'Até 20 funcionários',
-    'Visita Técnica Prévia Obrigatória',
-    'Mapeamento de Riscos eSocial',
-    'Gestão completa de exames'
+    'Elaboração de PGR',
+    'Elaboração de PCMSO',
+    'eSocial/PPP eletrônico',
+    'Exames Ocupacionais',
+    'Sistema de Gestão de SST',
+    'Ordem de Serviço',
+    'Controle de entrega de EPI',
+    'Gestão de Treinamentos',
+    'Relatórios de Convocação de Periódicos',
+    'Agendamento Online'
   ],
   [PlanType.PRO]: [
-    'Destinado a Riscos 2, 3 e 4',
-    'Mais de 20 funcionários',
-    'Visita Técnica para Levantamento',
-    'Suporte Técnico Dedicado',
-    'Faturamento Mensal via Boleto'
+    'Elaboração de PGR',
+    'Elaboração de PCMSO',
+    'eSocial/PPP eletrônico',
+    'Exames Ocupacionais',
+    'Sistema de Gestão de SST',
+    'Ordem de Serviço',
+    'Controle de entrega de EPI',
+    'Gestão de Treinamentos',
+    'Relatórios de Convocação de Periódicos',
+    'Agendamento Online'
   ]
 };
 
+export const ADDITIONAL_SERVICES = [
+  { item: 'Emissão de PPP – período Reque SST responsável', value: 30.00 },
+  { item: 'Emissão de PPP – período anterior à Reque SST', value: 250.00 },
+  { item: 'Customização de Ordem de Serviço por cargo*', value: 75.00 },
+  { item: 'Cadastro manual funcionário no SOC', value: 25.00 },
+];
+
+export const SYSTEM_FEATURES = [
+  "Agendamento On-line dos exames",
+  "Relatório de exames realizados por funcionário",
+  "Relação de riscos e exames por cargo",
+  "Gestão de EPI",
+  "Relatório de funcionários ativos",
+  "Geração de registros e mensageria do eSocial",
+  "Cadastro de novos funcionários",
+  "Gestão de Treinamentos",
+  "Emissão de PPP",
+  "Relatório de exames realizados",
+  "Informação dos exames agendados por e-mail e sms",
+  "Controle e emissão de Ordens de Serviço",
+  "Gestão de convocação de exames periódicos",
+  "Registro e controle estatístico de ocorrências"
+];
+
 export const UNIT_EXAM_TABLES: Record<RequeUnit, ExamItem[]> = {
   [RequeUnit.PONTA_GROSSA]: [
-    { category: 'Médico', name: 'EXAME CLÍNICO OCUPACIONAL', price: 36.69, deadline: 'Variável' },
-    { category: 'Complementar', name: 'AUDIOMETRIA', price: 27.42, deadline: 'Na hora' },
-    { category: 'Complementar', name: 'ACUIDADE VISUAL', price: 9.57, deadline: 'Na hora' },
-    { category: 'Complementar', name: 'ELETROCARDIOGRAMA', price: 38.32, deadline: 'Mesmo dia' },
-    { category: 'Laboratorial', name: 'HEMOGRAMA COMPLETO', price: 14.23, deadline: 'Mesmo dia' },
+    { category: 'Exame Médico', name: 'EXAME CLÍNICO OCUPACIONAL', price: 36.69, deadline: 'a depender dos exames' },
+    { category: 'Complementares', name: 'ACUIDADE VISUAL', price: 9.57, deadline: 'na hora' },
+    { category: 'Complementares', name: 'AUDIOMETRIA', price: 27.42, deadline: 'na hora' },
+    { category: 'Complementares', name: 'ELETROCARDIOGRAMA', price: 38.32, deadline: 'em 1 dia' },
+    { category: 'Complementares', name: 'ELETROENCEFALOGRAMA', price: 83.01, deadline: 'em 1 dia' },
+    { category: 'Complementares', name: 'ESPIROMETRIA SEM LAUDO', price: 25.55, deadline: 'na hora' },
+    { category: 'Complementares', name: 'ESPIROMETRIA COM LAUDO', price: 35.14, deadline: 'na hora' },
+    { category: 'Complementares', name: 'AV. PSICOSSOCIAL', price: 76.28, deadline: 'na hora' },
+    { category: 'Complementares', name: 'AV. PSICOTÉCNICA', price: 114.93, deadline: 'na hora' },
+    { category: 'Imagem', name: 'RX TORÁX PA - PADRÃO OIT', price: 157.81, deadline: 'em 1 dia' },
+    { category: 'Imagem', name: 'RX TORÁX PA', price: 52.46, deadline: 'em 1 dia' },
+    { category: 'Imagem', name: 'RX TORÁX PA E PERFIL', price: 52.46, deadline: 'em 1 dia' },
+    { category: 'Toxicológico', name: 'TOXICOLÓGICO CLT', price: 94.35, deadline: 'negativo 3 dias' },
+    { category: 'Laboratorial', name: 'HEMOGRAMA COMPLETO', price: 14.23, deadline: 'mesmo dia' },
+    { category: 'Laboratorial', name: 'GLICEMIA', price: 6.61, deadline: 'mesmo dia' },
   ],
   [RequeUnit.CASTRO]: [
-    { category: 'Médico', name: 'EXAME CLÍNICO OCUPACIONAL', price: 46.13, deadline: 'Variável' },
-    { category: 'Complementar', name: 'AUDIOMETRIA', price: 31.44, deadline: 'Na hora' },
+    { category: 'Exame Médico', name: 'EXAME CLÍNICO OCUPACIONAL', price: 46.13, deadline: 'a depender dos exames' },
+    { category: 'Complementares', name: 'AUDIOMETRIA', price: 31.44, deadline: 'na hora' },
   ],
   [RequeUnit.GUARAPUAVA]: [
     { category: 'Médico', name: 'EXAME CLÍNICO OCUPACIONAL', price: 40.00, deadline: 'Variável' },
