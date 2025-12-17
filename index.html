@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="pt-BR">
   <head>
@@ -8,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script>
-      tailwind.config = {
+      window.tailwind.config = {
         theme: {
           extend: {
             fontFamily: {
@@ -21,14 +22,13 @@
                 orange: '#ec9d23',
                 dark: '#1a1c1e',
               },
-              // Mapping brand aliases to Reque palette for easier refactoring
               brand: {
                 50: '#f2f0ff',
                 100: '#e0dbff',
-                500: '#1a067c', // Vibrant Blue
-                600: '#190c59', // Navy
+                500: '#1a067c',
+                600: '#190c59',
                 700: '#120845',
-                900: '#190c59', // Using Navy for deep backgrounds
+                900: '#190c59',
               }
             }
           },
@@ -38,15 +38,18 @@
   <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
+    "vite": "https://esm.sh/vite@^7.3.0",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
     "react/": "https://esm.sh/react@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.561.0"
+    "react": "https://esm.sh/react@^19.2.3"
   }
 }
 </script>
 </head>
   <body class="bg-slate-50 text-reque-dark antialiased">
     <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
   </body>
 </html>

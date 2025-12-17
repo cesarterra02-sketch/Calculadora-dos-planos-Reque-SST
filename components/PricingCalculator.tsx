@@ -276,6 +276,12 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ onSaveHist
       alert("Por favor, preencha o Nome da Empresa e do Responsável para gerar a proposta.");
       return;
     }
+    
+    if (isCnpjValid !== true) {
+      alert("Por favor, insira um CNPJ válido para gerar a proposta formal.");
+      return;
+    }
+
     setShowProposal(true);
   };
 
@@ -336,6 +342,9 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ onSaveHist
                     {isCnpjValid === false && <XCircle className="w-4 h-4 text-red-500" />}
                   </div>
                 </div>
+                {isCnpjValid === false && (
+                  <p className="text-[10px] text-red-500 mt-1 font-bold">CNPJ Inválido</p>
+                )}
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1">Responsável / Contato</label>
@@ -519,6 +528,7 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ onSaveHist
             result={calculationResult} 
             onSaveHistory={handleSave}
             onGenerateProposal={toggleProposalView}
+            isGenerateDisabled={isCnpjValid !== true}
           />
         )}
       </div>

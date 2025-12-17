@@ -1,15 +1,21 @@
 
 import React from 'react';
 import { PricingResult } from '../types';
-import { Calculator, Calendar, CreditCard, FileCheck, Info, FileText, Save } from 'lucide-react';
+import { Calculator, Calendar, CreditCard, FileCheck, Info, FileText, Save, AlertTriangle } from 'lucide-react';
 
 interface SummaryCardProps {
   result: PricingResult;
   onGenerateProposal?: () => void;
   onSaveHistory?: () => void;
+  isGenerateDisabled?: boolean;
 }
 
-export const SummaryCard: React.FC<SummaryCardProps> = ({ result, onGenerateProposal, onSaveHistory }) => {
+export const SummaryCard: React.FC<SummaryCardProps> = ({ 
+  result, 
+  onGenerateProposal, 
+  onSaveHistory,
+  isGenerateDisabled = false
+}) => {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
@@ -120,13 +126,26 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({ result, onGenerateProp
           )}
 
           {onGenerateProposal && (
-            <button 
-              onClick={onGenerateProposal}
-              className="w-full py-3 bg-reque-navy hover:bg-reque-blue text-white rounded-lg font-bold shadow-lg transition-all flex items-center justify-center gap-2"
-            >
-              <FileText className="w-5 h-5" />
-              Gerar Proposta Formal
-            </button>
+            <div className="space-y-2">
+              <button 
+                onClick={onGenerateProposal}
+                disabled={isGenerateDisabled}
+                className={`w-full py-3 rounded-lg font-bold shadow-lg transition-all flex items-center justify-center gap-2 ${
+                  isGenerateDisabled 
+                    ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' 
+                    : 'bg-reque-navy hover:bg-reque-blue text-white'
+                }`}
+              >
+                <FileText className="w-5 h-5" />
+                Gerar Proposta Formal
+              </button>
+              {isGenerateDisabled && (
+                <div className="flex items-center gap-1.5 justify-center text-[10px] text-red-500 font-bold uppercase tracking-tight">
+                  <AlertTriangle className="w-3 h-3" />
+                  Preencha o CNPJ corretamente
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
