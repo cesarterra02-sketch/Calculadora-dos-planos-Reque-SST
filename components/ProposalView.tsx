@@ -217,7 +217,7 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
       `}</style>
 
       {/* Toolbar (Hidden in Print) */}
-      <div className="max-w-[210mm] mx-auto py-6 flex justify-between items-center no-print">
+      <div className="max-w-[210mm] mx-auto py-6 flex justify-between items-center no-print px-4">
         <button 
           onClick={onBack}
           disabled={isGenerating}
@@ -527,7 +527,7 @@ export const ProposalView: React.FC<ProposalViewProps> = ({
             <p className="text-[9px] text-slate-600 mb-1.5">Valores sob demanda:</p>
             <ul className="list-disc list-inside text-[9px] text-slate-700 space-y-0.5">
                <li>Emissão de PPP (Extemporâneo): R$ 250,00</li>
-               <li>Visita Técnica: R$ 100,00/h + deslocamento (Obrigatória para Risco > 1)</li>
+               <li>Visita Técnica: R$ 100,00/h + deslocamento (Obrigatória para Risco &gt; 1)</li>
             </ul>
           </section>
 
