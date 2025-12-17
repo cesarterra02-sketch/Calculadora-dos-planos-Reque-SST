@@ -1,13 +1,39 @@
 
-import React, { useEffect, useState, useRef } from 'react';
-import { PricingResult, PlanType, FidelityModel, PaymentMethod, BillingCycle, RequeUnit, RiskLevel } from '../types';
+import React, { useState, useRef } from 'react';
+import { PricingResult, PlanType, FidelityModel, PaymentMethod, BillingCycle, RequeUnit } from '../types';
 import { PLAN_SERVICES, UNIT_EXAM_TABLES } from '../constants';
-import { FileText, Printer, CheckSquare, Square, AlertTriangle, Download, Loader2 } from 'lucide-react';
+import { Printer, CheckSquare, Download, Loader2, ArrowLeft } from 'lucide-react';
 
-// Declare html2pdf for TypeScript
 declare var html2pdf: any;
 
-interface ProposalViewProps {
+const A4Page: React.FC<{ 
+  children: React.ReactNode; 
+  pageNumber: number; 
+  totalPages: number; 
+  planName: string; 
+  title?: string;
+  isLast?: boolean;
+}> = ({ children, pageNumber, totalPages, planName, title = "Proposta Técnica Comercial", isLast = false }) => (
+  <div className={`w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl mb-8 relative flex flex-col print:shadow-none print:w-[210mm] print:h-[297mm] print:mb-0 ${!isLast ? 'print:break-after-page' : ''} pdf-page overflow-hidden`}>
+    <div className="h-20 bg-reque-navy flex items-center justify-between px-10 border-b-4 border-reque-orange shrink-0">
+       <div className="flex flex-col text-white">
+          <span className="font-extrabold text-3xl tracking-tight leading-none">Reque</span>
+          <span className="text-[0.6rem] uppercase tracking-widest mt-1 opacity-70">Saúde e Segurança do Trabalho</span>
+       </div>
+       <div className="text-right text-white">
+         <h1 className="text-xs font-black uppercase tracking-widest">{title}</h1>
+         <p className="text-[9px] opacity-60 font-bold mt-1 uppercase">Plano: {planName}</p>
+       </div>
+    </div>
+    <div className="flex-1 px-10 py-8 text-slate-800 flex flex-col">{children}</div>
+    <div className="h-10 border-t border-slate-100 mx-10 flex items-center justify-between text-[8px] text-slate-400 shrink-0">
+       <span>Reque SST - Documento Oficial de Precificação 2025</span>
+       <span>Página {pageNumber} de {totalPages}</span>
+    </div>
+  </div>
+);
+
+export const ProposalView: React.FC<{
   result: PricingResult;
   plan: PlanType;
   fidelity: FidelityModel;
@@ -17,569 +43,162 @@ interface ProposalViewProps {
   cnpj: string;
   selectedUnit: RequeUnit;
   onBack: () => void;
-}
-
-const A4Page: React.FC<{ 
-  children: React.ReactNode; 
-  pageNumber: number; 
-  totalPages: number; 
-  planRef: string; 
-  title?: string;
-  isLast?: boolean;
-}> = ({ 
-  children, 
-  pageNumber, 
-  totalPages,
-  planRef,
-  title = "Proposta Técnica Comercial",
-  isLast = false
-}) => (
-  <div className={`w-[210mm] min-h-[297mm] mx-auto bg-white shadow-2xl mb-8 relative flex flex-col print:shadow-none print:w-[210mm] print:h-[297mm] print:mb-0 ${!isLast ? 'print:break-after-page' : ''} pdf-page overflow-hidden`}>
-    {/* Header - Repeated on every page */}
-    <div className="h-20 bg-reque-navy flex items-center justify-between px-8 border-b-4 border-reque-orange print:h-20 print:bg-reque-navy print:print-color-adjust-exact pdf-header shrink-0">
-       <div className="flex flex-col leading-none text-white">
-          <span className="font-extrabold text-2xl tracking-tight">Reque</span>
-          <span className="text-[0.55rem] font-medium tracking-wide uppercase opacity-80 mt-1">
-            Saúde e Segurança do Trabalho
-          </span>
-       </div>
-       
-       <div className="text-right text-white">
-         <h1 className="text-xs font-bold uppercase tracking-wider">{title}</h1>
-         <p className="text-[9px] opacity-80 mt-0.5 font-light">REF: {planRef}</p>
-       </div>
-    </div>
-
-    {/* Content - Flex grow to fill space, but with padding that respects A4 limits */}
-    <div className="flex-1 px-8 py-6 text-slate-800 font-sans flex flex-col">
-      {children}
-    </div>
-
-    {/* Footer */}
-    <div className="h-10 border-t border-slate-200 mx-8 flex items-center justify-between text-[8px] text-slate-400 shrink-0">
-       <span>Reque SST - Proposta Comercial</span>
-       <span>Pg {pageNumber} de {totalPages}</span>
-    </div>
-  </div>
-);
-
-export const ProposalView: React.FC<ProposalViewProps> = ({ 
-  result, 
-  plan, 
-  fidelity, 
-  employees,
-  companyName,
-  contactName,
-  cnpj,
-  selectedUnit,
-  onBack 
-}) => {
+}> = ({ result, plan, fidelity, companyName, contactName, cnpj, selectedUnit, onBack }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
-
-  const formatCurrency = (val: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return '...';
-    const [year, month, day] = dateStr.split('-');
-    return `${day}/${month}/${year}`;
-  };
-
+  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   const currentDate = new Date().toLocaleDateString('pt-BR');
-  
   const selectedExams = UNIT_EXAM_TABLES[selectedUnit] || [];
-
-  // --- Dynamic Title for PDF Filename ---
-  useEffect(() => {
-    const originalTitle = document.title;
-    const cleanCompany = companyName ? companyName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') : 'Cliente';
-    document.title = `Proposta_Reque_${cleanCompany}`;
-    
-    return () => {
-      document.title = originalTitle;
-    };
-  }, [companyName]);
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current) return;
     setIsGenerating(true);
-
-    const cleanCompany = companyName ? companyName.replace(/[^a-zA-Z0-9\s]/g, '').trim().replace(/\s+/g, '_') : 'Cliente';
-    const filename = `Proposta_Reque_${cleanCompany}.pdf`;
-
-    // Add a class to handle specific styles during generation (remove shadows, etc)
-    contentRef.current.classList.add('generating-pdf');
-
-    const opt = {
-      margin: 0,
-      filename: filename,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true, logging: false },
-      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    const filename = `Proposta_Reque_${companyName.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
+    const opt = { 
+      margin: 0, 
+      filename, 
+      image: { type: 'jpeg', quality: 0.98 }, 
+      html2canvas: { scale: 2, useCORS: true }, 
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } 
     };
-
-    try {
-      // Small delay to allow DOM to update class
-      await new Promise(resolve => setTimeout(resolve, 100));
-      await html2pdf().set(opt).from(contentRef.current).save();
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      alert('Erro ao gerar PDF. Tente usar a opção de Imprimir (Ctrl+P).');
-    } finally {
-      if (contentRef.current) {
-        contentRef.current.classList.remove('generating-pdf');
-      }
-      setIsGenerating(false);
+    try { 
+      await html2pdf().set(opt).from(contentRef.current).save(); 
+    } catch (e) {
+      alert("Houve um erro ao gerar o PDF. Use a função Imprimir como alternativa.");
+    } finally { 
+      setIsGenerating(false); 
     }
   };
 
-  // --- CONTENT HELPERS ---
-
-  const renderChecklist = () => {
-    const items = [
-      "Agendamento On-line dos exames",
-      "Relatório de exames realizados por funcionário",
-      "Relação de riscos e exames por cargo",
-      "Gestão de EPI",
-      "Relatório de funcionários ativos",
-      "Geração de registros e mensageria do eSocial",
-      "Cadastro de novos funcionários",
-      "Gestão de Treinamentos",
-      "Emissão de PPP",
-      "Relatório de exames realizados",
-      "Informação dos exames agendados por e-mail e sms",
-      "Controle e emissão de Ordens de Serviço",
-      "Gestão de convocação de exames periódicos",
-      "Registro e controle estatístico de ocorrências"
-    ];
-
-    return (
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 mt-2">
-        {items.map((item, idx) => (
-          <div key={idx} className="flex items-start gap-1.5 text-[9px] text-slate-700 leading-tight">
-            <CheckSquare className="w-2.5 h-2.5 text-reque-blue shrink-0 mt-0.5" />
-            <span>{item}</span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   return (
-    <div className="bg-slate-100 min-h-screen pb-10 font-sans print:bg-white print:pb-0 printable-area">
-      {/* Styles for PDF Generation */}
-      <style>{`
-        /* CSS for window.print() */
-        @media print {
-          @page {
-            size: A4;
-            margin: 0;
-          }
-          body {
-            background-color: white;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-          body * {
-            visibility: hidden;
-          }
-          .printable-area, .printable-area * {
-            visibility: visible;
-          }
-          .printable-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 210mm;
-            min-height: 100vh;
-            margin: 0 auto;
-            background-color: white;
-            z-index: 9999;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .print\\:bg-reque-navy {
-            background-color: #190c59 !important;
-          }
-        }
-
-        /* Styles specifically for html2pdf generation */
-        .generating-pdf .pdf-page {
-          box-shadow: none !important;
-          margin-bottom: 0 !important;
-        }
-        .generating-pdf .pdf-header {
-           background-color: #190c59 !important;
-           -webkit-print-color-adjust: exact; 
-        }
-      `}</style>
-
-      {/* Toolbar (Hidden in Print) */}
-      <div className="max-w-[210mm] mx-auto py-6 flex justify-between items-center no-print px-4">
-        <button 
-          onClick={onBack}
-          disabled={isGenerating}
-          className="px-4 py-2 bg-white border border-slate-300 text-slate-700 font-bold rounded shadow-sm hover:bg-slate-50 transition-colors text-xs uppercase tracking-wide disabled:opacity-50"
-        >
-          &larr; Voltar
+    <div className="bg-slate-100 min-h-screen pb-10 print:bg-white print:p-0">
+      <div className="max-w-[210mm] mx-auto py-6 flex justify-between no-print px-4">
+        <button onClick={onBack} className="px-5 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold uppercase flex items-center gap-2 hover:bg-slate-50 transition-all">
+          <ArrowLeft className="w-4 h-4" /> Voltar
         </button>
         <div className="flex gap-3">
-          <button 
-            onClick={() => window.print()}
-            disabled={isGenerating}
-            className="px-4 py-2 bg-white border border-slate-300 text-reque-navy font-bold rounded shadow-sm hover:bg-slate-50 transition-colors flex items-center gap-2 text-xs uppercase tracking-wide disabled:opacity-50"
-          >
-            <Printer className="w-4 h-4" />
-            Imprimir
-          </button>
-          <button 
-            onClick={handleDownloadPDF}
-            disabled={isGenerating}
-            className="px-6 py-2 bg-reque-navy text-white font-bold rounded shadow-md hover:bg-reque-blue transition-colors flex items-center gap-2 text-xs uppercase tracking-wide disabled:cursor-not-allowed min-w-[140px] justify-center"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Gerando...
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                Baixar PDF
-              </>
-            )}
+          <button onClick={() => window.print()} className="px-5 py-2.5 bg-white border border-slate-300 rounded-lg text-xs font-bold flex items-center gap-2 hover:bg-slate-50"><Printer className="w-4 h-4" /> Imprimir</button>
+          <button onClick={handleDownloadPDF} disabled={isGenerating} className="px-8 py-2.5 bg-reque-navy text-white rounded-lg font-bold flex items-center gap-2 text-xs uppercase shadow-lg hover:bg-reque-blue disabled:opacity-50">
+            {isGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />} {isGenerating ? 'Gerando...' : 'Baixar PDF'}
           </button>
         </div>
       </div>
 
-      {/* WRAPPER FOR HTML2PDF CAPTURE */}
-      <div ref={contentRef}>
-        
-        {/* --- PAGE 1: SCOPE, PRE-REQS, CHECKLIST, PRICING & PRAZOS --- */}
-        <A4Page pageNumber={1} totalPages={3} planRef={plan.toUpperCase()}>
-          
-          {/* Client Info Block */}
-          <div className="mb-4 p-3 bg-slate-50 border border-slate-200 rounded grid grid-cols-2 gap-4">
+      <div ref={contentRef} className="print:m-0">
+        <A4Page pageNumber={1} totalPages={2} planName={plan}>
+          <div className="mb-6 p-4 bg-slate-50 border-l-4 border-reque-navy rounded-r-lg grid grid-cols-2 gap-4">
             <div>
-              <span className="block text-[8px] font-bold uppercase text-slate-400">Contratante</span>
-              <span className="block text-xs font-bold text-reque-navy truncate">
-                {companyName || 'EMPRESA CLIENTE'}
-              </span>
-               <span className="block text-[9px] text-slate-700 font-medium mt-0.5 truncate">
-                 A/C: {contactName || 'Responsável'}
-               </span>
-              <span className="block text-[9px] text-slate-600 mt-0.5">
-                CNPJ: {cnpj || '00.000.000/0001-00'}
-              </span>
+              <span className="block text-[8px] font-black uppercase text-slate-400 tracking-widest">Contratante</span>
+              <span className="block text-sm font-extrabold text-reque-navy mt-0.5">{companyName}</span>
+              <span className="block text-[10px] text-slate-500 font-bold mt-1">CNPJ: {cnpj}</span>
+              <span className="block text-[10px] text-slate-500 font-medium italic mt-0.5">A/C: {contactName}</span>
             </div>
             <div className="text-right">
-               <span className="block text-[8px] font-bold uppercase text-slate-400">Data de Emissão</span>
-               <span className="block text-xs font-bold text-reque-navy">{currentDate}</span>
-               <span className="block text-[9px] text-slate-600 mt-0.5">Validade: 10 dias</span>
+               <span className="block text-[8px] font-black uppercase text-slate-400 tracking-widest">Emissão</span>
+               <span className="block text-sm font-extrabold text-reque-navy mt-0.5">{currentDate}</span>
+               <span className="block text-[9px] text-slate-500 mt-2 font-bold">Unidade de Atendimento:</span>
+               <span className="block text-[9px] text-slate-600 italic">{selectedUnit}</span>
             </div>
           </div>
 
-          {/* 2-Column Grid for Scope & Pre-reqs */}
-          <div className="grid grid-cols-2 gap-6 mb-4">
-            {/* 1. ESCOPO */}
-            <section>
-              <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-                1. Escopo de Serviços
-              </h3>
-              <p className="text-[9px] text-slate-600 mb-1.5">
-                Serviços inclusos no plano <strong>{plan}</strong>:
-              </p>
-              <ul className="space-y-1">
-                {PLAN_SERVICES[plan].map((service, idx) => (
-                  <li key={idx} className="flex items-start gap-1.5 text-[9px] text-slate-700 leading-tight">
-                    <div className="mt-1 w-1 h-1 bg-reque-orange rounded-full shrink-0"></div>
-                    {service}
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            {/* 2. FASE PRÉ-ELABORAÇÃO */}
-            <section>
-              <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-                2. Pré-Elaboração
-              </h3>
-              <ol className="list-decimal list-inside space-y-1 text-[9px] text-slate-700 text-justify leading-tight">
-                <li>
-                  Envio obrigatório dos dados cadastrais de todos os funcionários (modelo Reque SST).
-                </li>
-                <li>
-                  Envio da descrição detalhada das atividades de cada cargo.
-                </li>
-                <li>
-                  Para PCMSO avulso, envio obrigatório do PGR vigente.
-                </li>
-              </ol>
-            </section>
-          </div>
-
-          {/* 3. FUNCIONALIDADES */}
-          <section className="mb-4">
-             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-1">
-              3. Funcionalidades do Sistema de Gestão
-            </h3>
-            {renderChecklist()}
+          <section className="mb-8">
+            <h3 className="text-xs font-black text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3 tracking-widest">1. Escopo de Atendimento - {plan}</h3>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              {PLAN_SERVICES[plan].map((s, i) => (
+                <div key={i} className="flex items-start gap-2 text-[10px] text-slate-700 leading-tight">
+                  <CheckSquare className="w-3 h-3 text-reque-blue shrink-0 mt-0.5" /> 
+                  <span className="font-medium">{s}</span>
+                </div>
+              ))}
+            </div>
           </section>
 
-          {/* 4. SERVIÇOS E VALORES */}
-          <section className="mb-5">
-             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-              4. Investimento e Condições Comerciais
-            </h3>
-
-            <div className="border border-slate-800">
-              {/* Table Header */}
-              <div className="grid grid-cols-12 bg-slate-200 text-[9px] font-bold text-center border-b border-slate-800 divide-x divide-slate-800">
-                 <div className="col-span-2 py-1.5">Nº Vidas</div>
-                 <div className="col-span-10 py-1.5">Plano Selecionado</div>
-              </div>
-              <div className="grid grid-cols-12 bg-white text-[9px] text-center border-b border-slate-800 divide-x divide-slate-800">
-                 <div className="col-span-2 py-1.5 font-bold">{result.rangeLabel}</div>
-                 <div className="col-span-10 py-1.5 font-bold text-reque-blue uppercase">{plan}</div>
-              </div>
-
-              {/* Main Pricing Table Body */}
-              <div className="text-[9px]">
-                {/* Row 1: Programs */}
-                <div className="grid grid-cols-12 border-b border-slate-300">
-                   <div className="col-span-3 p-2 font-bold border-r border-slate-300 flex items-center">Programas e Laudos</div>
-                   <div className="col-span-5 p-2 border-r border-slate-300">
-                      Elaboração de PGR<br/>Elaboração de PCMSO
+          <section className="mb-8">
+             <h3 className="text-xs font-black text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-3 tracking-widest">2. Condições Comerciais</h3>
+             <div className="border border-slate-800 rounded-sm overflow-hidden">
+                <div className="grid grid-cols-12 bg-slate-200 text-[9px] font-black border-b border-slate-800 divide-x divide-slate-800">
+                   <div className="col-span-8 p-2">ITEM DO PLANO</div>
+                   <div className="col-span-4 p-2 text-center">INVESTIMENTO</div>
+                </div>
+                <div className="grid grid-cols-12 text-[10px] border-b border-slate-200 divide-x divide-slate-200">
+                   <div className="col-span-8 p-3 bg-white">
+                      <span className="font-bold text-reque-navy">Assinatura SST</span><br/>
+                      <span className="text-[8px] text-slate-500 italic">Ciclo de faturamento: {result.billingCycle} | Ref: {result.rangeLabel}</span>
                    </div>
-                   <div className="col-span-2 p-2 border-r border-slate-300 text-center flex items-center justify-center font-bold">
-                      {result.isCustomQuote ? (
-                         <span className="text-reque-orange font-bold">SOB CONSULTA</span>
-                      ) : result.programFeeDiscounted ? (
-                        <div className="flex flex-col items-center justify-center leading-none">
-                          <span className="text-[8px] text-slate-400 line-through">
-                             {formatCurrency(result.originalProgramFee)}
-                          </span>
-                          <span className="text-green-600 font-extrabold text-[9px]">
-                             ISENTO*
-                          </span>
+                   <div className="col-span-4 p-3 text-center font-black text-reque-navy self-center bg-white">{formatCurrency(result.monthlyValue)} <span className="text-[8px] font-normal">/mês</span></div>
+                </div>
+                <div className="grid grid-cols-12 text-[10px] divide-x divide-slate-200">
+                   <div className="col-span-8 p-3 bg-slate-50">
+                      <span className="font-bold text-reque-navy">Elaboração de PGR e PCMSO (Setup Inicial)</span><br/>
+                      <span className="text-[8px] text-slate-500 italic">{fidelity === FidelityModel.WITH_FIDELITY ? 'Bonificado mediante cláusula de fidelidade' : 'Pagamento único no aceite da proposta'}</span>
+                   </div>
+                   <div className="col-span-4 p-3 text-center font-black self-center bg-slate-50">
+                      {result.programFeeDiscounted ? (
+                        <div className="flex flex-col">
+                           <span className="text-green-600 font-black">ISENTO*</span>
+                           <span className="text-[8px] text-slate-400 line-through">De {formatCurrency(result.originalProgramFee)}</span>
                         </div>
-                      ) : (
-                        formatCurrency(result.programFee)
-                      )}
-                   </div>
-                   <div className="col-span-2 p-2 text-center flex items-center justify-center text-slate-500">
-                      Serviços pontuais
+                      ) : formatCurrency(result.programFee)}
                    </div>
                 </div>
-
-                {/* Row 2: Subscription */}
-                <div className="grid grid-cols-12 border-b border-slate-300 bg-reque-blue/5">
-                   <div className="col-span-3 p-2 font-bold border-r border-slate-300 flex items-center uppercase">Assinatura</div>
-                   <div className="col-span-5 p-2 border-r border-slate-300">
-                      Gestão SST, Eventos eSocial, Risco<br/>
-                      <span className="text-[8px] italic text-slate-500">
-                        {fidelity === FidelityModel.WITH_FIDELITY ? 'Plano com Fidelidade (Anual Antecipado)' : 'Plano sem Fidelidade'}
-                      </span>
-                   </div>
-                   <div className="col-span-2 p-2 border-r border-slate-300 text-center flex items-center justify-center font-bold text-sm text-reque-navy">
-                      {result.isCustomQuote ? (
-                         <span className="text-xs">SOB CONSULTA</span>
-                      ) : (
-                         formatCurrency(result.monthlyValue)
-                      )}
-                   </div>
-                   <div className="col-span-2 p-2 text-center flex items-center justify-center text-slate-500 leading-tight">
-                      Ref. Mensal
-                   </div>
+             </div>
+             <div className="mt-4 flex justify-end">
+                <div className="bg-reque-blue p-4 text-white rounded-lg shadow-md min-w-[200px] text-right">
+                   <span className="block text-[8px] font-bold uppercase opacity-80 mb-1">Pagamento Inicial Total:</span>
+                   <span className="text-2xl font-black">{formatCurrency(result.initialPaymentAmount)}</span>
+                   <span className="block text-[8px] opacity-60 mt-1 italic">Vencimento: Conforme aceite / Meio: {result.paymentMethod}</span>
                 </div>
-
-                {/* Row 3: Exams */}
-                <div className="grid grid-cols-12">
-                   <div className="col-span-3 p-2 font-bold border-r border-slate-300 flex items-center">Exames Ocupacionais</div>
-                   <div className="col-span-5 p-2 border-r border-slate-300">
-                      Por demanda (Clínico, Audiometria, etc)
-                   </div>
-                   <div className="col-span-2 p-2 border-r border-slate-300 text-center flex items-center justify-center italic">
-                      Tabela Anexa (Pg. 3)
-                   </div>
-                   <div className="col-span-2 p-2 text-center flex items-center justify-center text-slate-500">
-                      Por demanda
-                   </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 text-right">
-               <p className="text-[9px] font-bold uppercase text-slate-500">Valor Total Inicial (A pagar no aceite)</p>
-               <p className="text-lg font-extrabold text-reque-navy border-t-2 border-reque-orange inline-block pt-1 mt-0.5">
-                 {result.isCustomQuote ? 'SOB CONSULTA' : formatCurrency(result.initialPaymentAmount)}
-               </p>
-               <p className="text-[8px] text-slate-400 italic mt-0.5">
-                 {fidelity === FidelityModel.WITH_FIDELITY ? 'Ref. 12 meses de assinatura antecipada' : 'Ref. Programas + 1ª Mensalidade'}
-               </p>
-            </div>
+             </div>
           </section>
 
-          {/* 5. PRAZOS E CONSIDERAÇÕES (Moved up and updated) */}
-          <section>
-             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-              5. Prazos e Considerações Importantes
-            </h3>
-            <div className="space-y-1.5 text-[9px] text-slate-700 text-justify leading-relaxed">
-              <p className="p-2 bg-indigo-50 border-l-2 border-indigo-500 rounded-r font-medium">
-                 <strong>a. Prazo de elaboração:</strong> Considerando a entrega das descrições de atividade detalhada dos cargos pelo cliente (Modelo 1) em <strong>{formatDate(result.clientDeliveryDate)}</strong> e o prazo combinado para entrega dos documentos (PGR/PCMSO) em <strong>{formatDate(result.docDeliveryDate)}</strong>, o prazo de elaboração será de <strong>{result.businessDays} dias úteis</strong>.
-              </p>
-              <p>
-                <strong>b.</strong> Para exames admissionais os dados cadastrais dos novos colaboradores deverão ser inseridos pelo responsável da contratante diretamente no sistema de gestão de SST da Reque SST. Após assinatura do contrato, o responsável receberá os dados de acesso do sistema.;
-              </p>
-              <p>
-                <strong>c.</strong> Nossos programas e ASOs são emitidos de forma digital, e ficam disponíveis e organizados em nosso sistema;
-              </p>
-              <p>
-                <strong>d.</strong> Será cobrado “No Show” no valor de uma consulta clínica, no caso de não comparecimento no dia do agendamento, inclui-se também no atendimento in company;
-              </p>
-              <p>
-                <strong>e.</strong> Casos de funcionários desligados sem realização do exame demissional devem ser informados ao setor de atendimento da Reque SST por Whatsapp ou e-mail para evitar cobranças de vidas ativas (quando aplicável).
-              </p>
-              <p>
-                <strong>h.</strong> Caso a CONTRATANTE solicite versão impressa, o custo da impressão será cobrado à parte.
-              </p>
-              <p>
-                <strong>i.</strong> No caso da contratação de LTCAT ou Laudo de Insalubridade e/ou Periculosidade, havendo necessidade de avaliação quantitativa de algum risco, o prazo de entrega dos laudos será de até 30 (trinta) dias corridos contados da data de realização das avaliações.
-              </p>
-            </div>
-          </section>
-
-        </A4Page>
-
-        {/* --- PAGE 2: EXTRA SERVICES, BILLING, READJUSTMENT --- */}
-        <A4Page pageNumber={2} totalPages={3} planRef={plan.toUpperCase()}>
-          
-          {/* 6. FATURAMENTO */}
-          <section className="mb-6">
-             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-              6. Faturamento e Forma de Pagamento
-            </h3>
-            <div className="text-[9px] text-slate-700 text-justify space-y-2">
-              <p><strong>a) Plano SST Express</strong></p>
-              <p className="pl-3 border-l-2 border-slate-300 py-1">
-                 Cobrança exclusivamente via <strong>Cartão de Crédito</strong>.
-                 <br/>
-                 {fidelity === FidelityModel.WITH_FIDELITY 
-                   ? 'Cobrança Anual Antecipada (Total de 2 cobranças anuais no prazo de 24 meses).' 
-                   : 'Pagamento à vista (Programas + 1ª Assinatura), seguido de cobrança mensal recorrente.'}
-              </p>
-              
-              <p><strong>b) Exames Complementares</strong></p>
-              <p className="pl-3 border-l-2 border-slate-300 py-1">
-                Os exames serão cobrados por demanda e baseado nos valores apresentados na tabela anexa. 
-                Faturamento via Boleto Bancário (vencimento dia 10).
-              </p>
-            </div>
-          </section>
-
-          {/* 7. REAJUSTE */}
-          <section className="mb-6">
-             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-              7. Reajuste de Valores
-            </h3>
-            <p className="text-[9px] text-slate-700 text-justify leading-relaxed">
-              Reajuste anual (cada 12 meses) com base na variação acumulada do IPCA (IBGE).
-            </p>
-          </section>
-
-           {/* 8. VIGÊNCIA E RESCISÃO (UPDATED TEXT) */}
-          <section className="mb-6">
-             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-              8. Vigência e Rescisão Contratual
-            </h3>
-            <div className="text-[9px] text-slate-700 text-justify space-y-2 border-l-2 border-reque-orange pl-4 bg-reque-orange/5 py-2 pr-2 rounded-r-md">
-               <p>
-                 <strong>Vigência:</strong> O contrato terá vigência de 12 (doze) meses a partir da data de assinatura.
-               </p>
-               
+          <section className="text-[9px] text-slate-600 space-y-3 mt-auto">
+            <h3 className="text-xs font-black text-reque-navy uppercase border-b-2 border-reque-orange/30 pb-1 mb-1 tracking-widest">3. Cláusulas de Fidelidade e Rescisão</h3>
+            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 italic leading-relaxed text-justify">
+               <p><strong>Vigência:</strong> O contrato tem vigência de 12 (doze) meses, renováveis automaticamente por igual período.</p>
                {fidelity === FidelityModel.WITH_FIDELITY ? (
-                 <div className="mt-1.5">
-                   <p className="font-bold text-reque-navy mb-0.5">CANCELAMENTO ANTECIPADO (CLÁUSULA DE FIDELIDADE):</p>
-                   <p className="leading-relaxed">
-                     A modalidade {plan} Fidelidade exige fidelidade mínima de 24 (vinte e quatro) meses.
-                     <strong> Em caso de cancelamento antecipado (rescisão antes do prazo contratual), será cobrado o valor integral do desconto concedido (isenção dos programas), conforme previsto na proposta comercial aceita.</strong>
-                   </p>
-                 </div>
+                 <p className="mt-2"><strong>Cláusula de Fidelidade (24 meses):</strong> O CONTRATANTE optou pela modalidade com fidelidade, recebendo isenção total na taxa de elaboração dos programas técnicos (PGR/PCMSO). <strong>Em caso de rescisão antecipada antes de completar 24 meses de contrato, o valor integral do desconto concedido (R$ {result.originalProgramFee.toFixed(2)}) será cobrado imediatamente a título de multa compensatória.</strong></p>
                ) : (
-                 <div className="mt-1.5">
-                   <p className="font-bold text-reque-navy mb-0.5">CANCELAMENTO SEM FIDELIDADE:</p>
-                   <p className="leading-relaxed">
-                     Para contratos sem fidelidade, não há multa sobre mensalidades futuras, devendo ser quitados apenas os serviços já prestados.
-                   </p>
-                 </div>
+                 <p className="mt-2"><strong>Cancelamento:</strong> Sem multa para rescisões futuras, desde que os serviços já prestados e as taxas de setup iniciais tenham sido integralmente liquidados.</p>
                )}
             </div>
           </section>
-
-          {/* 9. SERVIÇOS ADICIONAIS (Brief) */}
-          <section>
-             <h3 className="text-xs font-bold text-reque-navy uppercase border-b border-reque-orange/30 pb-1 mb-2">
-              9. Serviços Adicionais
-            </h3>
-            <p className="text-[9px] text-slate-600 mb-1.5">Valores sob demanda:</p>
-            <ul className="list-disc list-inside text-[9px] text-slate-700 space-y-0.5">
-               <li>Emissão de PPP (Extemporâneo): R$ 250,00</li>
-               <li>Visita Técnica: R$ 100,00/h + deslocamento (Obrigatória para Risco &gt; 1)</li>
-            </ul>
-          </section>
-
         </A4Page>
 
-        {/* --- PAGE 3: ANEXO - TABELA DE EXAMES --- */}
-        <A4Page 
-          pageNumber={3} 
-          totalPages={3} 
-          planRef={plan.toUpperCase()} 
-          title="ANEXO - TABELA DE VALORES"
-          isLast={true}
-        >
-          
-          <div className="text-center mb-6">
-             <h2 className="text-sm font-bold text-reque-navy uppercase border-b-4 border-reque-orange inline-block pb-1">
-               Tabela de Exames - {selectedUnit.replace('Unidade Reque ', '')}
-             </h2>
-             <p className="text-[9px] text-slate-500 mt-1.5">
-               Valores referenciais para a unidade selecionada.
-             </p>
-          </div>
+        <A4Page pageNumber={2} totalPages={2} planName={plan} title="ANEXO - TABELA DE VALORES EXAMES" isLast={true}>
+           <div className="mb-6">
+             <h2 className="text-sm font-black text-reque-navy uppercase border-b-4 border-reque-orange inline-block pb-1 tracking-widest">Tabela de Exames - Unidade Selecionada</h2>
+             <p className="text-[9px] text-slate-500 mt-2 font-medium">Os valores abaixo referem-se aos exames complementares realizados por demanda, não inclusos no valor da assinatura mensal.</p>
+           </div>
+           
+           <div className="border border-slate-800 rounded-sm overflow-hidden mb-10">
+              <div className="grid grid-cols-12 bg-reque-navy text-white text-[9px] font-black text-center divide-x divide-slate-700">
+                 <div className="col-span-3 py-2">CATEGORIA</div>
+                 <div className="col-span-6 py-2">DESCRIÇÃO DO EXAME</div>
+                 <div className="col-span-3 py-2">VALOR (R$)</div>
+              </div>
+              <div className="divide-y divide-slate-200">
+                 {selectedExams.map((e, i) => (
+                   <div key={i} className={`grid grid-cols-12 text-[10px] items-center divide-x divide-slate-200 ${i % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                      <div className="col-span-3 p-2 font-bold text-slate-500 uppercase text-[8px]">{e.category}</div>
+                      <div className="col-span-6 p-2 font-medium text-slate-800">{e.name}</div>
+                      <div className="col-span-3 p-2 text-center font-black text-reque-blue">{formatCurrency(e.price)}</div>
+                   </div>
+                 ))}
+              </div>
+           </div>
 
-          <div className="border border-slate-800 rounded-sm overflow-hidden">
-             {/* Table Header */}
-             <div className="grid grid-cols-12 bg-reque-navy text-white text-[9px] font-bold text-center border-b border-slate-800 divide-x divide-slate-700">
-                <div className="col-span-3 py-2">TIPO DE EXAME</div>
-                <div className="col-span-5 py-2">NOME DO EXAME</div>
-                <div className="col-span-2 py-2">VALOR (R$)</div>
-                <div className="col-span-2 py-2">PRAZO</div>
-             </div>
-
-             {/* Table Body */}
-             <div className="divide-y divide-slate-200">
-               {selectedExams.map((exam, index) => (
-                 <div key={index} className={`grid grid-cols-12 text-[9px] border-b border-slate-200 divide-x divide-slate-200 ${index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
-                    <div className="col-span-3 py-1.5 px-2 font-bold text-slate-700 flex items-center justify-center text-center">
-                      {exam.category}
-                    </div>
-                    <div className="col-span-5 py-1.5 px-3 text-slate-800 flex items-center">
-                      {exam.name}
-                    </div>
-                    <div className="col-span-2 py-1.5 px-2 text-center font-bold text-reque-blue flex items-center justify-center">
-                      {formatCurrency(exam.price)}
-                    </div>
-                    <div className="col-span-2 py-1.5 px-2 text-center text-slate-500 flex items-center justify-center italic leading-tight">
-                      {exam.deadline}
-                    </div>
-                 </div>
-               ))}
-             </div>
-          </div>
+           <div className="mt-auto border-t-2 border-slate-100 pt-10 grid grid-cols-2 gap-10">
+              <div className="flex flex-col items-center">
+                 <div className="w-full border-t border-slate-400 mb-2"></div>
+                 <span className="text-[10px] font-bold text-slate-700 uppercase">{companyName}</span>
+                 <span className="text-[8px] text-slate-400">Contratante</span>
+              </div>
+              <div className="flex flex-col items-center">
+                 <div className="w-full border-t border-slate-400 mb-2"></div>
+                 <span className="text-[10px] font-bold text-reque-navy uppercase tracking-widest">REQUE SST</span>
+                 <span className="text-[8px] text-slate-400">Contratada</span>
+              </div>
+           </div>
         </A4Page>
       </div>
     </div>

@@ -1,7 +1,8 @@
 
 export enum PlanType {
-  EXPRESS = 'SST Express', // 1 to 20 lives
-  PRO = 'SST Pró',         // > 20 lives
+  EXPRESS = 'SST Express',
+  ESSENCIAL = 'SST Essencial',
+  PRO = 'SST Pró',
 }
 
 export enum FidelityModel {
@@ -43,23 +44,18 @@ export interface EmployeeRange {
 
 export interface PricingResult {
   rangeLabel: string;
-  monthlyValue: number;       // The reference monthly value
+  monthlyValue: number;
   billingCycle: BillingCycle;
   paymentMethod: PaymentMethod;
-  programFee: number;         // Setup fee (PGR/PCMSO) - Current value (0 if discounted)
-  originalProgramFee: number; // The base fee before discount (for display purposes)
+  programFee: number;
+  originalProgramFee: number;
   programFeeDiscounted: boolean;
-  riskLevel: RiskLevel;       
-  
-  // Dates & Deadlines
-  clientDeliveryDate: string; // Date client delivers "Modelo 1"
-  docDeliveryDate: string;    // Date Reque delivers PGR/PCMSO
-  businessDays: number;       // Calculated working days
-  
-  // Financials
-  contractTotalCurrentCycle: number; // What the client pays now (e.g. 12 months or 1 month)
-  initialPaymentAmount: number;      // Total to pay immediately (Cycle + Fee)
-  
+  riskLevel: RiskLevel;
+  clientDeliveryDate: string;
+  docDeliveryDate: string;
+  businessDays: number;
+  contractTotalCurrentCycle: number;
+  initialPaymentAmount: number;
   isCustomQuote: boolean;
   commercialSummary: string;
 }
@@ -69,11 +65,11 @@ export interface ProposalHistoryItem {
   createdAt: string;
   companyName: string;
   contactName: string;
-  cnpj: string; 
-  selectedUnit: RequeUnit; 
+  cnpj: string;
+  selectedUnit: RequeUnit;
   plan: PlanType;
   numEmployees: number;
-  riskLevel: RiskLevel; 
+  riskLevel: RiskLevel;
   monthlyValue: number;
   initialTotal: number;
   fidelity: FidelityModel;
@@ -83,7 +79,7 @@ export interface ProposalHistoryItem {
 
 export interface User {
   name: string;
-  email: string; // Used as login username
+  email: string;
   password: string;
   role: 'admin' | 'user';
   isApproved: boolean;
@@ -91,11 +87,9 @@ export interface User {
 
 export type ViewType = 'calculator' | 'history' | 'admin';
 
-// Mimics the "Table Reference" structure
-export type PricingTable = Record<PlanType, Record<string, number>>; 
-export type ProgramFeeTable = Record<string, number>; // RangeID -> Fee
+export type PricingTable = Record<string, number>;
+export type ProgramFeeTable = Record<string, number>;
 
-// Exam Table Structure
 export interface ExamItem {
   category: string;
   name: string;

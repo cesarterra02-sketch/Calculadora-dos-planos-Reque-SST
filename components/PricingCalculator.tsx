@@ -13,15 +13,15 @@ import {
 } from '../types';
 import { 
   EMPLOYEE_RANGES, 
-  BASE_PRICING_TABLE, 
+  MONTHLY_VALUES_EXPRESS,
+  MONTHLY_VALUES_PRO,
   PROGRAM_FEES_TABLE, 
   PLAN_SERVICES 
 } from '../constants';
 import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
-import { Users, Building2, CheckCircle, XCircle, MapPin, CalendarDays, ShieldCheck, Zap } from 'lucide-react';
+import { Users, Building2, CheckCircle, ShieldCheck, Info } from 'lucide-react';
 
-// --- Helper: CNPJ Logic ---
 const formatCNPJ = (value: string) => {
   return value
     .replace(/\D/g, '')
@@ -34,13 +34,7 @@ const formatCNPJ = (value: string) => {
 
 const validateCNPJ = (cnpj: string): boolean => {
   cnpj = cnpj.replace(/[^\d]+/g, '');
-  if (cnpj === '') return false;
-  if (cnpj.length !== 14) return false;
-
-  // Eliminate known invalid CNPJs
-  if (/^(\d)\1+$/.test(cnpj)) return false;
-
-  // Validate DVs
+  if (cnpj.length !== 14 || /^(\d)\1+$/.test(cnpj)) return false;
   let tamanho = cnpj.length - 2;
   let numeros = cnpj.substring(0, tamanho);
   let digitos = cnpj.substring(tamanho);
@@ -52,7 +46,6 @@ const validateCNPJ = (cnpj: string): boolean => {
   }
   let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
   if (resultado != parseInt(digitos.charAt(0))) return false;
-
   tamanho = tamanho + 1;
   numeros = cnpj.substring(0, tamanho);
   soma = 0;
@@ -62,57 +55,23 @@ const validateCNPJ = (cnpj: string): boolean => {
     if (pos < 2) pos = 9;
   }
   resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-  if (resultado != parseInt(digitos.charAt(1))) return false;
-
-  return true;
+  return resultado == parseInt(digitos.charAt(1));
 };
 
-// --- Helper: Business Days Calculation ---
-const countBusinessDays = (startDateStr: string, endDateStr: string): number => {
-  if (!startDateStr || !endDateStr) return 0;
-  
-  let count = 0;
-  const start = new Date(startDateStr);
-  const end = new Date(endDateStr);
-  
-  // Normalize to start of day to avoid time issues
-  start.setHours(0,0,0,0);
-  end.setHours(0,0,0,0);
-
-  if (end < start) return 0;
-
-  const cur = new Date(start);
-  while (cur <= end) {
-    const dayOfWeek = cur.getDay();
-    if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
-    cur.setDate(cur.getDate() + 1);
-  }
-  
-  return count;
-};
-
-interface PricingCalculatorProps {
+export const PricingCalculator: React.FC<{
   onSaveHistory: (item: ProposalHistoryItem) => void;
   initialData?: ProposalHistoryItem | null;
-}
-
-export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ onSaveHistory, initialData }) => {
-  // --- State Inputs ---
-  const [companyName, setCompanyName] = useState<string>('');
-  const [contactName, setContactName] = useState<string>('');
-  const [cnpj, setCnpj] = useState<string>('');
+}> = ({ onSaveHistory, initialData }) => {
+  const [companyName, setCompanyName] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [cnpj, setCnpj] = useState('');
   const [isCnpjValid, setIsCnpjValid] = useState<boolean | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<RequeUnit>(RequeUnit.PONTA_GROSSA);
-  const [numEmployees, setNumEmployees] = useState<number>(1);
+  const [numEmployees, setNumEmployees] = useState(1);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>(RiskLevel.RISK_1);
   const [fidelity, setFidelity] = useState<FidelityModel>(FidelityModel.WITH_FIDELITY);
-  const [showProposal, setShowProposal] = useState<boolean>(false); 
-  
-  // Dates
-  const [clientDeliveryDate, setClientDeliveryDate] = useState<string>('');
-  const [docDeliveryDate, setDocDeliveryDate] = useState<string>('');
+  const [showProposal, setShowProposal] = useState(false);
 
-  // --- Load Initial Data (Edit Mode) ---
   useEffect(() => {
     if (initialData) {
       setCompanyName(initialData.companyName);
@@ -120,418 +79,201 @@ export const PricingCalculator: React.FC<PricingCalculatorProps> = ({ onSaveHist
       setCnpj(initialData.cnpj);
       setNumEmployees(initialData.numEmployees);
       setFidelity(initialData.fidelity);
-      if (initialData.selectedUnit) setSelectedUnit(initialData.selectedUnit);
-      if (initialData.riskLevel) setRiskLevel(initialData.riskLevel);
-      if (initialData.clientDeliveryDate) setClientDeliveryDate(initialData.clientDeliveryDate);
-      if (initialData.docDeliveryDate) setDocDeliveryDate(initialData.docDeliveryDate);
-      
-      // Re-validate CNPJ if present
-      if (initialData.cnpj) {
-         const numericOnly = initialData.cnpj.replace(/\D/g, '');
-         if (numericOnly.length === 14) setIsCnpjValid(validateCNPJ(numericOnly));
-      }
-      setShowProposal(false); 
+      setSelectedUnit(initialData.selectedUnit);
+      setRiskLevel(initialData.riskLevel);
+      const numericOnly = initialData.cnpj.replace(/\D/g, '');
+      if (numericOnly.length === 14) setIsCnpjValid(validateCNPJ(numericOnly));
     }
   }, [initialData]);
 
-  // --- Handlers ---
-  const handleCnpjChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const rawValue = e.target.value;
-    const formatted = formatCNPJ(rawValue);
-    setCnpj(formatted);
-
-    const numericOnly = formatted.replace(/\D/g, '');
-    
-    if (numericOnly.length === 14) {
-      setIsCnpjValid(validateCNPJ(numericOnly));
-    } else if (numericOnly.length === 0) {
-      setIsCnpjValid(null);
-    } else {
-      setIsCnpjValid(null);
-    }
-  };
-
-  // --- Derived State: Plan Logic based on PDF ---
   const activePlan = useMemo(() => {
-    if (numEmployees > 20) return PlanType.PRO;
-    return PlanType.EXPRESS;
-  }, [numEmployees]);
+    if (riskLevel === RiskLevel.RISK_1) return PlanType.EXPRESS;
+    if (numEmployees <= 20) return PlanType.ESSENCIAL;
+    return PlanType.PRO;
+  }, [numEmployees, riskLevel]);
 
-
-  // --- Calculation Logic ---
   const calculationResult: PricingResult | null = useMemo(() => {
-    // 1. Identify Range
-    const identifiedRange: EmployeeRange | undefined = EMPLOYEE_RANGES.find(
-      (r) => numEmployees >= r.min && numEmployees <= r.max
-    );
+    const range = EMPLOYEE_RANGES.find(r => numEmployees >= r.min && numEmployees <= r.max);
+    if (!range) return null;
 
-    if (!identifiedRange) {
-      return null;
+    const monthlyTable = activePlan === PlanType.PRO ? MONTHLY_VALUES_PRO : MONTHLY_VALUES_EXPRESS;
+    const monthlyBase = monthlyTable[range.id] || 0;
+    const programFeeBase = PROGRAM_FEES_TABLE[range.id] || 0;
+
+    const isFidelity = fidelity === FidelityModel.WITH_FIDELITY;
+    const programFee = isFidelity ? 0 : programFeeBase;
+
+    // Regra de Faturamento: Express/Essencial com Fidelidade = Anual Antecipado
+    let billingCycle = BillingCycle.MONTHLY;
+    if (isFidelity && (activePlan === PlanType.EXPRESS || activePlan === PlanType.ESSENCIAL)) {
+      billingCycle = BillingCycle.ANNUAL;
     }
 
-    // Days Calculation
-    const daysCount = countBusinessDays(clientDeliveryDate, docDeliveryDate);
+    // Forma de Pagamento: Express sem fidelidade = Cartão. Demais = Boleto.
+    const paymentMethod = (activePlan === PlanType.EXPRESS && !isFidelity) 
+      ? PaymentMethod.CREDIT_CARD 
+      : PaymentMethod.BOLETO;
 
-    // 2. Handle SST PRO (CUSTOM QUOTE)
-    if (activePlan === PlanType.PRO) {
-       return {
-          rangeLabel: identifiedRange.label,
-          monthlyValue: 0,
-          billingCycle: BillingCycle.MONTHLY,
-          paymentMethod: PaymentMethod.BOLETO,
-          programFee: 0,
-          originalProgramFee: 0,
-          programFeeDiscounted: false,
-          riskLevel: riskLevel,
-          clientDeliveryDate,
-          docDeliveryDate,
-          businessDays: daysCount,
-          contractTotalCurrentCycle: 0, 
-          initialPaymentAmount: 0,
-          isCustomQuote: true,
-          commercialSummary: `SST Pró (Acima de 20 vidas). Necessário análise personalizada pelo departamento comercial considerando Grau de Risco e particularidades.`,
-        };
-    }
-
-    // 3. Handle SST EXPRESS
-    if (!BASE_PRICING_TABLE[PlanType.EXPRESS]) return null;
-
-    const monthlyBase = BASE_PRICING_TABLE[PlanType.EXPRESS][identifiedRange.id];
-    const programFeeBase = PROGRAM_FEES_TABLE[identifiedRange.id] || 0;
-
-    if (monthlyBase === 0) return null;
-
-    let finalBillingCycle = BillingCycle.MONTHLY;
-    let finalProgramFee = programFeeBase;
-    let isFeeDiscounted = false;
-    let cycleTotal = 0;
-    
-    if (fidelity === FidelityModel.WITH_FIDELITY) {
-      finalBillingCycle = BillingCycle.ANNUAL;
-      isFeeDiscounted = true;
-      finalProgramFee = 0; 
-      cycleTotal = monthlyBase * 12; 
-    } else {
-      finalBillingCycle = BillingCycle.MONTHLY;
-      isFeeDiscounted = false;
-      finalProgramFee = programFeeBase;
-      cycleTotal = monthlyBase;
-    }
-
-    const summaryText = fidelity === FidelityModel.WITH_FIDELITY 
-      ? `Plano com Fidelidade 24 meses. Isenção total da taxa de implantação (Economia de R$ ${programFeeBase.toFixed(2)}).`
-      : 'Plano sem fidelidade. Taxa de implantação integral aplicada.';
+    const initialAssinatura = billingCycle === BillingCycle.ANNUAL ? monthlyBase * 12 : monthlyBase;
 
     return {
-      rangeLabel: identifiedRange.label,
+      rangeLabel: range.label,
       monthlyValue: monthlyBase,
-      billingCycle: finalBillingCycle,
-      paymentMethod: PaymentMethod.CREDIT_CARD,
-      programFee: finalProgramFee,
+      billingCycle,
+      paymentMethod,
+      programFee,
       originalProgramFee: programFeeBase,
-      programFeeDiscounted: isFeeDiscounted,
-      riskLevel: riskLevel,
-      clientDeliveryDate,
-      docDeliveryDate,
-      businessDays: daysCount,
-      contractTotalCurrentCycle: cycleTotal,
-      initialPaymentAmount: cycleTotal + finalProgramFee,
-      isCustomQuote: false,
-      commercialSummary: summaryText
+      programFeeDiscounted: isFidelity,
+      riskLevel,
+      clientDeliveryDate: '',
+      docDeliveryDate: '',
+      businessDays: 0,
+      contractTotalCurrentCycle: initialAssinatura,
+      initialPaymentAmount: initialAssinatura + programFee,
+      isCustomQuote: monthlyBase === 0,
+      commercialSummary: isFidelity 
+        ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (PGR/PCMSO).` 
+        : `Plano sem fidelidade. Cobrança integral da taxa de elaboração dos programas.`
     };
-
-  }, [
-    numEmployees, 
-    riskLevel, 
-    fidelity, 
-    activePlan, 
-    clientDeliveryDate, 
-    docDeliveryDate
-  ]);
-
-  const handleSave = () => {
-    if (calculationResult) {
-      const historyItem: ProposalHistoryItem = {
-        id: crypto.randomUUID(),
-        createdAt: new Date().toISOString(),
-        companyName,
-        contactName,
-        cnpj,
-        selectedUnit,
-        plan: activePlan,
-        numEmployees,
-        riskLevel,
-        monthlyValue: calculationResult.monthlyValue,
-        initialTotal: calculationResult.initialPaymentAmount,
-        fidelity,
-        clientDeliveryDate,
-        docDeliveryDate,
-      };
-      onSaveHistory(historyItem);
-    }
-  };
-
-  const toggleProposalView = () => {
-    if (!companyName || !contactName) {
-      alert("Por favor, preencha o Nome da Empresa e do Responsável para gerar a proposta.");
-      return;
-    }
-    
-    if (isCnpjValid !== true) {
-      alert("Por favor, insira um CNPJ válido para gerar a proposta formal.");
-      return;
-    }
-
-    setShowProposal(true);
-  };
-
-  if (showProposal && calculationResult) {
-    return (
-      <ProposalView 
-        result={calculationResult}
-        plan={activePlan}
-        fidelity={fidelity}
-        employees={numEmployees}
-        companyName={companyName}
-        contactName={contactName}
-        cnpj={cnpj}
-        selectedUnit={selectedUnit}
-        onBack={() => setShowProposal(false)}
-      />
-    );
-  }
+  }, [numEmployees, riskLevel, fidelity, activePlan]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-8 items-start">
-      {/* --- LEFT COLUMN: INPUTS & SERVICES --- */}
-      <div className="flex-1 w-full space-y-6">
-        
-        {/* 1. Identificação */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-           <h3 className="text-sm font-bold text-reque-navy uppercase tracking-wider mb-4 flex items-center gap-2">
-             <Building2 className="w-4 h-4 text-reque-orange" />
-             Dados da Empresa
-           </h3>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Razão Social / Nome</label>
-                <input 
-                  type="text" 
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value.toUpperCase())}
-                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-reque-blue/20 outline-none uppercase"
-                  placeholder="EX: INDÚSTRIA ABC LTDA"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">CNPJ</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    value={cnpj}
-                    onChange={handleCnpjChange}
-                    maxLength={18}
-                    className={`w-full p-2 border rounded text-sm focus:ring-2 focus:ring-reque-blue/20 outline-none pr-8 ${
-                      isCnpjValid === false ? 'border-red-300 bg-red-50' : 
-                      isCnpjValid === true ? 'border-green-300 bg-green-50' : 'border-slate-300'
-                    }`}
-                    placeholder="00.000.000/0001-00"
-                  />
-                  <div className="absolute right-2 top-2.5">
-                    {isCnpjValid === true && <CheckCircle className="w-4 h-4 text-green-500" />}
-                    {isCnpjValid === false && <XCircle className="w-4 h-4 text-red-500" />}
-                  </div>
-                </div>
-                {isCnpjValid === false && (
-                  <p className="text-[10px] text-red-500 mt-1 font-bold">CNPJ Inválido</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Responsável / Contato</label>
-                <input 
-                  type="text" 
-                  value={contactName}
-                  onChange={(e) => setContactName(e.target.value.toUpperCase())}
-                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-reque-blue/20 outline-none uppercase"
-                  placeholder="NOME DO SOLICITANTE"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Unidade de Referência</label>
-                <div className="relative">
-                  <MapPin className="absolute left-2.5 top-2.5 w-4 h-4 text-slate-400" />
-                  <select 
-                    value={selectedUnit}
-                    onChange={(e) => setSelectedUnit(e.target.value as RequeUnit)}
-                    className="w-full pl-9 p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-reque-blue/20 outline-none appearance-none bg-white"
-                  >
-                    {Object.values(RequeUnit).map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-           </div>
-        </div>
-
-        {/* 2. Parâmetros de Precificação */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 relative overflow-hidden">
-           {activePlan === PlanType.PRO && (
-             <div className="absolute top-0 right-0 bg-reque-navy text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg flex items-center gap-1">
-               <Zap className="w-3 h-3 text-reque-orange" />
-               SST PRÓ ATIVO
-             </div>
-           )}
-
-           <h3 className="text-sm font-bold text-reque-navy uppercase tracking-wider mb-4 flex items-center gap-2">
-             <Users className="w-4 h-4 text-reque-orange" />
-             Dimensionamento
-           </h3>
-
-           <div className="space-y-6">
-             {/* Slider Vidas */}
-             <div>
-               <div className="flex justify-between items-end mb-2">
-                 <label className="text-xs font-bold text-slate-500">Número de Vidas (Funcionários)</label>
-                 <span className="text-2xl font-extrabold text-reque-blue">{numEmployees}</span>
-               </div>
-               <input 
-                  type="range" 
-                  min="1" 
-                  max="100" 
-                  value={numEmployees}
-                  onChange={(e) => setNumEmployees(parseInt(e.target.value))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-reque-orange"
-               />
-               <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                 <span>1</span>
-                 <span>20 (Limite Express)</span>
-                 <span>100+</span>
-               </div>
-             </div>
-
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {/* Risk Level */}
-               <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-2">Grau de Risco</label>
-                  <div className="grid grid-cols-1 gap-2">
-                    {[RiskLevel.RISK_1, RiskLevel.RISK_2, RiskLevel.RISK_3, RiskLevel.RISK_4].map((r) => (
-                      <label key={r} className={`flex items-center gap-2 p-2 border rounded-lg cursor-pointer transition-all ${riskLevel === r ? 'border-reque-blue bg-blue-50 text-reque-blue shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}>
-                        <input 
-                          type="radio" 
-                          name="risk"
-                          className="text-reque-blue focus:ring-reque-blue accent-reque-blue"
-                          checked={riskLevel === r}
-                          onChange={() => setRiskLevel(r)}
-                        />
-                        <span className="text-xs font-medium">{r}</span>
-                      </label>
-                    ))}
-                  </div>
-               </div>
-               
-               {/* Fidelity */}
-               <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-2">Plano de Fidelidade</label>
-                  <div className="flex flex-col gap-2">
-                    <label className={`flex items-center gap-2 p-2 border rounded-lg cursor-pointer transition-all ${fidelity === FidelityModel.WITH_FIDELITY ? 'border-reque-orange bg-orange-50 text-reque-dark shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}>
-                       <input 
-                          type="radio" 
-                          name="fidelity"
-                          className="text-reque-orange focus:ring-reque-orange accent-reque-orange"
-                          checked={fidelity === FidelityModel.WITH_FIDELITY}
-                          onChange={() => setFidelity(FidelityModel.WITH_FIDELITY)}
-                        />
-                       <div>
-                         <span className="block text-xs font-bold">Com Fidelidade (24m)</span>
-                         <span className="block text-[10px] text-slate-500">Isenção Taxa Implantação</span>
-                       </div>
-                    </label>
-
-                    <label className={`flex items-center gap-2 p-2 border rounded-lg cursor-pointer transition-all ${fidelity === FidelityModel.NO_FIDELITY ? 'border-reque-orange bg-orange-50 text-reque-dark shadow-sm' : 'border-slate-200 hover:border-slate-300'}`}>
-                       <input 
-                          type="radio" 
-                          name="fidelity"
-                          className="text-reque-orange focus:ring-reque-orange accent-reque-orange"
-                          checked={fidelity === FidelityModel.NO_FIDELITY}
-                          onChange={() => setFidelity(FidelityModel.NO_FIDELITY)}
-                        />
-                       <div>
-                         <span className="block text-xs font-bold">Sem Fidelidade</span>
-                         <span className="block text-[10px] text-slate-500">Paga Taxa Implantação</span>
-                       </div>
-                    </label>
-                  </div>
-               </div>
-             </div>
-           </div>
-        </div>
-
-        {/* 3. Prazos */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-           <h3 className="text-sm font-bold text-reque-navy uppercase tracking-wider mb-4 flex items-center gap-2">
-             <CalendarDays className="w-4 h-4 text-reque-orange" />
-             Prazos e Entregas
-           </h3>
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Entrega Doc. Cliente (Modelo 1)</label>
-                <input 
-                  type="date" 
-                  value={clientDeliveryDate}
-                  onChange={(e) => setClientDeliveryDate(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-reque-blue/20 outline-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1">Entrega Doc. Reque (PGR/PCMSO)</label>
-                <input 
-                  type="date" 
-                  value={docDeliveryDate}
-                  onChange={(e) => setDocDeliveryDate(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded text-sm focus:ring-2 focus:ring-reque-blue/20 outline-none"
-                />
-              </div>
-           </div>
-           {calculationResult && calculationResult.businessDays > 0 && (
-              <div className="mt-3 text-xs bg-slate-50 p-2 rounded text-slate-600 flex gap-2 items-center">
-                 <span className="font-bold">Prazo calculado:</span>
-                 {calculationResult.businessDays} dias úteis
-              </div>
-           )}
-        </div>
-
-        {/* 4. Serviços Inclusos (MOVED HERE) */}
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-           <h3 className="text-sm font-bold text-reque-navy uppercase tracking-wider mb-4 flex items-center gap-2">
-             <ShieldCheck className="w-4 h-4 text-reque-orange" />
-             Incluso no Plano {activePlan}
-           </h3>
-           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-             {PLAN_SERVICES[activePlan].map((service, idx) => (
-               <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-lg hover:bg-slate-100 hover:border-reque-blue/20 transition-all group">
-                  <div className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0 group-hover:border-reque-blue/30 group-hover:bg-blue-50 transition-colors">
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  </div>
-                  <span className="text-xs font-bold text-slate-600 leading-tight">{service}</span>
-               </div>
-             ))}
-           </div>
-        </div>
-
-      </div>
-
-      {/* --- RIGHT COLUMN: SUMMARY --- */}
-      <div className="w-full lg:w-[380px] shrink-0 space-y-4">
-        {calculationResult && (
-          <SummaryCard 
+      {showProposal && calculationResult ? (
+        <div className="fixed inset-0 z-50 overflow-auto bg-slate-100">
+           <ProposalView 
             result={calculationResult} 
-            onSaveHistory={handleSave}
-            onGenerateProposal={toggleProposalView}
-            isGenerateDisabled={isCnpjValid !== true}
+            plan={activePlan} 
+            fidelity={fidelity}
+            employees={numEmployees}
+            companyName={companyName}
+            contactName={contactName}
+            cnpj={cnpj}
+            selectedUnit={selectedUnit}
+            onBack={() => setShowProposal(false)}
           />
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex-1 w-full space-y-6">
+            {/* Empresa */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h3 className="text-sm font-bold text-reque-navy uppercase mb-4 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value.toUpperCase())} className="w-full p-2.5 border border-slate-300 rounded text-sm uppercase outline-none focus:border-reque-blue" placeholder="RAZÃO SOCIAL" />
+                <div className="relative">
+                  <input type="text" value={cnpj} onChange={e => {
+                    const fmt = formatCNPJ(e.target.value);
+                    setCnpj(fmt);
+                    const clean = fmt.replace(/\D/g,'');
+                    setIsCnpjValid(clean.length === 14 ? validateCNPJ(clean) : null);
+                  }} maxLength={18} className={`w-full p-2.5 border rounded text-sm outline-none ${isCnpjValid === false ? 'border-red-300 bg-red-50' : 'border-slate-300 focus:border-reque-blue'}`} placeholder="CNPJ" />
+                  {isCnpjValid === true && <CheckCircle className="absolute right-3 top-3 w-4 h-4 text-green-500" />}
+                </div>
+                <input type="text" value={contactName} onChange={e => setContactName(e.target.value.toUpperCase())} className="w-full p-2.5 border border-slate-300 rounded text-sm uppercase outline-none focus:border-reque-blue" placeholder="A/C (RESPONSÁVEL)" />
+                <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value as RequeUnit)} className="w-full p-2.5 border border-slate-300 rounded text-sm bg-white outline-none focus:border-reque-blue">
+                  {Object.values(RequeUnit).map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Dimensionamento */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+              <h3 className="text-sm font-bold text-reque-navy uppercase mb-4 flex items-center gap-2">
+                <Users className="w-4 h-4 text-reque-orange" /> Dimensionamento ({activePlan})
+              </h3>
+              <div className="space-y-6">
+                <div>
+                  <div className="flex justify-between items-end mb-3">
+                    <label className="text-xs font-bold text-slate-500">Número de Funcionários (Vidas)</label>
+                    <span className="text-3xl font-black text-reque-blue">{numEmployees}</span>
+                  </div>
+                  <input type="range" min="1" max="200" value={numEmployees} onChange={e => setNumEmployees(parseInt(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none accent-reque-orange cursor-pointer" />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Grau de Risco da Atividade</label>
+                    <div className="grid grid-cols-4 gap-2">
+                      {[RiskLevel.RISK_1, RiskLevel.RISK_2, RiskLevel.RISK_3, RiskLevel.RISK_4].map(r => (
+                        <button key={r} onClick={() => setRiskLevel(r)} className={`py-2 px-1 border rounded font-bold text-xs transition-all ${riskLevel === r ? 'bg-reque-blue text-white border-reque-blue shadow-md' : 'bg-white text-slate-400 hover:border-slate-400'}`}>
+                          {r.split(' ')[1]}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-2 italic flex items-center gap-1">
+                      <Info className="w-3 h-3" /> Essencial/Pró exigem Risco 2, 3 ou 4.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Modelo de Contratação</label>
+                    <div className="flex flex-col gap-2">
+                      <button onClick={() => setFidelity(FidelityModel.WITH_FIDELITY)} className={`p-2.5 border rounded-lg text-xs font-bold text-left transition-all flex items-center justify-between ${fidelity === FidelityModel.WITH_FIDELITY ? 'border-reque-orange bg-orange-50 text-reque-navy ring-1 ring-reque-orange' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                        COM FIDELIDADE (ISENTO PGR)
+                        {fidelity === FidelityModel.WITH_FIDELITY && <CheckCircle className="w-4 h-4 text-reque-orange" />}
+                      </button>
+                      <button onClick={() => setFidelity(FidelityModel.NO_FIDELITY)} className={`p-2.5 border rounded-lg text-xs font-bold text-left transition-all flex items-center justify-between ${fidelity === FidelityModel.NO_FIDELITY ? 'border-reque-orange bg-orange-50 text-reque-navy ring-1 ring-reque-orange' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>
+                        SEM FIDELIDADE (PAGAMENTO SETUP)
+                        {fidelity === FidelityModel.NO_FIDELITY && <CheckCircle className="w-4 h-4 text-reque-orange" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Benefícios do Plano */}
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+               <h3 className="text-sm font-bold text-reque-navy uppercase mb-4 flex items-center gap-2">
+                 <ShieldCheck className="w-4 h-4 text-reque-orange" /> Itens Inclusos no {activePlan}
+               </h3>
+               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                 {PLAN_SERVICES[activePlan].map((s, i) => (
+                   <div key={i} className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600 uppercase leading-tight">
+                     <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                     {s}
+                   </div>
+                 ))}
+               </div>
+            </div>
+          </div>
+
+          <div className="w-full lg:w-[380px] shrink-0">
+            {calculationResult && (
+              <SummaryCard 
+                result={calculationResult} 
+                onSaveHistory={() => {
+                  onSaveHistory({
+                    id: crypto.randomUUID(),
+                    createdAt: new Date().toISOString(),
+                    companyName,
+                    contactName,
+                    cnpj,
+                    selectedUnit,
+                    plan: activePlan,
+                    numEmployees,
+                    riskLevel,
+                    monthlyValue: calculationResult.monthlyValue,
+                    initialTotal: calculationResult.initialPaymentAmount,
+                    fidelity
+                  });
+                }}
+                onGenerateProposal={() => {
+                  if (!isCnpjValid || !companyName || !contactName) {
+                    alert("Por favor, preencha Razão Social, Responsável e um CNPJ válido.");
+                    return;
+                  }
+                  setShowProposal(true);
+                }}
+                isGenerateDisabled={!isCnpjValid || !companyName || !contactName}
+              />
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 };
