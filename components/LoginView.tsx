@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User as UserIcon, Lock, ArrowRight, Loader2, ShieldCheck, Mail, AlertCircle } from 'lucide-react';
-import { User, AccessLogEntry } from '../types';
+import { User } from '../types';
+import { StorageService } from '../storageService';
 
 interface LoginViewProps {
   onLogin: (user: User) => void;
@@ -17,39 +18,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    const users: User[] = JSON.parse(localStorage.getItem('reque_users') || '[]');
-    const adminExists = users.some(u => u.email === 'cesguitar');
-    if (!adminExists) {
-      const defaultAdmin: User = {
-        name: 'Administrador Mestre',
-        email: 'cesguitar',
-        password: 'brasil#02',
-        role: 'admin',
-        isApproved: true,
-        canAccessAdmin: true,
-        canAccessHistory: true,
-        canGenerateProposal: true
-      };
-      const cleanUsers = users.filter(u => u.email !== 'cesguitar');
-      cleanUsers.unshift(defaultAdmin);
-      localStorage.setItem('reque_users', JSON.stringify(cleanUsers));
-    }
-  }, []);
-
-  const createAccessLog = (user: User) => {
-    const logs: AccessLogEntry[] = JSON.parse(localStorage.getItem('reque_access_logs') || '[]');
-    logs.unshift({
-      id: crypto.randomUUID(),
-      timestamp: new Date().toISOString(),
-      userName: user.name,
-      userEmail: user.email,
-      userAgent: navigator.userAgent,
-      action: 'LOGIN'
-    });
-    localStorage.setItem('reque_access_logs', JSON.stringify(logs.slice(0, 200)));
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -57,7 +25,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
     setIsLoading(true);
 
     setTimeout(() => {
-      const users: User[] = JSON.parse(localStorage.getItem('reque_users') || '[]');
+      const users = StorageService.getUsers();
       if (isRegistering) {
         if (password !== confirmPassword) {
           setError('As senhas não coincidem.');
@@ -74,7 +42,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           setIsLoading(false);
           return;
         }
-        users.push({ 
+        
+        const newUser: User = { 
           name, 
           email, 
           password, 
@@ -83,8 +52,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           canAccessAdmin: false,
           canAccessHistory: true,
           canGenerateProposal: false 
-        });
-        localStorage.setItem('reque_users', JSON.stringify(users));
+        };
+        
+        const updatedUsers = [...users, newUser];
+        StorageService.saveUsers(updatedUsers);
+        
         setSuccessMsg('Cadastro solicitado! Aguarde a aprovação.');
         setIsRegistering(false);
         setPassword('');
@@ -93,7 +65,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         const user = users.find(u => u.email === email && u.password === password);
         if (user) {
           if (user.isApproved) {
-            createAccessLog(user);
+            StorageService.addLog(user, 'LOGIN');
             onLogin(user);
           } else {
             setError('Cadastro aguardando aprovação.');
@@ -130,7 +102,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
             </div>
           )}
           <div className="space-y-1">
-            <label className="block text-xs font-bold text-slate-500 uppercase">Usuário (E-mail)</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase">Usuário (E-mail ou ID)</label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <input type="text" required value={email} onChange={e => setEmail(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:border-[#190c59] text-sm" placeholder="usuario@reque.com.br" />

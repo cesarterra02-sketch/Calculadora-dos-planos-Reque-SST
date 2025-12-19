@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { PricingCalculator } from './components/PricingCalculator';
 import { InCompanyCalculator } from './components/InCompanyCalculator';
 import { HistoryView } from './components/HistoryView';
 import { LoginView } from './components/LoginView';
 import { AdminView } from './components/AdminView';
 import { ProposalHistoryItem, ViewType, User } from './types';
+import { StorageService } from './storageService';
 import { 
   Calculator, 
   Shield, 
@@ -28,6 +29,13 @@ function App() {
   const [editingItem, setEditingItem] = useState<ProposalHistoryItem | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
+  // Carregar histórico inicial do "banco de dados"
+  useEffect(() => {
+    if (isAuthenticated) {
+      setHistory(StorageService.getHistory());
+    }
+  }, [isAuthenticated]);
+
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
@@ -35,6 +43,9 @@ function App() {
   };
 
   const handleLogout = () => {
+    if (currentUser) {
+      StorageService.addLog(currentUser, 'LOGOUT' as any);
+    }
     setIsAuthenticated(false);
     setCurrentUser(null);
     setCurrentView('calculator');
@@ -42,7 +53,8 @@ function App() {
   };
 
   const handleSaveHistory = (item: ProposalHistoryItem) => {
-    setHistory(prev => [item, ...prev]);
+    const updatedHistory = StorageService.addHistoryItem(item);
+    setHistory(updatedHistory);
   };
 
   const handleEditHistory = (item: ProposalHistoryItem) => {
@@ -219,7 +231,7 @@ function App() {
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-100 rounded-full border border-slate-200">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Servidor Online - v41.10</span>
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Servidor Online - v42.0</span>
             </div>
           </div>
           <div className="flex items-center gap-4">

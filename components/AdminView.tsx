@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, AccessLogEntry } from '../types';
+import { StorageService } from '../storageService';
 import { Shield, CheckCircle, XCircle, Trash2, Key, History, Monitor, Calendar, UserCog, FileText, Check, X } from 'lucide-react';
 
 interface AdminViewProps {
@@ -19,10 +20,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
   }, []);
 
   const loadData = () => {
-    const storedUsers = JSON.parse(localStorage.getItem('reque_users') || '[]');
-    const storedLogs = JSON.parse(localStorage.getItem('reque_access_logs') || '[]');
-    setUsers(storedUsers);
-    setLogs(storedLogs);
+    setUsers(StorageService.getUsers());
+    setLogs(StorageService.getLogs());
   };
 
   const togglePermission = (email: string, permission: keyof Pick<User, 'canAccessAdmin' | 'canAccessHistory' | 'canGenerateProposal'>) => {
@@ -41,7 +40,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
   };
 
   const saveUsers = (updatedUsers: User[]) => {
-    localStorage.setItem('reque_users', JSON.stringify(updatedUsers));
+    StorageService.saveUsers(updatedUsers);
     setUsers(updatedUsers);
   };
 
@@ -65,17 +64,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
     
     const user = users.find(u => u.email === editingPassword);
     if (user) {
-      const logsToUpdate: AccessLogEntry[] = JSON.parse(localStorage.getItem('reque_access_logs') || '[]');
-      logsToUpdate.unshift({
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        userName: `Admin Editou ${user.name}`,
-        userEmail: user.email,
-        userAgent: 'Internal System Change',
-        action: 'PASSWORD_CHANGE'
-      });
-      localStorage.setItem('reque_access_logs', JSON.stringify(logsToUpdate.slice(0, 200)));
-      setLogs(logsToUpdate.slice(0, 200));
+      StorageService.addLog(user, 'PASSWORD_CHANGE' as any);
+      setLogs(StorageService.getLogs());
     }
 
     setEditingPassword(null);
@@ -83,9 +73,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
     alert('Senha atualizada com sucesso!');
   };
 
-  const clearLogs = () => {
+  const handleClearLogs = () => {
     if (confirm('Limpar todo o histórico de logs?')) {
-      localStorage.setItem('reque_access_logs', JSON.stringify([]));
+      StorageService.clearLogs();
       setLogs([]);
     }
   };
@@ -231,8 +221,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
       ) : (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-             <h3 className="text-sm font-bold text-slate-600 uppercase">Audit Log (200 registros)</h3>
-             <button onClick={clearLogs} className="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 transition-all flex items-center gap-1.5">
+             <h3 className="text-sm font-bold text-slate-600 uppercase">Audit Log (Auditória de Acesso)</h3>
+             <button onClick={handleClearLogs} className="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 transition-all flex items-center gap-1.5">
                <Trash2 className="w-3.5 h-3.5" /> Limpar Histórico
              </button>
           </div>
