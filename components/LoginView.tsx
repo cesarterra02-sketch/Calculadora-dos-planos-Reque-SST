@@ -26,7 +26,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         email: 'cesguitar',
         password: 'brasil#02',
         role: 'admin',
-        isApproved: true
+        isApproved: true,
+        canAccessAdmin: true,
+        canAccessHistory: true,
+        canGenerateProposal: true
       };
       const cleanUsers = users.filter(u => u.email !== 'cesguitar');
       cleanUsers.unshift(defaultAdmin);
@@ -71,7 +74,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           setIsLoading(false);
           return;
         }
-        users.push({ name, email, password, role: 'user', isApproved: false });
+        users.push({ 
+          name, 
+          email, 
+          password, 
+          role: 'user', 
+          isApproved: false,
+          canAccessAdmin: false,
+          canAccessHistory: true,
+          canGenerateProposal: false 
+        });
         localStorage.setItem('reque_users', JSON.stringify(users));
         setSuccessMsg('Cadastro solicitado! Aguarde a aprovação.');
         setIsRegistering(false);

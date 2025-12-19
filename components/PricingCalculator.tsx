@@ -1,4 +1,5 @@
 
+import { GoogleGenAI } from "@google/genai";
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   PlanType, 
@@ -20,7 +21,7 @@ import {
 } from '../constants';
 import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
-import { Users, Building2, CheckCircle, ShieldCheck, Info } from 'lucide-react';
+import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays } from 'lucide-react';
 
 const formatCNPJ = (value: string) => {
   return value
@@ -47,6 +48,7 @@ const validateCNPJ = (cnpj: string): boolean => {
   let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
   if (resultado != parseInt(digitos.charAt(0))) return false;
   tamanho = tamanho + 1;
+  // Fix typo: changed 'numbers' to 'numeros' to match the declared variable
   numeros = cnpj.substring(0, tamanho);
   soma = 0;
   pos = tamanho - 7;
@@ -61,7 +63,8 @@ const validateCNPJ = (cnpj: string): boolean => {
 export const PricingCalculator: React.FC<{
   onSaveHistory: (item: ProposalHistoryItem) => void;
   initialData?: ProposalHistoryItem | null;
-}> = ({ onSaveHistory, initialData }) => {
+  canGenerateProposal?: boolean;
+}> = ({ onSaveHistory, initialData, canGenerateProposal = true }) => {
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -70,18 +73,23 @@ export const PricingCalculator: React.FC<{
   const [numEmployees, setNumEmployees] = useState(1);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>(RiskLevel.RISK_1);
   const [fidelity, setFidelity] = useState<FidelityModel>(FidelityModel.WITH_FIDELITY);
+  const [clientDeliveryDate, setClientDeliveryDate] = useState('');
+  const [docDeliveryDate, setDocDeliveryDate] = useState('');
   const [showProposal, setShowProposal] = useState(false);
 
+  // Added defaults to initialData restoration to avoid undefined state updates
   useEffect(() => {
     if (initialData) {
-      setCompanyName(initialData.companyName);
-      setContactName(initialData.contactName);
-      setCnpj(initialData.cnpj);
-      setNumEmployees(initialData.numEmployees);
-      setFidelity(initialData.fidelity);
-      setSelectedUnit(initialData.selectedUnit);
-      setRiskLevel(initialData.riskLevel);
-      const numericOnly = initialData.cnpj.replace(/\D/g, '');
+      setCompanyName(initialData.companyName || '');
+      setContactName(initialData.contactName || '');
+      setCnpj(initialData.cnpj || '');
+      setNumEmployees(initialData.numEmployees || 1);
+      setFidelity(initialData.fidelity || FidelityModel.WITH_FIDELITY);
+      setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
+      setRiskLevel(initialData.riskLevel || RiskLevel.RISK_1);
+      setClientDeliveryDate(initialData.clientDeliveryDate || '');
+      setDocDeliveryDate(initialData.docDeliveryDate || '');
+      const numericOnly = (initialData.cnpj || '').replace(/\D/g, '');
       if (numericOnly.length === 14) setIsCnpjValid(validateCNPJ(numericOnly));
     }
   }, [initialData]);
@@ -103,13 +111,11 @@ export const PricingCalculator: React.FC<{
     const isFidelity = fidelity === FidelityModel.WITH_FIDELITY;
     const programFee = isFidelity ? 0 : programFeeBase;
 
-    // Regra de Faturamento: Express/Essencial com Fidelidade = Anual Antecipado
     let billingCycle = BillingCycle.MONTHLY;
     if (isFidelity && (activePlan === PlanType.EXPRESS || activePlan === PlanType.ESSENCIAL)) {
       billingCycle = BillingCycle.ANNUAL;
     }
 
-    // Forma de Pagamento: Express sem fidelidade = Cartão. Demais = Boleto.
     const paymentMethod = (activePlan === PlanType.EXPRESS && !isFidelity) 
       ? PaymentMethod.CREDIT_CARD 
       : PaymentMethod.BOLETO;
@@ -125,9 +131,9 @@ export const PricingCalculator: React.FC<{
       originalProgramFee: programFeeBase,
       programFeeDiscounted: isFidelity,
       riskLevel,
-      clientDeliveryDate: '',
-      docDeliveryDate: '',
-      businessDays: 0,
+      clientDeliveryDate,
+      docDeliveryDate,
+      businessDays: 19, // Padrão conforme screenshot
       contractTotalCurrentCycle: initialAssinatura,
       initialPaymentAmount: initialAssinatura + programFee,
       isCustomQuote: monthlyBase === 0,
@@ -135,10 +141,10 @@ export const PricingCalculator: React.FC<{
         ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (PGR/PCMSO).` 
         : `Plano sem fidelidade. Cobrança integral da taxa de elaboração dos programas.`
     };
-  }, [numEmployees, riskLevel, fidelity, activePlan]);
+  }, [numEmployees, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 items-start">
+    <div className="flex flex-col lg:flex-row gap-6 items-start">
       {showProposal && calculationResult ? (
         <div className="fixed inset-0 z-50 overflow-auto bg-slate-100">
            <ProposalView 
@@ -155,69 +161,122 @@ export const PricingCalculator: React.FC<{
         </div>
       ) : (
         <>
-          <div className="flex-1 w-full space-y-6">
-            {/* Empresa */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="text-sm font-bold text-reque-navy uppercase mb-4 flex items-center gap-2">
+          <div className="flex-1 w-full space-y-4">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
+              <h3 className="text-[11px] font-black text-reque-navy uppercase mb-4 tracking-wider flex items-center gap-2">
                 <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value.toUpperCase())} className="w-full p-2.5 border border-slate-300 rounded text-sm uppercase outline-none focus:border-reque-blue" placeholder="RAZÃO SOCIAL" />
-                <div className="relative">
-                  <input type="text" value={cnpj} onChange={e => {
-                    const fmt = formatCNPJ(e.target.value);
-                    setCnpj(fmt);
-                    const clean = fmt.replace(/\D/g,'');
-                    setIsCnpjValid(clean.length === 14 ? validateCNPJ(clean) : null);
-                  }} maxLength={18} className={`w-full p-2.5 border rounded text-sm outline-none ${isCnpjValid === false ? 'border-red-300 bg-red-50' : 'border-slate-300 focus:border-reque-blue'}`} placeholder="CNPJ" />
-                  {isCnpjValid === true && <CheckCircle className="absolute right-3 top-3 w-4 h-4 text-green-500" />}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                <div className="md:col-span-7">
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-3 w-4 h-4 text-slate-300" />
+                    <input type="text" value={companyName} onChange={e => setCompanyName(e.target.value.toUpperCase())} className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5 transition-all" placeholder="RAZÃO SOCIAL DA EMPRESA" />
+                  </div>
                 </div>
-                <input type="text" value={contactName} onChange={e => setContactName(e.target.value.toUpperCase())} className="w-full p-2.5 border border-slate-300 rounded text-sm uppercase outline-none focus:border-reque-blue" placeholder="A/C (RESPONSÁVEL)" />
-                <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value as RequeUnit)} className="w-full p-2.5 border border-slate-300 rounded text-sm bg-white outline-none focus:border-reque-blue">
-                  {Object.values(RequeUnit).map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
+                <div className="md:col-span-5">
+                  <div className="relative">
+                    <Hash className="absolute left-3 top-3 w-4 h-4 text-slate-300" />
+                    <input type="text" value={cnpj} onChange={e => {
+                      const fmt = formatCNPJ(e.target.value);
+                      setCnpj(fmt);
+                      const clean = fmt.replace(/\D/g,'');
+                      setIsCnpjValid(clean.length === 14 ? validateCNPJ(clean) : null);
+                    }} maxLength={18} className={`w-full pl-10 pr-3 py-2.5 border rounded-xl text-xs font-bold outline-none transition-all ${isCnpjValid === false ? 'border-red-500 bg-red-50 text-red-900 ring-1 ring-red-500' : 'border-slate-200 focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5'}`} placeholder="00.000.000/0000-00" />
+                    {isCnpjValid === true && <CheckCircle className="absolute right-3 top-3 w-4 h-4 text-green-500" />}
+                    {isCnpjValid === false && <AlertCircle className="absolute right-3 top-3 w-4 h-4 text-red-500" />}
+                  </div>
+                  {isCnpjValid === false && (
+                    <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 flex items-center gap-1 uppercase tracking-tighter">
+                      CNPJ Inválido ou Incompleto
+                    </p>
+                  )}
+                </div>
+                <div className="md:col-span-6">
+                  <div className="relative">
+                    <UserCircle className="absolute left-3 top-3 w-4 h-4 text-slate-300" />
+                    <input type="text" value={contactName} onChange={e => setContactName(e.target.value.toUpperCase())} className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5 transition-all" placeholder="A/C RESPONSÁVEL COMERCIAL" />
+                  </div>
+                </div>
+                <div className="md:col-span-6">
+                  <select value={selectedUnit} onChange={e => setSelectedUnit(e.target.value as RequeUnit)} className="w-full p-2.5 border border-slate-200 rounded-xl text-xs font-bold bg-white outline-none focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5 transition-all cursor-pointer">
+                    {Object.values(RequeUnit).map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+
+                {/* Novos Campos de Data */}
+                <div className="md:col-span-6">
+                  <label className="block text-[9px] font-black text-slate-400 mb-1 uppercase ml-1">Entrega das Descrições (Cliente)</label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-3 w-4 h-4 text-slate-300 pointer-events-none" />
+                    <input 
+                      type="date" 
+                      value={clientDeliveryDate} 
+                      onChange={e => setClientDeliveryDate(e.target.value)} 
+                      className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5 transition-all" 
+                    />
+                  </div>
+                </div>
+                <div className="md:col-span-6">
+                  <label className="block text-[9px] font-black text-slate-400 mb-1 uppercase ml-1">Entrega Combinada (Programas)</label>
+                  <div className="relative">
+                    <CalendarDays className="absolute left-3 top-3 w-4 h-4 text-slate-300 pointer-events-none" />
+                    <input 
+                      type="date" 
+                      value={docDeliveryDate} 
+                      onChange={e => setDocDeliveryDate(e.target.value)} 
+                      className="w-full pl-10 pr-3 py-2.5 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5 transition-all" 
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Dimensionamento */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-              <h3 className="text-sm font-bold text-reque-navy uppercase mb-4 flex items-center gap-2">
-                <Users className="w-4 h-4 text-reque-orange" /> Dimensionamento ({activePlan})
-              </h3>
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-[11px] font-black text-reque-navy uppercase tracking-wider flex items-center gap-2">
+                  <Users className="w-4 h-4 text-reque-orange" /> Dimensionamento
+                </h3>
+                <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                  <span className="text-[9px] font-black text-slate-400 uppercase">Sugestão:</span>
+                  <span className="px-3 py-0.5 bg-[#190c59] text-white text-[10px] font-black rounded-lg shadow-sm flex items-center gap-1.5 border border-white/10">
+                    <Sparkles className="w-3 h-3 text-[#ec9d23]" />
+                    {activePlan.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+
               <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between items-end mb-3">
-                    <label className="text-xs font-bold text-slate-500">Número de Funcionários (Vidas)</label>
-                    <span className="text-3xl font-black text-reque-blue">{numEmployees}</span>
+                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
+                  <div className="flex justify-between items-end mb-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nº de Funcionários</label>
+                      <p className="text-[9px] text-slate-400 italic">Total de vidas ativas no contrato</p>
+                    </div>
+                    <span className="text-4xl font-black text-reque-navy tracking-tighter">{numEmployees}</span>
                   </div>
-                  <input type="range" min="1" max="200" value={numEmployees} onChange={e => setNumEmployees(parseInt(e.target.value))} className="w-full h-2 bg-slate-200 rounded-lg appearance-none accent-reque-orange cursor-pointer" />
+                  <input type="range" min="1" max="200" value={numEmployees} onChange={e => setNumEmployees(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-reque-orange cursor-pointer hover:accent-reque-navy transition-all" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Grau de Risco da Atividade</label>
-                    <div className="grid grid-cols-4 gap-2">
+                    <label className="block text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest">Grau de Risco</label>
+                    <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
                       {[RiskLevel.RISK_1, RiskLevel.RISK_2, RiskLevel.RISK_3, RiskLevel.RISK_4].map(r => (
-                        <button key={r} onClick={() => setRiskLevel(r)} className={`py-2 px-1 border rounded font-bold text-xs transition-all ${riskLevel === r ? 'bg-reque-blue text-white border-reque-blue shadow-md' : 'bg-white text-slate-400 hover:border-slate-400'}`}>
+                        <button key={r} onClick={() => setRiskLevel(r)} className={`flex-1 py-2 rounded-lg font-black text-[11px] transition-all ${riskLevel === r ? 'bg-white text-reque-navy shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>
                           {r.split(' ')[1]}
                         </button>
                       ))}
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-2 italic flex items-center gap-1">
-                      <Info className="w-3 h-3" /> Essencial/Pró exigem Risco 2, 3 ou 4.
-                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-3 uppercase tracking-wider">Modelo de Contratação</label>
-                    <div className="flex flex-col gap-2">
-                      <button onClick={() => setFidelity(FidelityModel.WITH_FIDELITY)} className={`p-2.5 border rounded-lg text-xs font-bold text-left transition-all flex items-center justify-between ${fidelity === FidelityModel.WITH_FIDELITY ? 'border-reque-orange bg-orange-50 text-reque-navy ring-1 ring-reque-orange' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>
-                        COM FIDELIDADE (ISENTO PGR)
-                        {fidelity === FidelityModel.WITH_FIDELITY && <CheckCircle className="w-4 h-4 text-reque-orange" />}
+                    <label className="block text-[10px] font-black text-slate-400 mb-3 uppercase tracking-widest">Modelo Fidelidade</label>
+                    <div className="flex gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-100">
+                      <button onClick={() => setFidelity(FidelityModel.WITH_FIDELITY)} className={`flex-1 py-2 px-2 rounded-lg font-black text-[9px] uppercase tracking-tighter transition-all ${fidelity === FidelityModel.WITH_FIDELITY ? 'bg-reque-orange text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}>
+                        COM FIDELIDADE
                       </button>
-                      <button onClick={() => setFidelity(FidelityModel.NO_FIDELITY)} className={`p-2.5 border rounded-lg text-xs font-bold text-left transition-all flex items-center justify-between ${fidelity === FidelityModel.NO_FIDELITY ? 'border-reque-orange bg-orange-50 text-reque-navy ring-1 ring-reque-orange' : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'}`}>
-                        SEM FIDELIDADE (PAGAMENTO SETUP)
-                        {fidelity === FidelityModel.NO_FIDELITY && <CheckCircle className="w-4 h-4 text-reque-orange" />}
+                      <button onClick={() => setFidelity(FidelityModel.NO_FIDELITY)} className={`flex-1 py-2 px-2 rounded-lg font-black text-[9px] uppercase tracking-tighter transition-all ${fidelity === FidelityModel.NO_FIDELITY ? 'bg-white text-reque-navy shadow-sm ring-1 ring-slate-200' : 'text-slate-400 hover:text-slate-600'}`}>
+                        SEM FIDELIDADE
                       </button>
                     </div>
                   </div>
@@ -225,15 +284,17 @@ export const PricingCalculator: React.FC<{
               </div>
             </div>
 
-            {/* Benefícios do Plano */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-               <h3 className="text-sm font-bold text-reque-navy uppercase mb-4 flex items-center gap-2">
-                 <ShieldCheck className="w-4 h-4 text-reque-orange" /> Itens Inclusos no {activePlan}
-               </h3>
-               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
+               <div className="flex items-center gap-2 mb-4">
+                 <ShieldCheck className="w-4 h-4 text-[#ec9d23]" />
+                 <h3 className="text-[11px] font-black text-reque-navy uppercase tracking-wider">Itens do Plano</h3>
+                 <span className="h-px flex-1 bg-slate-100"></span>
+                 <span className="text-[10px] font-black text-reque-navy bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{activePlan}</span>
+               </div>
+               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                  {PLAN_SERVICES[activePlan].map((s, i) => (
-                   <div key={i} className="flex items-start gap-2.5 p-3 bg-slate-50 rounded-lg border border-slate-100 text-[10px] font-bold text-slate-600 uppercase leading-tight">
-                     <CheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
+                   <div key={i} className="flex items-center gap-1.5 p-2 bg-slate-50/50 rounded-lg border border-slate-100/50 text-[9px] font-bold text-slate-500 uppercase leading-tight hover:bg-slate-50 transition-colors">
+                     <CheckCircle className="w-2.5 h-2.5 text-green-500 shrink-0" />
                      {s}
                    </div>
                  ))}
@@ -241,13 +302,15 @@ export const PricingCalculator: React.FC<{
             </div>
           </div>
 
-          <div className="w-full lg:w-[380px] shrink-0">
+          <div className="w-full lg:w-[350px] shrink-0">
             {calculationResult && (
               <SummaryCard 
                 result={calculationResult} 
                 onSaveHistory={() => {
+                  // Fixed: Added missing 'type' property to match ProposalHistoryItem interface
                   onSaveHistory({
                     id: crypto.randomUUID(),
+                    type: 'standard',
                     createdAt: new Date().toISOString(),
                     companyName,
                     contactName,
@@ -258,17 +321,23 @@ export const PricingCalculator: React.FC<{
                     riskLevel,
                     monthlyValue: calculationResult.monthlyValue,
                     initialTotal: calculationResult.initialPaymentAmount,
-                    fidelity
+                    fidelity,
+                    clientDeliveryDate,
+                    docDeliveryDate
                   });
                 }}
-                onGenerateProposal={() => {
-                  if (!isCnpjValid || !companyName || !contactName) {
-                    alert("Por favor, preencha Razão Social, Responsável e um CNPJ válido.");
+                onGenerateProposal={canGenerateProposal ? () => {
+                  if (!isCnpjValid) {
+                    alert("O CNPJ informado é inválido. Por favor, verifique os números digitados.");
+                    return;
+                  }
+                  if (!companyName || !contactName) {
+                    alert("Por favor, preencha Razão Social e o Responsável Comercial.");
                     return;
                   }
                   setShowProposal(true);
-                }}
-                isGenerateDisabled={!isCnpjValid || !companyName || !contactName}
+                } : undefined}
+                isGenerateDisabled={!isCnpjValid || !companyName || !contactName || !canGenerateProposal}
               />
             )}
           </div>

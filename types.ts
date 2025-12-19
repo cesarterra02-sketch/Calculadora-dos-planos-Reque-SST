@@ -62,19 +62,31 @@ export interface PricingResult {
 
 export interface ProposalHistoryItem {
   id: string;
+  type: 'standard' | 'incompany';
   createdAt: string;
   companyName: string;
   contactName: string;
   cnpj: string;
-  selectedUnit: RequeUnit;
-  plan: PlanType;
-  numEmployees: number;
-  riskLevel: RiskLevel;
-  monthlyValue: number;
+  selectedUnit?: RequeUnit;
+  plan?: PlanType;
+  numEmployees?: number;
+  riskLevel?: RiskLevel;
+  monthlyValue?: number;
   initialTotal: number;
-  fidelity: FidelityModel;
+  fidelity?: FidelityModel;
   clientDeliveryDate?: string;
   docDeliveryDate?: string;
+  // Dados específicos In Company para restauração
+  inCompanyDetails?: {
+    profs: ProfessionalInCompany[];
+    vehicles: VehicleInCompany[];
+    exams: ExamInCompany[];
+    executionDays: number;
+    isEarlyDeparture: boolean;
+    mealsPerDay: number;
+    taxaInCompany: number;
+    receitaExames: number;
+  };
 }
 
 export interface AccessLogEntry {
@@ -92,9 +104,12 @@ export interface User {
   password: string;
   role: 'admin' | 'user';
   isApproved: boolean;
+  canAccessAdmin: boolean;
+  canAccessHistory: boolean;
+  canGenerateProposal: boolean;
 }
 
-export type ViewType = 'calculator' | 'history' | 'admin';
+export type ViewType = 'calculator' | 'history' | 'admin' | 'incompany';
 
 export type PricingTable = Record<string, number>;
 export type ProgramFeeTable = Record<string, number>;
@@ -104,4 +119,30 @@ export interface ExamItem {
   name: string;
   price: number;
   deadline: string;
+}
+
+// Tipos para In Company
+export interface ProfessionalInCompany {
+  id: string;
+  type: string;
+  quantity: number;
+  executionHours: number;
+  travelHours: number;
+  hourlyRate: number;
+}
+
+export interface ExamInCompany {
+  id: string;
+  name: string;
+  quantity: number;
+  clientPrice: number;
+  costPrice: number;
+}
+
+export interface VehicleInCompany {
+  id: string;
+  type: string;
+  distance: number;
+  pedagios: number;
+  isDoctorOwnCar: boolean;
 }

@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { ProposalHistoryItem, FidelityModel } from '../types';
-import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch } from 'lucide-react';
+import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText } from 'lucide-react';
 
 interface HistoryViewProps {
   history: ProposalHistoryItem[];
@@ -26,7 +27,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onBac
         </button>
         <h2 className="text-2xl font-bold text-reque-navy flex items-center gap-3">
           <Clock className="w-6 h-6 text-reque-orange" />
-          Histórico de Simulações
+          Histórico de Propostas
         </h2>
       </div>
 
@@ -51,10 +52,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onBac
               <thead className="bg-slate-50 border-b border-slate-200 text-xs uppercase font-bold text-slate-500">
                 <tr>
                   <th className="px-6 py-4">Data/Hora</th>
+                  <th className="px-6 py-4">Tipo</th>
                   <th className="px-6 py-4">Empresa / Contato</th>
-                  <th className="px-6 py-4">Detalhes do Plano</th>
-                  <th className="px-6 py-4 text-right">Valor Mensal</th>
-                  <th className="px-6 py-4 text-right">Total Inicial</th>
+                  <th className="px-6 py-4">Detalhes</th>
+                  <th className="px-6 py-4 text-right">Valor Total</th>
                   <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
               </thead>
@@ -72,28 +73,38 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onBac
                        </div>
                     </td>
                     <td className="px-6 py-4">
+                       <span className={`px-2 py-1 rounded text-[10px] font-black uppercase flex items-center gap-1.5 w-fit ${
+                         item.type === 'incompany' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                       }`}>
+                         {item.type === 'incompany' ? <Truck className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
+                         {item.type === 'incompany' ? 'In Company' : 'Planos SST'}
+                       </span>
+                    </td>
+                    <td className="px-6 py-4">
                       <div className="font-bold text-reque-navy">{item.companyName}</div>
                       <div className="text-xs text-slate-400">
                         {item.contactName} • {item.cnpj || 'Sem CNPJ'}
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="font-medium text-reque-blue">{item.plan}</div>
-                      <div className="text-xs text-slate-500">
-                        {item.numEmployees} vidas • {item.fidelity === FidelityModel.WITH_FIDELITY ? 'Fidelidade 24m' : 'Sem Fidelidade'}
-                      </div>
+                      {item.type === 'incompany' ? (
+                        <div className="text-xs text-slate-500">
+                          {item.inCompanyDetails?.profs.length} profissionais • {item.inCompanyDetails?.exams.length} exames
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-500">
+                          {item.numEmployees} vidas • {item.fidelity === FidelityModel.WITH_FIDELITY ? 'Fidelidade 24m' : 'Sem Fidelidade'}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-right font-bold text-slate-700">
-                      {formatCurrency(item.monthlyValue)}
-                    </td>
-                    <td className="px-6 py-4 text-right font-bold text-reque-navy">
+                    <td className="px-6 py-4 text-right font-black text-reque-navy">
                       {formatCurrency(item.initialTotal)}
                     </td>
                     <td className="px-6 py-4 text-center">
                        <button 
                          onClick={() => onEdit(item)}
                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 border border-indigo-200 transition-colors text-xs font-bold"
-                         title="Editar e recalcular"
+                         title="Recuperar simulação"
                        >
                          <RotateCcw className="w-3 h-3" />
                          Editar
