@@ -525,6 +525,25 @@ export const InCompanyCalculator: React.FC<{
                 </div>
               </div>
 
+              {/* Parâmetros de Precificação - Restaurados conforme solicitado */}
+              <div className="bg-slate-50/50 p-4 rounded-xl space-y-4">
+                 <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Parâmetros de Precificação</h4>
+                 <div className="grid grid-cols-3 gap-2">
+                    <div className="text-center">
+                       <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Imposto %</label>
+                       <input type="number" value={taxRate} onChange={e => setTaxRate(Number(e.target.value))} className="w-full p-1.5 bg-white border border-slate-200 rounded text-[10px] text-center font-black" />
+                    </div>
+                    <div className="text-center">
+                       <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Comissão %</label>
+                       <input type="number" value={comissionRate} onChange={e => setComissionRate(Number(e.target.value))} className="w-full p-1.5 bg-white border border-slate-200 rounded text-[10px] text-center font-black" />
+                    </div>
+                    <div className="text-center">
+                       <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Margem %</label>
+                       <input type="number" value={targetMargin} onChange={e => setTargetMargin(Number(e.target.value))} className="w-full p-1.5 bg-white border border-slate-200 rounded text-[10px] text-center font-black" />
+                    </div>
+                 </div>
+              </div>
+
               <div className="bg-reque-navy p-5 rounded-2xl relative overflow-hidden shadow-2xl">
                 <div className="relative z-10">
                   <span className="text-[10px] font-black text-reque-orange uppercase tracking-[0.25em]">Valor Total da Proposta</span>
