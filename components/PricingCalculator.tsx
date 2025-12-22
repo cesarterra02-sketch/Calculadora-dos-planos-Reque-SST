@@ -48,7 +48,6 @@ const validateCNPJ = (cnpj: string): boolean => {
   let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
   if (resultado != parseInt(digitos.charAt(0))) return false;
   tamanho = tamanho + 1;
-  // Fix typo: changed 'numbers' to 'numeros' to match the declared variable
   numeros = cnpj.substring(0, tamanho);
   soma = 0;
   pos = tamanho - 7;
@@ -61,7 +60,7 @@ const validateCNPJ = (cnpj: string): boolean => {
 };
 
 export const PricingCalculator: React.FC<{
-  onSaveHistory: (item: ProposalHistoryItem) => void;
+  onSaveHistory: (item: ProposalHistoryItem) => Promise<any>;
   initialData?: ProposalHistoryItem | null;
   canGenerateProposal?: boolean;
 }> = ({ onSaveHistory, initialData, canGenerateProposal = true }) => {
@@ -77,7 +76,6 @@ export const PricingCalculator: React.FC<{
   const [docDeliveryDate, setDocDeliveryDate] = useState('');
   const [showProposal, setShowProposal] = useState(false);
 
-  // Added defaults to initialData restoration to avoid undefined state updates
   useEffect(() => {
     if (initialData) {
       setCompanyName(initialData.companyName || '');
@@ -133,7 +131,7 @@ export const PricingCalculator: React.FC<{
       riskLevel,
       clientDeliveryDate,
       docDeliveryDate,
-      businessDays: 19, // Padrão conforme screenshot
+      businessDays: 19,
       contractTotalCurrentCycle: initialAssinatura,
       initialPaymentAmount: initialAssinatura + programFee,
       isCustomQuote: monthlyBase === 0,
@@ -203,7 +201,6 @@ export const PricingCalculator: React.FC<{
                   </select>
                 </div>
 
-                {/* Novos Campos de Data */}
                 <div className="md:col-span-6">
                   <label className="block text-[9px] font-black text-slate-400 mb-1 uppercase ml-1">Entrega das Descrições (Cliente)</label>
                   <div className="relative">
@@ -307,8 +304,7 @@ export const PricingCalculator: React.FC<{
               <SummaryCard 
                 result={calculationResult} 
                 onSaveHistory={() => {
-                  // Fixed: Added missing 'type' property to match ProposalHistoryItem interface
-                  onSaveHistory({
+                  return onSaveHistory({
                     id: crypto.randomUUID(),
                     type: 'standard',
                     createdAt: new Date().toISOString(),
@@ -328,11 +324,11 @@ export const PricingCalculator: React.FC<{
                 }}
                 onGenerateProposal={canGenerateProposal ? () => {
                   if (!isCnpjValid) {
-                    alert("O CNPJ informado é inválido. Por favor, verifique os números digitados.");
+                    alert("O CNPJ informado é inválido.");
                     return;
                   }
                   if (!companyName || !contactName) {
-                    alert("Por favor, preencha Razão Social e o Responsável Comercial.");
+                    alert("Por favor, preencha Razão Social e Responsável.");
                     return;
                   }
                   setShowProposal(true);

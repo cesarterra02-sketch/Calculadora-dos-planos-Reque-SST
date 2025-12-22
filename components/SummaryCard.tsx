@@ -1,6 +1,7 @@
-import React from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { PricingResult, BillingCycle } from '../types';
-import { Calculator, Calendar, CreditCard, FileCheck, Info, FileText, Save, AlertTriangle, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Calculator, Calendar, CreditCard, FileCheck, Info, FileText, Save, AlertTriangle, ChevronRight, CheckCircle2, ShieldCheck, Loader2, Check } from 'lucide-react';
 
 interface SummaryCardProps {
   result: PricingResult;
@@ -15,8 +16,37 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onSaveHistory,
   isGenerateDisabled = false
 }) => {
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  // Resetar o estado de "salvo" se o resultado mudar (novos cálculos)
+  useEffect(() => {
+    setIsSaved(false);
+  }, [result]);
+
+  const handleSave = async () => {
+    if (!onSaveHistory || isSaving) return;
+    
+    setIsSaving(true);
+    try {
+      // O App.tsx lida com a persistência no Supabase
+      await onSaveHistory();
+      setIsSaved(true);
+      
+      // Feedback temporário de sucesso
+      setTimeout(() => {
+        setIsSaved(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Erro ao salvar simulação:", error);
+      alert("Erro ao salvar no banco de dados.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   // Cálculo para transparência na lista
   const assinaturaNoCiclo = result.billingCycle === BillingCycle.ANNUAL 
@@ -55,52 +85,61 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               <div className="text-right">
                 {result.programFeeDiscounted ? (
                   <div className="flex flex-col items-end">
-                    <span className="text-xs font-black text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-100">ISENTO*</span>
-                    <span className="text-[9px] text-slate-300 line-through">De {formatCurrency(result.originalProgramFee)}</span>
+                    <span className="text-[11px] font-black text-green-700 bg-green-100 px-3 py-1 rounded-lg border border-green-200 shadow-sm animate-pulse">BONIFICAÇÃO</span>
+                    <span className="text-[11px] text-slate-400 line-through font-black mt-1.5 opacity-80">De {formatCurrency(result.originalProgramFee)}</span>
                   </div>
                 ) : (
-                  <span className="text-sm font-bold text-slate-700">{formatCurrency(result.programFee)}</span>
+                  <div className="flex flex-col items-end">
+                    <span className="text-sm font-black text-slate-700">{formatCurrency(result.programFee)}</span>
+                    <span className="text-[9px] font-black text-reque-orange uppercase tracking-tighter mt-0.5">Cobrança Única</span>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* 2. Assinatura Mensal */}
-            <div className="flex justify-between items-start py-3 border-b border-slate-50">
-              <div className="flex gap-3">
-                <div className="mt-0.5"><CheckCircle2 className="w-4 h-4 text-reque-blue opacity-50" /></div>
-                <div>
-                  <p className="text-xs font-bold text-slate-700">Assinatura Mensal (Base)</p>
-                  <p className="text-[10px] text-slate-400">Gestão eSocial e plataforma SOC</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-bold text-slate-700">{formatCurrency(result.monthlyValue)}</span>
-              </div>
-            </div>
-
-            {/* 3. Recorrência / Ciclo */}
+            {/* 2 e 3 Juntados. Assinatura e Recorrência */}
             <div className="flex justify-between items-start py-3 border-b border-slate-50 bg-slate-50/50 px-2 rounded-lg">
               <div className="flex gap-3">
                 <div className="mt-0.5"><Calendar className="w-4 h-4 text-[#ec9d23] opacity-70" /></div>
                 <div>
-                  <p className="text-xs font-bold text-slate-700">Modelo de Recorrência</p>
+                  <p className="text-xs font-bold text-slate-700">Assinatura e Recorrência</p>
                   <p className="text-[10px] text-slate-400 font-medium">{result.billingCycle}</p>
                 </div>
               </div>
               <div className="text-right flex flex-col items-end">
-                <span className="text-xs font-extrabold text-[#190c59]">
-                  {result.billingCycle === BillingCycle.ANNUAL ? 'Anual' : 'Mensal'}
+                <span className="text-sm font-black text-[#190c59]">
+                  {formatCurrency(result.monthlyValue)}/mês
                 </span>
-                <span className="text-[9px] text-slate-400 uppercase font-bold tracking-tighter">Faturamento</span>
+                <span className="text-[9px] font-black text-reque-orange uppercase tracking-tighter">
+                  {result.billingCycle === BillingCycle.ANNUAL ? 'Cobrança Anual' : 'Cobrança Mensal'}
+                </span>
               </div>
             </div>
+
+            {/* FIDELIDADE (Apenas se houver bonificação/fidelidade) */}
+            {result.programFeeDiscounted && (
+              <div className="flex justify-between items-start py-3 border-b border-slate-50">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><ShieldCheck className="w-4 h-4 text-reque-navy opacity-60" /></div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">Fidelidade Contratual</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Período de permanência mínima</p>
+                  </div>
+                </div>
+                <div className="text-right flex flex-col items-end">
+                  <span className="text-[10px] font-black text-white bg-reque-navy px-2.5 py-1 rounded-md uppercase tracking-widest shadow-sm">
+                    24 Meses
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* 4. Total Assinatura no Ciclo */}
             <div className="flex justify-between items-start py-3 border-b border-slate-50">
               <div className="flex gap-3">
                 <div className="mt-0.5"><CreditCard className="w-4 h-4 text-reque-blue opacity-50" /></div>
                 <div>
-                  <p className="text-xs font-bold text-slate-700">Total Assinatura no Ciclo</p>
+                  <p className="text-xs font-bold text-slate-700">Total anual assinatura</p>
                   <p className="text-[10px] text-slate-400 italic">
                     {result.billingCycle === BillingCycle.ANNUAL ? 'Pagamento antecipado (bonificação)' : 'Primeira mensalidade'}
                   </p>
@@ -143,11 +182,22 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
         <div className="space-y-3 pt-2">
           {onSaveHistory && (
             <button 
-              onClick={onSaveHistory}
-              className="w-full py-3 bg-white border-2 border-slate-100 text-[#190c59] rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+              onClick={handleSave}
+              disabled={isSaving}
+              className={`w-full py-3 border-2 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                isSaved 
+                  ? 'bg-green-50 border-green-200 text-green-600' 
+                  : 'bg-white border-slate-100 text-[#190c59] hover:bg-slate-50'
+              } disabled:opacity-70`}
             >
-              <Save className="w-4 h-4" />
-              Salvar Simulação
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : isSaved ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              {isSaving ? 'Salvando...' : isSaved ? 'Simulação Salva!' : 'Salvar Simulação'}
             </button>
           )}
 

@@ -9,16 +9,16 @@ import { ProposalHistoryItem, ViewType, User } from './types';
 import { StorageService } from './storageService';
 import { 
   Calculator, 
-  Shield, 
   LogOut, 
   ChevronRight,
-  Menu,
-  X,
   Clock,
   UserCheck,
   PanelLeftClose,
   PanelLeftOpen,
-  Truck
+  Truck,
+  Loader2,
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 
 function App() {
@@ -28,12 +28,27 @@ function App() {
   const [history, setHistory] = useState<ProposalHistoryItem[]>([]);
   const [editingItem, setEditingItem] = useState<ProposalHistoryItem | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isDbConnected, setIsDbConnected] = useState<boolean | null>(null);
 
-  // Carregar histórico inicial do "banco de dados"
   useEffect(() => {
-    if (isAuthenticated) {
-      setHistory(StorageService.getHistory());
-    }
+    const checkDb = async () => {
+      const connected = await StorageService.testConnection();
+      setIsDbConnected(connected);
+    };
+    checkDb();
+  }, []);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (isAuthenticated) {
+        setIsLoading(true);
+        const data = await StorageService.getHistory();
+        setHistory(data);
+        setIsLoading(false);
+      }
+    };
+    loadHistory();
   }, [isAuthenticated]);
 
   const handleLogin = (user: User) => {
@@ -42,9 +57,9 @@ function App() {
     setCurrentView('calculator');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     if (currentUser) {
-      StorageService.addLog(currentUser, 'LOGOUT' as any);
+      await StorageService.addLog(currentUser, 'LOGOUT');
     }
     setIsAuthenticated(false);
     setCurrentUser(null);
@@ -52,9 +67,15 @@ function App() {
     setEditingItem(null);
   };
 
-  const handleSaveHistory = (item: ProposalHistoryItem) => {
-    const updatedHistory = StorageService.addHistoryItem(item);
-    setHistory(updatedHistory);
+  const handleSaveHistory = async (item: ProposalHistoryItem) => {
+    try {
+      const savedItem = await StorageService.addHistoryItem(item);
+      setHistory(prev => [savedItem, ...prev]);
+      return savedItem;
+    } catch (error) {
+      console.error("Erro ao salvar no App:", error);
+      throw error; // Re-lança para que o componente SummaryCard capture
+    }
   };
 
   const handleEditHistory = (item: ProposalHistoryItem) => {
@@ -94,6 +115,15 @@ function App() {
   ];
 
   const renderContent = () => {
+    if (isLoading) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400">
+          <Loader2 className="w-10 h-10 animate-spin mb-4" />
+          <p className="font-bold uppercase tracking-widest text-xs">Sincronizando com Supabase Cloud...</p>
+        </div>
+      );
+    }
+
     switch(currentView) {
       case 'history':
         return (
@@ -130,7 +160,6 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fc] flex font-sans">
-      {/* Sidebar - Desktop */}
       <aside 
         className={`hidden lg:flex flex-col bg-reque-navy border-r border-white/10 shrink-0 sticky top-0 h-screen z-40 transition-all duration-300 ease-in-out ${
           isSidebarCollapsed ? 'w-20' : 'w-72'
@@ -225,13 +254,15 @@ function App() {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0">
         <header className="hidden lg:flex h-20 items-center justify-between px-10 bg-white border-b border-slate-200">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-100 rounded-full border border-slate-200">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Servidor Online - v42.0</span>
+            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border transition-colors ${isDbConnected ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+              <div className={`w-2 h-2 rounded-full ${isDbConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${isDbConnected ? 'text-green-600' : 'text-red-600'}`}>
+                {isDbConnected ? 'Database: Supabase Online' : 'Database: Offline/Error'}
+              </span>
+              {isDbConnected ? <Wifi className="w-3 h-3 text-green-500" /> : <WifiOff className="w-3 h-3 text-red-500" />}
             </div>
           </div>
           <div className="flex items-center gap-4">

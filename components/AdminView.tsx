@@ -2,111 +2,69 @@
 import React, { useState, useEffect } from 'react';
 import { User, AccessLogEntry } from '../types';
 import { StorageService } from '../storageService';
-import { Shield, CheckCircle, XCircle, Trash2, Key, History, Monitor, Calendar, UserCog, FileText, Check, X } from 'lucide-react';
+import { Shield, Key, History, Monitor, Calendar, UserCog, Check, Loader2, Trash2 } from 'lucide-react';
 
 interface AdminViewProps {
   onBack: () => void;
 }
 
 export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<Omit<User, 'password'>[]>([]);
   const [logs, setLogs] = useState<AccessLogEntry[]>([]);
   const [activeTab, setActiveTab] = useState<'users' | 'logs'>('users');
   const [editingPassword, setEditingPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setUsers(StorageService.getUsers());
-    setLogs(StorageService.getLogs());
+  const loadData = async () => {
+    setIsLoading(true);
+    const [u, l] = await Promise.all([
+      StorageService.getUsers(),
+      StorageService.getLogs()
+    ]);
+    setUsers(u as Omit<User, 'password'>[]);
+    setLogs(l);
+    setIsLoading(false);
   };
 
-  const togglePermission = (email: string, permission: keyof Pick<User, 'canAccessAdmin' | 'canAccessHistory' | 'canGenerateProposal'>) => {
-    const updatedUsers = users.map(user => {
-      if (user.email === email) {
-        return { ...user, [permission]: !user[permission] };
-      }
-      return user;
-    });
-    saveUsers(updatedUsers);
-  };
-
-  const updateUserStatus = (email: string, isApproved: boolean) => {
-    const updatedUsers = users.map(user => user.email === email ? { ...user, isApproved } : user);
-    saveUsers(updatedUsers);
-  };
-
-  const saveUsers = (updatedUsers: User[]) => {
-    StorageService.saveUsers(updatedUsers);
-    setUsers(updatedUsers);
-  };
-
-  const deleteUser = (email: string) => {
-    if (confirm('Excluir este usuário permanentemente?')) {
-      const updatedUsers = users.filter(user => user.email !== email);
-      saveUsers(updatedUsers);
+  const deleteUser = async (email: string) => {
+    if (confirm('Excluir este usuário permanentemente do Supabase?')) {
+      setUsers(prev => prev.filter(u => u.email !== email));
+      await StorageService.deleteUser(email);
     }
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 4) {
       alert('Senha muito curta.');
       return;
     }
-    const updatedUsers = users.map(user => 
-      user.email === editingPassword ? { ...user, password: newPassword } : user
-    );
-    saveUsers(updatedUsers);
+    
+    await StorageService.updateUser(editingPassword!, { password: newPassword });
     
     const user = users.find(u => u.email === editingPassword);
     if (user) {
-      StorageService.addLog(user, 'PASSWORD_CHANGE' as any);
-      setLogs(StorageService.getLogs());
+      await StorageService.addLog(user, 'PASSWORD_CHANGE');
+      const newLogs = await StorageService.getLogs();
+      setLogs(newLogs);
     }
 
     setEditingPassword(null);
     setNewPassword('');
-    alert('Senha atualizada com sucesso!');
+    alert('Senha atualizada com sucesso no Supabase!');
   };
 
-  const handleClearLogs = () => {
-    if (confirm('Limpar todo o histórico de logs?')) {
-      StorageService.clearLogs();
+  const handleClearLogs = async () => {
+    if (confirm('Limpar todo o histórico de logs no Supabase?')) {
+      await StorageService.clearLogs();
       setLogs([]);
     }
   };
-
-  const PermissionToggle = ({ 
-    active, 
-    onClick, 
-    label, 
-    disabled 
-  }: { 
-    active: boolean; 
-    onClick: () => void; 
-    label: string; 
-    disabled?: boolean 
-  }) => (
-    <button 
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center gap-2 px-2 py-1 rounded-md border text-[9px] font-black uppercase transition-all ${
-        disabled 
-          ? 'opacity-40 cursor-not-allowed bg-slate-50 border-slate-200 text-slate-400' 
-          : active 
-            ? 'bg-green-50 border-green-200 text-green-700' 
-            : 'bg-red-50 border-red-200 text-red-700'
-      }`}
-      title={label}
-    >
-      {active ? <Check className="w-2.5 h-2.5" /> : <X className="w-2.5 h-2.5" />}
-      {active ? 'Sim' : 'Não'}
-    </button>
-  );
 
   return (
     <div className="space-y-6">
@@ -114,9 +72,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
         <div>
           <h2 className="text-2xl font-bold text-reque-navy flex items-center gap-3">
             <Shield className="w-7 h-7 text-reque-orange" />
-            Controle de Acesso & Segurança
+            Controle de Acesso & Segurança (Supabase Cloud)
           </h2>
-          <p className="text-slate-500 text-sm">Configure as permissões específicas para cada colaborador.</p>
+          <p className="text-slate-500 text-sm">Gestão de usuários e logs de auditoria.</p>
         </div>
         <button onClick={onBack} className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
           Voltar para Calculadora
@@ -138,15 +96,18 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
         </button>
       </div>
 
-      {activeTab === 'users' ? (
+      {isLoading ? (
+        <div className="py-20 flex flex-col items-center justify-center text-slate-400 bg-white rounded-xl border border-slate-200">
+          <Loader2 className="w-8 h-8 animate-spin mb-4" />
+          <p className="text-[10px] font-black uppercase tracking-widest">Sincronizando segurança...</p>
+        </div>
+      ) : activeTab === 'users' ? (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <table className="w-full text-left text-sm text-slate-600">
             <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-black text-slate-500 tracking-wider">
               <tr>
                 <th className="px-6 py-4">Usuário</th>
-                <th className="px-4 py-4 text-center">Controle Acesso</th>
-                <th className="px-4 py-4 text-center">Histórico</th>
-                <th className="px-4 py-4 text-center">Gerar Proposta</th>
+                <th className="px-4 py-4 text-center">Permissão</th>
                 <th className="px-6 py-4 text-center">Ações</th>
               </tr>
             </thead>
@@ -161,46 +122,16 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                     <div className="text-[10px] text-slate-400">{user.email}</div>
                   </td>
                   
-                  <td className="px-4 py-4">
-                    <div className="flex justify-center">
-                      <PermissionToggle 
-                        active={user.canAccessAdmin || user.role === 'admin'} 
-                        onClick={() => togglePermission(user.email, 'canAccessAdmin')}
-                        label="Acesso ao Painel Admin"
-                        disabled={user.role === 'admin'}
-                      />
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <div className="flex justify-center">
-                      <PermissionToggle 
-                        active={user.canAccessHistory || user.role === 'admin'} 
-                        onClick={() => togglePermission(user.email, 'canAccessHistory')}
-                        label="Acesso ao Histórico"
-                        disabled={user.role === 'admin'}
-                      />
-                    </div>
-                  </td>
-
-                  <td className="px-4 py-4">
-                    <div className="flex justify-center">
-                      <PermissionToggle 
-                        active={user.canGenerateProposal || user.role === 'admin'} 
-                        onClick={() => togglePermission(user.email, 'canGenerateProposal')}
-                        label="Gerar Proposta Formal"
-                        disabled={user.role === 'admin'}
-                      />
-                    </div>
+                  <td className="px-4 py-4 text-center">
+                    <span className={`text-[10px] font-bold uppercase ${user.role === 'admin' ? 'text-reque-orange' : 'text-slate-400'}`}>
+                      {user.role === 'admin' ? 'Acesso Total' : 'Operador'}
+                    </span>
                   </td>
 
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       {user.role !== 'admin' ? (
                         <>
-                          <button onClick={() => updateUserStatus(user.email, !user.isApproved)} className={`p-2 rounded transition-colors ${user.isApproved ? 'bg-orange-50 text-orange-600' : 'bg-green-50 text-green-600'}`} title={user.isApproved ? 'Bloquear' : 'Aprovar'}>
-                            {user.isApproved ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                          </button>
                           <button onClick={() => setEditingPassword(user.email)} className="p-2 bg-blue-50 text-blue-600 rounded" title="Trocar Senha">
                             <Key className="w-4 h-4" />
                           </button>
@@ -209,7 +140,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                           </button>
                         </>
                       ) : (
-                        <div className="text-[9px] font-bold text-slate-300 italic">ACESSOS VITAIS</div>
+                        <div className="text-[9px] font-bold text-slate-300 italic">ADMIN MASTER</div>
                       )}
                     </div>
                   </td>
@@ -221,9 +152,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
       ) : (
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-             <h3 className="text-sm font-bold text-slate-600 uppercase">Audit Log (Auditória de Acesso)</h3>
+             <h3 className="text-sm font-bold text-slate-600 uppercase">Audit Log (Sincronizado)</h3>
              <button onClick={handleClearLogs} className="text-xs font-bold text-red-500 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 transition-all flex items-center gap-1.5">
-               <Trash2 className="w-3.5 h-3.5" /> Limpar Histórico
+               <Trash2 className="w-3.5 h-3.5" /> Limpar Logs Cloud
              </button>
           </div>
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">

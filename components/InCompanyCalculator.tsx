@@ -3,24 +3,16 @@ import React, { useState, useMemo } from 'react';
 import { 
   Truck, 
   Users, 
-  Clock, 
-  Coffee, 
-  MapPin, 
-  DollarSign, 
-  Calculator as CalcIcon, 
+  Building2, 
+  Hash, 
+  UserCircle, 
   Plus, 
   Trash2, 
-  ArrowRight,
-  Info,
-  CheckCircle,
-  FileText,
-  Building2,
-  Hash,
-  UserCircle,
-  AlertCircle,
-  Printer,
-  Hotel,
-  Save
+  FileText, 
+  Calculator as CalcIcon, 
+  Save,
+  Loader2,
+  Check
 } from 'lucide-react';
 import { ProfessionalInCompany, ExamInCompany, VehicleInCompany, ProposalHistoryItem } from '../types';
 import { InCompanyProposalView } from './InCompanyProposalView';
@@ -51,48 +43,35 @@ const formatCNPJ = (value: string) => {
 };
 
 export const InCompanyCalculator: React.FC<{
-  onSaveHistory: (item: ProposalHistoryItem) => void;
+  onSaveHistory: (item: ProposalHistoryItem) => Promise<any>;
   initialData?: ProposalHistoryItem | null;
 }> = ({ onSaveHistory, initialData }) => {
-  // Dados do Contratante
   const [companyName, setCompanyName] = useState(initialData?.companyName || '');
   const [cnpj, setCnpj] = useState(initialData?.cnpj || '');
   const [contactName, setContactName] = useState(initialData?.contactName || '');
-
-  // 1. Dados de Operação (Veículos e Dias)
   const [executionDays, setExecutionDays] = useState(initialData?.inCompanyDetails?.executionDays || 1);
   const [vehicles, setVehicles] = useState<VehicleInCompany[]>(initialData?.inCompanyDetails?.vehicles || [
     { id: '1', type: 'Carro pequeno', distance: 0, pedagios: 0, isDoctorOwnCar: false }
   ]);
-
-  // Alimentação
   const [isEarlyDeparture, setIsEarlyDeparture] = useState(initialData?.inCompanyDetails?.isEarlyDeparture || false); 
   const [mealsPerDay, setMealsPerDay] = useState<1 | 2>(initialData?.inCompanyDetails?.mealsPerDay as (1|2) || 1); 
-
-  // Parâmetros Financeiros
   const [taxRate, setTaxRate] = useState(15);
   const [comissionRate, setComissionRate] = useState(5);
   const [targetMargin, setTargetMargin] = useState(30);
-
-  // Custos Extras
   const [printCost, setPrintCost] = useState(0);
   const [hotelCost, setHotelCost] = useState(0);
-
-  // 2. Profissionais Envolvidos
   const [profs, setProfs] = useState<ProfessionalInCompany[]>(initialData?.inCompanyDetails?.profs || [
     { id: '1', type: 'Técnico de Enfermagem', quantity: 1, executionHours: 8, travelHours: 2, hourlyRate: 35 }
   ]);
-
-  // 6. Custo dos Exames
   const [exams, setExams] = useState<ExamInCompany[]>(initialData?.inCompanyDetails?.exams || [
     { id: '1', name: 'Avaliação Clínica', quantity: 1, clientPrice: 50, costPrice: 20 }
   ]);
-
   const [showProposal, setShowProposal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-  // CÁLCULOS
   const results = useMemo(() => {
     const profCosts = profs.reduce((acc, p) => {
       const rate = PROF_RATES[p.type as keyof typeof PROF_RATES] || 35;
@@ -117,20 +96,15 @@ export const InCompanyCalculator: React.FC<{
     const totalProfsCount = profs.reduce((acc, p) => acc + p.quantity, 0);
     const cafe = 12.0;
     const refeicao = 35.0;
-    let foodCost = 0;
-    
-    if (isEarlyDeparture) {
-      foodCost = totalProfsCount * (cafe + refeicao) * mealsPerDay * executionDays;
-    } else {
-      foodCost = totalProfsCount * refeicao * executionDays;
-    }
+    let foodCost = isEarlyDeparture 
+      ? totalProfsCount * (cafe + refeicao) * mealsPerDay * executionDays
+      : totalProfsCount * refeicao * executionDays;
 
     const totalExtra = Number(printCost) + Number(hotelCost);
     const logisticCost = profCosts + travelCost + foodCost + totalExtra;
 
     const examStats = exams.reduce((acc, e) => {
-      const margin = e.clientPrice - e.costPrice;
-      acc.receitaLiquida += margin * e.quantity;
+      acc.receitaLiquida += (e.clientPrice - e.costPrice) * e.quantity;
       acc.custoTotal += e.costPrice * e.quantity;
       acc.receitaTotal += e.clientPrice * e.quantity;
       return acc;
@@ -138,77 +112,52 @@ export const InCompanyCalculator: React.FC<{
 
     const totalOperationCost = logisticCost + examStats.custoTotal;
     const divisor = 1 - ((Number(taxRate) + Number(comissionRate)) / 100);
-    const multiplier = 1 + (Number(targetMargin) / 100);
-    const finalValue = divisor > 0 ? (totalOperationCost / divisor) * multiplier : 0;
-    const attendanceMargin = finalValue - (((Number(taxRate) + Number(comissionRate))/100) * finalValue) - totalOperationCost;
+    const finalValue = divisor > 0 ? (totalOperationCost / divisor) * (1 + (Number(targetMargin) / 100)) : 0;
     const taxaInCompany = finalValue - examStats.receitaTotal;
 
-    return {
-      profCosts,
-      travelCost,
-      transportTotals,
-      foodCost,
-      totalExtra,
-      logisticCost,
-      totalOperationCost,
-      examStats,
-      finalValue,
-      attendanceMargin,
-      taxaInCompany
-    };
+    return { profCosts, travelCost, transportTotals, foodCost, totalExtra, logisticCost, totalOperationCost, examStats, finalValue, taxaInCompany };
   }, [profs, vehicles, isEarlyDeparture, mealsPerDay, executionDays, printCost, hotelCost, exams, taxRate, comissionRate, targetMargin]);
 
-  const addProf = () => {
-    setProfs([...profs, { id: crypto.randomUUID(), type: 'Médico', quantity: 1, executionHours: 8, travelHours: 1, hourlyRate: 110 }]);
-  };
+  const addProf = () => setProfs([...profs, { id: crypto.randomUUID(), type: 'Médico', quantity: 1, executionHours: 8, travelHours: 1, hourlyRate: 110 }]);
+  const addVehicle = () => setVehicles([...vehicles, { id: crypto.randomUUID(), type: 'Carro pequeno', distance: 0, pedagios: 0, isDoctorOwnCar: false }]);
+  const addExam = () => setExams([...exams, { id: crypto.randomUUID(), name: 'Novo Exame', quantity: 1, clientPrice: 0, costPrice: 0 }]);
 
-  const addVehicle = () => {
-    setVehicles([...vehicles, { id: crypto.randomUUID(), type: 'Carro pequeno', distance: 0, pedagios: 0, isDoctorOwnCar: false }]);
-  };
-
-  const addExam = () => {
-    setExams([...exams, { id: crypto.randomUUID(), name: 'Novo Exame', quantity: 1, clientPrice: 0, costPrice: 0 }]);
-  };
-
-  const handleSaveSimulation = () => {
+  const handleSaveSimulation = async () => {
     if (!companyName) {
       alert("Por favor, preencha a Razão Social para salvar.");
       return;
     }
-    onSaveHistory({
-      id: crypto.randomUUID(),
-      type: 'incompany',
-      createdAt: new Date().toISOString(),
-      companyName,
-      contactName,
-      cnpj,
-      initialTotal: results.finalValue,
-      inCompanyDetails: {
-        profs,
-        vehicles,
-        exams,
-        executionDays,
-        isEarlyDeparture,
-        mealsPerDay,
-        taxaInCompany: results.taxaInCompany,
-        receitaExames: results.examStats.receitaTotal
-      }
-    });
-    alert("Simulação In Company salva com sucesso!");
+    setIsSaving(true);
+    try {
+      await onSaveHistory({
+        id: crypto.randomUUID(),
+        type: 'incompany',
+        createdAt: new Date().toISOString(),
+        companyName,
+        contactName,
+        cnpj,
+        initialTotal: results.finalValue,
+        inCompanyDetails: {
+          profs, vehicles, exams, executionDays, isEarlyDeparture, mealsPerDay,
+          taxaInCompany: results.taxaInCompany,
+          receitaExames: results.examStats.receitaTotal
+        }
+      });
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (e) {
+      alert("Erro ao salvar no banco de dados.");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (showProposal) {
     return (
       <InCompanyProposalView 
-        companyName={companyName}
-        cnpj={cnpj}
-        contactName={contactName}
-        profs={profs}
-        exams={exams}
-        finalValue={results.finalValue}
-        receitaExames={results.examStats.receitaTotal}
-        taxaInCompany={results.taxaInCompany}
-        onBack={() => setShowProposal(false)}
+        companyName={companyName} cnpj={cnpj} contactName={contactName} profs={profs} exams={exams} 
+        finalValue={results.finalValue} receitaExames={results.examStats.receitaTotal} 
+        taxaInCompany={results.taxaInCompany} onBack={() => setShowProposal(false)}
       />
     );
   }
@@ -222,7 +171,6 @@ export const InCompanyCalculator: React.FC<{
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
-          
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-xs font-black text-reque-navy uppercase mb-6 tracking-widest flex items-center gap-2">
               <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
@@ -332,21 +280,16 @@ export const InCompanyCalculator: React.FC<{
                 </div>
                 <div className="flex items-center gap-3 pt-2">
                   <input type="checkbox" checked={isEarlyDeparture} onChange={e => setIsEarlyDeparture(e.target.checked)} className="w-5 h-5 rounded border-slate-300 accent-reque-orange cursor-pointer" id="early" />
-                  <label htmlFor="early" className="text-[10px] font-black text-reque-navy uppercase tracking-tighter cursor-pointer">Saída antes das 6h30? (Sim/Não)</label>
+                  <label htmlFor="early" className="text-[10px] font-black text-reque-navy uppercase tracking-tighter cursor-pointer">Saída antes das 6h30?</label>
                 </div>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Refeições p/ Dia (1 ou 2)</label>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-2">Refeições p/ Dia</label>
                   <div className="flex gap-2 bg-slate-50 p-1 rounded-xl border border-slate-100">
                     <button onClick={() => setMealsPerDay(1)} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${mealsPerDay === 1 ? 'bg-reque-navy text-white shadow-sm' : 'text-slate-400'}`}>1 Refeição</button>
                     <button onClick={() => setMealsPerDay(2)} className={`flex-1 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${mealsPerDay === 2 ? 'bg-reque-navy text-white shadow-sm' : 'text-slate-400'}`}>2 Refeições</button>
                   </div>
-                  {isEarlyDeparture && (
-                    <p className="text-[8px] text-reque-orange font-bold uppercase mt-2 italic leading-tight">
-                      * Saída antecipada inclui Café (R$ 12) + Refeição (R$ 35).
-                    </p>
-                  )}
                 </div>
               </div>
             </div>
@@ -411,7 +354,7 @@ export const InCompanyCalculator: React.FC<{
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
-                <FileText className="w-4 h-4 text-reque-orange" /> 6. Tabela de Exames (Cálculos Detalhados)
+                <FileText className="w-4 h-4 text-reque-orange" /> 6. Tabela de Exames
               </h3>
               <button onClick={addExam} className="p-2 bg-slate-50 hover:bg-slate-100 rounded-lg text-reque-navy border border-slate-200 transition-all flex items-center gap-2 text-[10px] font-black uppercase">
                 <Plus className="w-3.5 h-3.5" /> Novo Exame
@@ -426,63 +369,36 @@ export const InCompanyCalculator: React.FC<{
                     <th className="pb-3 px-1 text-right">Valor Unit.</th>
                     <th className="pb-3 px-1 text-right">Custo Unit.</th>
                     <th className="pb-3 px-1 text-right text-reque-orange">Margem (R$)</th>
-                    <th className="pb-3 px-1 text-right">Rec. Líquida</th>
-                    <th className="pb-3 px-1 text-right">Custo Total</th>
                     <th className="pb-3 px-1 text-right font-black text-reque-navy">Receita Total</th>
                     <th className="pb-3 px-1 text-right">Ação</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {exams.map((e, idx) => {
-                    const margin = e.clientPrice - e.costPrice;
-                    const recLiquida = margin * e.quantity;
-                    const custoTotal = e.costPrice * e.quantity;
-                    const receitaTotal = e.clientPrice * e.quantity;
-                    return (
-                      <tr key={e.id} className="group hover:bg-slate-50/50">
-                        <td className="py-2 px-1">
-                          <input type="text" value={e.name} onChange={val => {
-                            const n = [...exams]; n[idx].name = val.target.value; setExams(n);
-                          }} className="w-full p-1 border border-transparent hover:border-slate-200 rounded bg-transparent font-bold text-reque-navy focus:ring-0 focus:bg-white" />
-                        </td>
-                        <td className="py-2 px-1">
-                          <input type="number" value={e.quantity} onChange={val => {
-                            const n = [...exams]; n[idx].quantity = Number(val.target.value); setExams(n);
-                          }} className="w-12 p-1 bg-white border border-slate-100 rounded text-center font-bold" />
-                        </td>
-                        <td className="py-2 px-1">
-                          <input type="number" value={e.clientPrice} onChange={val => {
-                            const n = [...exams]; n[idx].clientPrice = Number(val.target.value); setExams(n);
-                          }} className="w-16 p-1 bg-white border border-slate-100 rounded font-bold text-right" />
-                        </td>
-                        <td className="py-2 px-1">
-                          <input type="number" value={e.costPrice} onChange={val => {
-                            const n = [...exams]; n[idx].costPrice = Number(val.target.value); setExams(n);
-                          }} className="w-16 p-1 bg-white border border-slate-100 rounded font-bold text-right" />
-                        </td>
-                        <td className="py-2 px-1 text-right font-bold text-reque-orange">
-                          {formatCurrency(margin)}
-                        </td>
-                        <td className="py-2 px-1 text-right font-bold text-slate-500">
-                          {formatCurrency(recLiquida)}
-                        </td>
-                        <td className="py-2 px-1 text-right font-bold text-slate-500">
-                          {formatCurrency(custoTotal)}
-                        </td>
-                        <td className="py-2 px-1 text-right font-black text-reque-navy">
-                          {formatCurrency(receitaTotal)}
-                        </td>
-                        <td className="py-2 px-1 text-right">
-                          <button onClick={() => setExams(exams.filter(item => item.id !== e.id))} className="text-red-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {exams.map((e, idx) => (
+                    <tr key={e.id} className="group hover:bg-slate-50/50">
+                      <td className="py-2 px-1">
+                        <input type="text" value={e.name} onChange={val => { const n = [...exams]; n[idx].name = val.target.value; setExams(n); }} className="w-full p-1 border border-transparent hover:border-slate-200 rounded bg-transparent font-bold text-reque-navy focus:ring-0 focus:bg-white" />
+                      </td>
+                      <td className="py-2 px-1">
+                        <input type="number" value={e.quantity} onChange={val => { const n = [...exams]; n[idx].quantity = Number(val.target.value); setExams(n); }} className="w-12 p-1 bg-white border border-slate-100 rounded text-center font-bold" />
+                      </td>
+                      <td className="py-2 px-1">
+                        <input type="number" value={e.clientPrice} onChange={val => { const n = [...exams]; n[idx].clientPrice = Number(val.target.value); setExams(n); }} className="w-16 p-1 bg-white border border-slate-100 rounded font-bold text-right" />
+                      </td>
+                      <td className="py-2 px-1">
+                        <input type="number" value={e.costPrice} onChange={val => { const n = [...exams]; n[idx].costPrice = Number(val.target.value); setExams(n); }} className="w-16 p-1 bg-white border border-slate-100 rounded font-bold text-right" />
+                      </td>
+                      <td className="py-2 px-1 text-right font-bold text-reque-orange">{formatCurrency(e.clientPrice - e.costPrice)}</td>
+                      <td className="py-2 px-1 text-right font-black text-reque-navy">{formatCurrency(e.clientPrice * e.quantity)}</td>
+                      <td className="py-2 px-1 text-right">
+                        <button onClick={() => setExams(exams.filter(item => item.id !== e.id))} className="text-red-300 hover:text-red-500 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
           </section>
-
         </div>
 
         <div className="lg:col-span-4 space-y-6">
@@ -501,68 +417,43 @@ export const InCompanyCalculator: React.FC<{
                   <span className="text-xs font-bold text-reque-navy">{formatCurrency(results.profCosts)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">Deslocamento (Veículos)</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase">Deslocamento</span>
                   <span className="text-xs font-bold text-reque-navy">{formatCurrency(results.travelCost)}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">Alimentação</span>
-                  <span className="text-xs font-bold text-reque-navy">{formatCurrency(results.foodCost)}</span>
+                  <span className="text-[10px] font-black text-slate-400 uppercase">Custo de Operação</span>
+                  <span className="text-xs font-black text-reque-navy">{formatCurrency(results.logisticCost)}</span>
                 </div>
-                <div className="flex justify-between items-center py-2 border-b border-slate-50">
-                  <span className="text-[10px] font-black text-slate-400 uppercase">Custos Extras</span>
-                  <span className="text-xs font-bold text-reque-navy">{formatCurrency(results.totalExtra)}</span>
+                <div className="flex justify-between items-center py-2 border-b border-slate-50 bg-orange-50/30 px-2 rounded">
+                  <span className="text-[10px] font-black text-reque-orange uppercase">Receita Total Exames</span>
+                  <span className="text-xs font-black text-reque-orange">{formatCurrency(results.examStats.receitaTotal)}</span>
                 </div>
-                
-                <div className="pt-2 mt-2 border-t border-slate-100 space-y-3">
-                  <div className="flex justify-between items-center py-2 border-b border-slate-50 bg-blue-50/30 px-2 rounded">
-                    <span className="text-[10px] font-black text-reque-navy uppercase">Custo de Operação (Logística)</span>
-                    <span className="text-xs font-black text-reque-navy">{formatCurrency(results.logisticCost)}</span>
-                  </div>
-                  <div className="flex justify-between items-center py-2 border-b border-slate-50 bg-orange-50/30 px-2 rounded">
-                    <span className="text-[10px] font-black text-reque-orange uppercase">Valor Total Cobrado Exames</span>
-                    <span className="text-xs font-black text-reque-orange">{formatCurrency(results.examStats.receitaTotal)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Parâmetros de Precificação - Restaurados conforme solicitado */}
-              <div className="bg-slate-50/50 p-4 rounded-xl space-y-4">
-                 <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Parâmetros de Precificação</h4>
-                 <div className="grid grid-cols-3 gap-2">
-                    <div className="text-center">
-                       <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Imposto %</label>
-                       <input type="number" value={taxRate} onChange={e => setTaxRate(Number(e.target.value))} className="w-full p-1.5 bg-white border border-slate-200 rounded text-[10px] text-center font-black" />
-                    </div>
-                    <div className="text-center">
-                       <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Comissão %</label>
-                       <input type="number" value={comissionRate} onChange={e => setComissionRate(Number(e.target.value))} className="w-full p-1.5 bg-white border border-slate-200 rounded text-[10px] text-center font-black" />
-                    </div>
-                    <div className="text-center">
-                       <label className="block text-[8px] font-bold text-slate-400 uppercase mb-1">Margem %</label>
-                       <input type="number" value={targetMargin} onChange={e => setTargetMargin(Number(e.target.value))} className="w-full p-1.5 bg-white border border-slate-200 rounded text-[10px] text-center font-black" />
-                    </div>
-                 </div>
               </div>
 
               <div className="bg-reque-navy p-5 rounded-2xl relative overflow-hidden shadow-2xl">
                 <div className="relative z-10">
                   <span className="text-[10px] font-black text-reque-orange uppercase tracking-[0.25em]">Valor Total da Proposta</span>
                   <div className="text-3xl font-black text-white tracking-tighter mt-1">{formatCurrency(results.finalValue)}</div>
-                  <div className="mt-4 pt-4 border-t border-white/10 space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] text-white/50 font-bold uppercase">Taxa In Company (Saldo)</span>
-                      <span className="text-xs text-reque-orange font-black">{formatCurrency(results.taxaInCompany)}</span>
-                    </div>
+                  <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
+                    <span className="text-[9px] text-white/50 font-bold uppercase">Taxa In Company</span>
+                    <span className="text-xs text-reque-orange font-black">{formatCurrency(results.taxaInCompany)}</span>
                   </div>
                 </div>
               </div>
 
               <div className="space-y-3">
-                 <button onClick={handleSaveSimulation} className="w-full py-3 bg-white border-2 border-slate-100 text-[#190c59] rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-                    <Save className="w-4 h-4" /> Salvar Simulação
+                 <button 
+                  onClick={handleSaveSimulation} 
+                  disabled={isSaving}
+                  className={`w-full py-3 border-2 rounded-xl font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                    isSaved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-slate-100 text-[#190c59] hover:bg-slate-50'
+                  } disabled:opacity-70`}
+                >
+                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    {isSaving ? 'Salvando...' : isSaved ? 'Salvo!' : 'Salvar Simulação'}
                  </button>
-                 <button onClick={() => setShowProposal(true)} className="w-full py-4 bg-reque-orange hover:bg-reque-orange/90 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-2 group">
-                    <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" /> Gerar Proposta In Company
+                 <button onClick={() => setShowProposal(true)} className="w-full py-4 bg-reque-orange hover:bg-reque-orange/90 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-2">
+                    <FileText className="w-4 h-4" /> Gerar Proposta In Company
                  </button>
               </div>
             </div>
