@@ -6,13 +6,20 @@ import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText } from
 interface HistoryViewProps {
   history: ProposalHistoryItem[];
   onEdit: (item: ProposalHistoryItem) => void;
+  onDelete: (id: string) => void;
   onBack: () => void;
-  onClear?: () => void;
+  isAdmin: boolean;
 }
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onBack, onClear }) => {
+export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDelete, onBack, isAdmin }) => {
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
+
+  const handleDeleteClick = (id: string, companyName: string) => {
+    if (window.confirm(`Deseja realmente excluir a proposta da empresa "${companyName}"? Esta ação não pode ser desfeita.`)) {
+      onDelete(id);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -100,15 +107,26 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onBac
                     <td className="px-6 py-4 text-right font-black text-reque-navy">
                       {formatCurrency(item.initialTotal)}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                       <button 
-                         onClick={() => onEdit(item)}
-                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 border border-indigo-200 transition-colors text-xs font-bold"
-                         title="Recuperar simulação"
-                       >
-                         <RotateCcw className="w-3 h-3" />
-                         Editar
-                       </button>
+                    <td className="px-6 py-4">
+                       <div className="flex items-center justify-center gap-2">
+                        <button 
+                          onClick={() => onEdit(item)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 border border-indigo-200 transition-colors text-xs font-bold"
+                          title="Recuperar simulação"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          Editar
+                        </button>
+                        {isAdmin && (
+                          <button 
+                            onClick={() => handleDeleteClick(item.id, item.companyName)}
+                            className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            title="Excluir proposta permanentemente"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                       </div>
                     </td>
                   </tr>
                 ))}

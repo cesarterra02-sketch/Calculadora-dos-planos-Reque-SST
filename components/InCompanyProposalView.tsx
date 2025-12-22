@@ -1,7 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { ProfessionalInCompany, ExamInCompany, VehicleInCompany, RequeUnit } from '../types';
-import { Printer, Download, Loader2, ArrowLeft, Check, Info, FileText } from 'lucide-react';
+// Fixed missing Truck icon import
+import { Printer, Download, Loader2, ArrowLeft, Check, Info, FileText, AlertTriangle, ShieldCheck, Truck } from 'lucide-react';
 
 declare var html2pdf: any;
 
@@ -53,7 +54,7 @@ export const InCompanyProposalView: React.FC<{
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   
   const currentDate = new Date().toLocaleDateString('pt-BR');
-  const validadeDate = "30 dias";
+  const validadeDate = "15 dias";
   const totalPages = 2;
 
   const handleDownloadPDF = async () => {
@@ -110,23 +111,23 @@ export const InCompanyProposalView: React.FC<{
              </div>
           </div>
 
-          <p className="mb-8 text-slate-600 font-semibold">
-            Apresentamos, por meio deste documento, a proposta para a realização do atendimento <strong className="text-reque-navy">In Company</strong>. 
-            O atendimento será realizado nas dependências da empresa contratante, visando agilidade e redução de absenteísmo.
+          <p className="mb-8 text-slate-600 font-semibold text-[11.5px] leading-relaxed">
+            A Reque SST apresenta a proposta de <strong className="text-reque-navy">Operacionalização de Exames In Company</strong>. 
+            Esta modalidade de serviço é desenhada para otimizar a <strong className="text-reque-navy">Gestão de Absenteísmo</strong> e garantir a conformidade técnica ocupacional diretamente no ambiente laboral, assegurando maior eficiência produtiva à contratante.
           </p>
 
           <section className="mb-10">
             <h3 className="text-[13px] font-black text-[#190c59] uppercase mb-5 tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-reque-orange"></span>
-              1. EQUIPE TÉCNICA
+              1. EQUIPE TÉCNICA E DISPONIBILIDADE
             </h3>
-            <div className="border border-slate-200 overflow-hidden rounded-xl bg-white">
+            <div className="border border-slate-200 overflow-hidden rounded-xl bg-white shadow-sm">
               <table className="w-full text-left text-[10.5px]">
                 <thead>
                   <tr className="bg-slate-50 font-black text-[#190c59] border-b border-slate-200">
-                    <th className="py-3 px-6">Profissional</th>
+                    <th className="py-3 px-6">Profissional Especializado</th>
                     <th className="py-3 px-6 text-center">Qtde</th>
-                    <th className="py-3 px-6 text-center">Horas Trabalhadas (Total)</th>
+                    <th className="py-3 px-6 text-center">Horas de Disponibilidade Técnica</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -145,15 +146,15 @@ export const InCompanyProposalView: React.FC<{
           <section className="mb-10">
             <h3 className="text-[13px] font-black text-[#190c59] uppercase mb-5 tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-reque-orange"></span>
-              2. EXAMES PREVISTOS
+              2. CRONOGRAMA DE EXAMES OCUPACIONAIS
             </h3>
-            <div className="border border-slate-200 overflow-hidden rounded-xl bg-white">
+            <div className="border border-slate-200 overflow-hidden rounded-xl bg-white shadow-sm">
               <table className="w-full text-left text-[10.5px]">
                 <thead>
                   <tr className="bg-slate-50 font-black text-[#190c59] border-b border-slate-200">
-                    <th className="py-3 px-6">Exames</th>
-                    <th className="py-3 px-6 text-center">Qtd</th>
-                    <th className="py-3 px-6 text-right">Valor Unit. (R$)</th>
+                    <th className="py-3 px-6">Identificação do Exame</th>
+                    <th className="py-3 px-6 text-center">Volume Previsto</th>
+                    <th className="py-3 px-6 text-right">Referência de Faturamento</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -161,13 +162,23 @@ export const InCompanyProposalView: React.FC<{
                     <tr key={idx}>
                       <td className="py-3 px-6 font-bold text-slate-700">{e.name}</td>
                       <td className="py-3 px-6 text-center font-bold text-slate-700">{e.quantity}</td>
-                      <td className="py-3 px-6 text-right font-bold text-slate-700">{formatCurrency(e.clientPrice)}</td>
+                      <td className="py-3 px-6 text-right font-bold text-slate-400 italic">Integrado ao Mensal</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           </section>
+
+          <div className="bg-[#fffcf7] border-l-[4px] border-[#ec9d23] p-6 text-slate-700 shadow-sm rounded-r-2xl border border-slate-200/60 mt-4">
+            <h4 className="font-black uppercase text-[#190c59] text-[10.5px] mb-2 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-reque-orange" />
+              CLÁUSULA DE DISPONIBILIDADE E NO SHOW:
+            </h4>
+            <p className="text-[10px] font-semibold leading-relaxed text-slate-600">
+              A reserva de horário para atendimentos técnicos e clínicos é fundamental para a correta <strong className="text-reque-navy">Operacionalização de Exames</strong> e cumprimento dos cronogramas do PCMSO. Em caso de ausência sem aviso prévio (No Show), será aplicada a cobrança equivalente ao valor de uma consulta clínica de referência, visando a cobertura da disponibilidade técnica da equipe e a eficiência na <strong className="text-reque-navy">Gestão de Absenteísmo</strong>, aplicando-se inclusive aos atendimentos na modalidade In Company.
+            </p>
+          </div>
         </A4Page>
 
         {/* PAGINA 2 */}
@@ -175,33 +186,33 @@ export const InCompanyProposalView: React.FC<{
           <section className="mb-10">
             <h3 className="text-[13px] font-black text-[#190c59] uppercase mb-5 tracking-tight flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-reque-orange"></span>
-              3. VALORES TOTAIS
+              3. RESUMO DO INVESTIMENTO OPERACIONAL
             </h3>
-            <div className="border border-slate-200 overflow-hidden rounded-xl bg-white">
+            <div className="border border-slate-200 overflow-hidden rounded-xl bg-white shadow-lg">
               <table className="w-full text-left text-[10.5px]">
                 <thead>
                   <tr className="bg-[#190c59] text-white font-black border-b border-slate-200">
-                    <th className="py-4 px-6">Serviços</th>
-                    <th className="py-4 px-6 text-center">Quantidade de Exames</th>
-                    <th className="py-4 px-6 text-right">Valor Total (R$)</th>
+                    <th className="py-4 px-6">Composição de Serviços</th>
+                    <th className="py-4 px-6 text-center">Métricas</th>
+                    <th className="py-4 px-6 text-right">Total Consolidado (R$)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   <tr>
-                    <td className="py-4 px-6 font-bold text-slate-700">EXAMES</td>
-                    <td className="py-4 px-6 text-center font-bold text-slate-700">{exams.reduce((acc, e) => acc + e.quantity, 0)}</td>
+                    <td className="py-4 px-6 font-bold text-slate-700">EXAMES OCUPACIONAIS</td>
+                    <td className="py-4 px-6 text-center font-bold text-slate-700">{exams.reduce((acc, e) => acc + e.quantity, 0)} Atendimentos</td>
                     <td className="py-4 px-6 text-right font-bold text-slate-700">{formatCurrency(receitaExames)}</td>
                   </tr>
                   <tr>
-                    <td className="py-4 px-6 font-bold text-slate-700 uppercase">Taxa de Atendimento In Company</td>
-                    <td className="py-4 px-6 text-center font-bold text-slate-700">1</td>
+                    <td className="py-4 px-6 font-bold text-slate-700 uppercase">LOGÍSTICA TÉCNICA DE SAÚDE E DESLOCAMENTO</td>
+                    <td className="py-4 px-6 text-center font-bold text-slate-700">Taxa In Company</td>
                     <td className="py-4 px-6 text-right font-bold text-slate-700">{formatCurrency(taxaInCompany)}</td>
                   </tr>
                 </tbody>
                 <tfoot>
                   <tr className="bg-slate-50 font-black text-[#190c59]">
-                    <td colSpan={2} className="py-5 px-6 uppercase text-[12px]">Total Geral do Atendimento</td>
-                    <td className="py-5 px-6 text-right text-[16px]">{formatCurrency(finalValue)}</td>
+                    <td colSpan={2} className="py-5 px-6 uppercase text-[12px] tracking-tight">Investimento Total para Aceite</td>
+                    <td className="py-5 px-6 text-right text-[18px] tracking-tighter">{formatCurrency(finalValue)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -209,35 +220,29 @@ export const InCompanyProposalView: React.FC<{
           </section>
 
           <div className="grid grid-cols-2 gap-10 mb-10">
-            <section>
-              <h4 className="font-black text-reque-navy uppercase text-[10px] mb-3 tracking-widest">4. PAGAMENTO</h4>
-              <p className="text-slate-600 font-bold leading-relaxed">
-                O valor total estipulado no item 3 deverá ser pago à vista, por meio de PIX, até o dia 5 do mês subsequente à execução.
+            <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <h4 className="font-black text-reque-navy uppercase text-[10px] mb-3 tracking-widest flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-reque-orange" /> 4. FATURAMENTO DE EXAMES
+              </h4>
+              <p className="text-slate-600 font-bold leading-relaxed text-[10px]">
+                Os custos decorrentes dos exames realizados na modalidade In Company serão consolidados e integrados ao faturamento mensal regular de exames da contratante, simplificando o processo administrativo e financeiro.
               </p>
             </section>
-            <section>
-              <h4 className="font-black text-reque-navy uppercase text-[10px] mb-3 tracking-widest">5. OBSERVAÇÃO</h4>
-              <p className="text-slate-600 font-bold leading-relaxed">
-                Os exames serão faturados pela empresa <strong className="text-reque-navy">REQUE SST</strong> e a taxa do atendimento in company pela empresa <strong className="text-reque-navy">MR&CIA</strong>.
+            <section className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
+              <h4 className="font-black text-reque-navy uppercase text-[10px] mb-3 tracking-widest flex items-center gap-2">
+                <Truck className="w-4 h-4 text-reque-orange" /> 5. TAXA IN COMPANY
+              </h4>
+              <p className="text-slate-600 font-bold leading-relaxed text-[10px]">
+                A Taxa de Atendimento In Company (Logística Técnica de Saúde Ocupacional e Deslocamento) possui condições de quitação exclusivas e deverá ser processada de forma independente, seguindo os termos da negociação específica validada com o executivo de vendas.
               </p>
             </section>
           </div>
 
-          <div className="mt-auto pt-20 grid grid-cols-2 gap-20">
-            <div className="text-center">
-              <div className="h-px bg-slate-300 w-full mb-2"></div>
-              <p className="font-black text-reque-navy uppercase text-[10px]">REQUE – CLÍNICA DE MEDICINA DO TRABALHO</p>
-              <p className="text-[9px] text-slate-400 font-bold">CONTRATADA</p>
-            </div>
-            <div className="text-center">
-              <div className="h-px bg-slate-300 w-full mb-2"></div>
-              <p className="font-black text-reque-navy uppercase text-[10px]">{companyName || '__________________________________'}</p>
-              <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">CONTRATANTE</p>
-              <div className="mt-4 text-left space-y-1">
-                 <p className="text-[9px] font-bold text-slate-500 uppercase">Nome: __________________________</p>
-                 <p className="text-[9px] font-bold text-slate-500 uppercase">CPF: ___________________________</p>
-              </div>
-            </div>
+          <div className="mt-auto flex flex-col items-center justify-center pt-20">
+             <div className="text-center opacity-30 grayscale">
+                <span className="text-4xl font-[900] tracking-tighter leading-none text-reque-navy">Reque</span>
+                <p className="text-[8px] font-bold uppercase tracking-[0.2em] mt-1 text-reque-navy">DOCUMENTO TÉCNICO VALIDADO</p>
+             </div>
           </div>
         </A4Page>
       </div>

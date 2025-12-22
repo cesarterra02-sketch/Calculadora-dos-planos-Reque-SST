@@ -34,25 +34,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           return;
         }
         
-        // Verifica se já existe um usuário com esse identificador
-        const existingUser = await StorageService.getUserForLogin(identifier);
+        let existingUser = null;
+        try {
+          existingUser = await StorageService.getUserForLogin(identifier);
+        } catch (e) {
+          // Ignora erro de busca inicial no registro
+        }
+        
         if (existingUser) {
           setError('Este usuário já está cadastrado no sistema.');
           setIsLoading(false);
           return;
         }
 
-        // Lógica Especial para Administradores Master
         const isMasterAdmin = identifier === 'cesguitar' || identifier === 'danielreque';
         
         const newUser: User = { 
-          name: name.trim() || (identifier === 'cesguitar' ? 'CESAR TERRA' : identifier === 'danielreque' ? 'DANIEL REQUE' : ''), 
+          name: name.trim() || (isMasterAdmin ? (identifier === 'cesguitar' ? 'CESAR TERRA' : 'DANIEL REQUE') : ''), 
           email: identifier, 
           password, 
           role: isMasterAdmin ? 'admin' : 'user', 
-          isApproved: isMasterAdmin, // Auto-aprova se for master
+          isApproved: isMasterAdmin,
           canAccessAdmin: isMasterAdmin,
-          canAccessHistory: true,
+          canAccessHistory: isMasterAdmin, 
+          canAccessInCompany: isMasterAdmin,
+          canAccessCalculator: isMasterAdmin,
           canGenerateProposal: isMasterAdmin 
         };
         
@@ -61,7 +67,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         if (isMasterAdmin) {
           setSuccessMsg(`Bem-vindo, ${newUser.name}! Seu acesso de Administrador Master foi configurado com sucesso.`);
         } else {
-          setSuccessMsg('Cadastro solicitado com sucesso! Aguarde a aprovação de um administrador.');
+          setSuccessMsg('Cadastro solicitado com sucesso! Por segurança, seu acesso deve ser aprovado por um administrador antes do login.');
         }
         
         setIsRegistering(false);
@@ -73,33 +79,52 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         const user = await StorageService.getUserForLogin(identifier);
         
         if (user && user.password === password) {
-          // Garante que os masters sempre entrem, mesmo se o banco sofrer alteração manual
           const isMasterAdmin = identifier === 'cesguitar' || identifier === 'danielreque';
           
           if (user.isApproved || isMasterAdmin) {
             await StorageService.addLog(user, 'LOGIN');
             onLogin(user);
           } else {
-            setError('Seu cadastro ainda não foi aprovado pelo administrador.');
+            setError('Seu cadastro está pendente de aprovação pela administração.');
           }
         } else {
           setError('Usuário ou senha incorretos.');
         }
       }
     } catch (err: any) {
-      console.error('Erro na operação:', err);
-      setError('Ocorreu um erro ao processar. Verifique sua conexão com o banco.');
+      console.error('Erro detalhado na operação:', err);
+      
+      let technicalMsg = '';
+      if (err && typeof err === 'object') {
+        const msg = err.message || '';
+        const details = err.details ? (typeof err.details === 'object' ? JSON.stringify(err.details) : err.details) : '';
+        const hint = err.hint || '';
+        
+        technicalMsg = [msg, details, hint].filter(Boolean).join(' | ');
+        
+        if (!technicalMsg) {
+          try {
+            technicalMsg = JSON.stringify(err);
+          } catch (e) {
+            technicalMsg = String(err);
+          }
+        }
+      } else {
+        technicalMsg = String(err);
+      }
+
+      setError(`Erro no Servidor: ${technicalMsg}`);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-[#f8f9fc] font-sans items-center justify-center p-6">
+    <div className="min-h-screen flex flex-col bg-[#f8f9fc] font-sans items-center justify-center p-6">
       <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-extrabold text-[#190c59] tracking-tight leading-none">Reque</h1>
-          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">SST Pricing Expert (Cloud Admin)</p>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">SST Pricing Expert (Cloud Security)</p>
         </div>
 
         <h2 className="text-xl font-bold text-slate-800 mb-6">
@@ -107,8 +132,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         </h2>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600 flex gap-2 items-center animate-in fade-in slide-in-from-top-1">
-            <AlertCircle className="w-4 h-4 shrink-0" /> {error}
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-[11px] text-red-600 flex gap-2 items-start animate-in fade-in slide-in-from-top-1">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" /> 
+            <div className="flex-1 break-words">{error}</div>
           </div>
         )}
         {successMsg && (
@@ -129,7 +155,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
                   value={name} 
                   onChange={e => setName(e.target.value)} 
                   className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg outline-none focus:border-reque-navy text-sm font-bold uppercase" 
-                  placeholder="NOME" 
+                  placeholder="SEU NOME" 
                 />
               </div>
             </div>
@@ -192,13 +218,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           </button>
         </form>
 
-        <div className="mt-8 pt-6 border-t border-slate-100 text-center">
-           <button 
-            onClick={() => { setIsRegistering(!isRegistering); setError(null); setSuccessMsg(null); }} 
-            className="text-xs font-bold text-reque-navy hover:underline uppercase tracking-widest"
-          >
-             {isRegistering ? 'Já tenho conta, fazer login' : 'Não tem conta? Solicitar Cadastro'}
-           </button>
+        <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col gap-6">
+           <div className="text-center">
+             <button 
+              onClick={() => { setIsRegistering(!isRegistering); setError(null); setSuccessMsg(null); }} 
+              className="text-xs font-bold text-reque-navy hover:underline uppercase tracking-widest"
+            >
+               {isRegistering ? 'Já tenho conta, fazer login' : 'Não tem conta? Solicitar Cadastro'}
+             </button>
+           </div>
         </div>
       </div>
     </div>

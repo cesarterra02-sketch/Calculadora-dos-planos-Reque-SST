@@ -16,9 +16,10 @@ import {
   Search,
   Percent,
   TrendingUp,
-  Receipt
+  Receipt,
+  Lock
 } from 'lucide-react';
-import { ProfessionalInCompany, ExamInCompany, VehicleInCompany, ProposalHistoryItem } from '../types';
+import { ProfessionalInCompany, ExamInCompany, VehicleInCompany, ProposalHistoryItem, User } from '../types';
 import { InCompanyProposalView } from './InCompanyProposalView';
 import { supabase } from '../supabaseClient';
 
@@ -48,9 +49,10 @@ const formatCNPJ = (value: string) => {
 };
 
 export const InCompanyCalculator: React.FC<{
+  currentUser: User | null;
   onSaveHistory: (item: ProposalHistoryItem) => Promise<any>;
   initialData?: ProposalHistoryItem | null;
-}> = ({ onSaveHistory, initialData }) => {
+}> = ({ currentUser, onSaveHistory, initialData }) => {
   const [companyName, setCompanyName] = useState(initialData?.companyName || '');
   const [cnpj, setCnpj] = useState(initialData?.cnpj || '');
   const [contactName, setContactName] = useState(initialData?.contactName || '');
@@ -61,9 +63,9 @@ export const InCompanyCalculator: React.FC<{
   const [isEarlyDeparture, setIsEarlyDeparture] = useState(initialData?.inCompanyDetails?.isEarlyDeparture || false); 
   const [mealsPerDay, setMealsPerDay] = useState<1 | 2>(initialData?.inCompanyDetails?.mealsPerDay as (1|2) || 1); 
   
-  // Parâmetros Financeiros Restaurados
-  const [taxRate, setTaxRate] = useState(15);
-  const [comissionRate, setComissionRate] = useState(5);
+  // Parâmetros Financeiros Modificados conforme solicitado
+  const [taxRate, setTaxRate] = useState(10); // Padrão 10%
+  const [comissionRate, setComissionRate] = useState(1); // Padrão 1%
   const [targetMargin, setTargetMargin] = useState(30);
   
   const [printCost, setPrintCost] = useState(0);
@@ -85,6 +87,11 @@ export const InCompanyCalculator: React.FC<{
   const [showProposal, setShowProposal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+
+  // Checagem de Admin para edição de Imposto e Comissão
+  const isAdmin = useMemo(() => {
+    return currentUser?.role === 'admin' || currentUser?.canAccessAdmin === true;
+  }, [currentUser]);
 
   // Carregar exames do banco
   useEffect(() => {
@@ -148,16 +155,19 @@ export const InCompanyCalculator: React.FC<{
 
     const totalOperationCost = logisticCost + examStats.custoTotal;
     
-    // Lógica de Mark-up com os campos restaurados
-    const taxAndComission = (Number(taxRate) + Number(comissionRate)) / 100;
-    const divisor = 1 - taxAndComission;
+    const taxAndComissionRate = (Number(taxRate) + Number(comissionRate)) / 100;
+    const divisor = 1 - taxAndComissionRate;
     
-    // Cálculo final aplicando a Margem Alvo sobre o custo total bruto (incluindo mark-up de impostos)
     const finalValue = divisor > 0 
       ? (totalOperationCost / divisor) * (1 + (Number(targetMargin) / 100)) 
       : 0;
       
     const taxaInCompany = finalValue - examStats.receitaTotal;
+
+    // Fórmula: Valor Final - (Impostos + Comissões) - Custo Operacional
+    const totalTaxAndComissionValue = finalValue * taxAndComissionRate;
+    const margemAtendimentoTotal = finalValue - totalTaxAndComissionValue - totalOperationCost;
+    const margemAtendimentoDiaria = executionDays > 0 ? margemAtendimentoTotal / executionDays : margemAtendimentoTotal;
 
     return { 
       profCosts, 
@@ -169,7 +179,9 @@ export const InCompanyCalculator: React.FC<{
       totalOperationCost, 
       examStats, 
       finalValue, 
-      taxaInCompany 
+      taxaInCompany,
+      margemAtendimentoTotal,
+      margemAtendimentoDiaria
     };
   }, [profs, vehicles, isEarlyDeparture, mealsPerDay, executionDays, printCost, hotelCost, exams, taxRate, comissionRate, targetMargin]);
 
@@ -192,9 +204,7 @@ export const InCompanyCalculator: React.FC<{
 
   const selectExamFromDb = (exam: any, index: number) => {
     const newExams = [...exams];
-    // Regra: Truncar em 50 caracteres
     newExams[index].name = exam.nome.substring(0, 50).toUpperCase();
-    // Preenchimento automático do valor unitário do cliente
     newExams[index].clientPrice = Number(exam.valor);
     setExams(newExams);
     setFilteredExams([]);
@@ -437,7 +447,7 @@ export const InCompanyCalculator: React.FC<{
             </div>
           </section>
 
-          {/* Tabela de Exames - Integração Supabase (Campo 6) */}
+          {/* Tabela de Exames */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
@@ -475,8 +485,6 @@ export const InCompanyCalculator: React.FC<{
                             className="w-full p-2 border border-slate-200 rounded-lg bg-white font-bold text-reque-navy outline-none focus:border-reque-orange transition-all uppercase" 
                             placeholder="PESQUISAR EXAME NO BANCO..." 
                           />
-                          
-                          {/* Dropdown de Autocomplete - Z-INDEX ELEVADO */}
                           {searchingRowIndex === idx && filteredExams.length > 0 && (
                             <div className="absolute z-[100] mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-52 overflow-auto animate-in fade-in slide-in-from-top-2">
                                {filteredExams.map((res, rIdx) => (
@@ -514,7 +522,7 @@ export const InCompanyCalculator: React.FC<{
             </div>
           </section>
 
-          {/* 7. Parâmetros de Precificação - Restaurados */}
+          {/* 7. Parâmetros de Precificação */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-xs font-black text-reque-navy uppercase mb-6 tracking-widest flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-reque-orange" /> 7. Parâmetros Financeiros
@@ -522,36 +530,40 @@ export const InCompanyCalculator: React.FC<{
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-1">
                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1.5">
-                  <Receipt className="w-3 h-3" /> Impostos (%)
+                  <Receipt className="w-3 h-3" /> Impostos (%) {!isAdmin && <Lock className="w-2.5 h-2.5 opacity-40" />}
                 </label>
                 <div className="relative">
                    <input 
                     type="number" 
                     value={taxRate} 
-                    onChange={e => setTaxRate(Number(e.target.value))} 
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all" 
+                    readOnly={!isAdmin}
+                    onChange={e => isAdmin && setTaxRate(Number(e.target.value))} 
+                    className={`w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none transition-all ${!isAdmin ? 'opacity-60 cursor-not-allowed' : 'focus:bg-white focus:border-reque-orange'}`} 
                   />
                   <div className="absolute right-3 top-2.5 text-slate-300 font-bold">%</div>
                 </div>
               </div>
               <div className="space-y-1">
                 <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1.5">
-                  <Percent className="w-3 h-3" /> Comissão (%)
+                  <Percent className="w-3 h-3" /> Comissão (%) {!isAdmin && <Lock className="w-2.5 h-2.5 opacity-40" />}
                 </label>
                 <div className="relative">
                   <input 
                     type="number" 
                     value={comissionRate} 
-                    onChange={e => setComissionRate(Number(e.target.value))} 
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all" 
+                    readOnly={!isAdmin}
+                    onChange={e => isAdmin && setComissionRate(Number(e.target.value))} 
+                    className={`w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none transition-all ${!isAdmin ? 'opacity-60 cursor-not-allowed' : 'focus:bg-white focus:border-reque-orange'}`} 
                   />
                   <div className="absolute right-3 top-2.5 text-slate-300 font-bold">%</div>
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="block text-[10px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1.5">
-                  <TrendingUp className="w-3 h-3" /> Margem Alvo (%)
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase flex items-center gap-1.5">
+                    <TrendingUp className="w-3 h-3" /> Margem Alvo (%)
+                  </label>
+                </div>
                 <div className="relative">
                   <input 
                     type="number" 
@@ -560,6 +572,19 @@ export const InCompanyCalculator: React.FC<{
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all" 
                   />
                   <div className="absolute right-3 top-2.5 text-slate-300 font-bold">%</div>
+                </div>
+                
+                {/* DESTAQUE DO LUCRO ESTIMADO */}
+                <div className="mt-3 p-2.5 bg-green-50/50 rounded-xl border border-green-100 animate-in fade-in duration-300">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Lucro Estimado:</span>
+                    <span className="text-lg font-bold text-green-600 tracking-tight">
+                      {formatCurrency(results.margemAtendimentoTotal)}
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-slate-500 font-medium leading-tight italic">
+                    Para essa precificação a margem utilizada é de {formatCurrency(results.margemAtendimentoDiaria)}/dia, o calculo deve ser feito baseado na margem diária
+                  </p>
                 </div>
               </div>
             </div>

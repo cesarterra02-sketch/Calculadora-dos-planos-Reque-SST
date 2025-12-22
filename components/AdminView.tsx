@@ -2,7 +2,25 @@
 import React, { useState, useEffect } from 'react';
 import { User, AccessLogEntry } from '../types';
 import { StorageService } from '../storageService';
-import { Shield, Key, History, Monitor, Calendar, UserCog, Check, Loader2, Trash2 } from 'lucide-react';
+import { 
+  Shield, 
+  Key, 
+  History, 
+  Monitor, 
+  Calendar, 
+  UserCog, 
+  Check, 
+  Loader2, 
+  Trash2, 
+  Lock, 
+  Unlock, 
+  FileText, 
+  Clock, 
+  Truck,
+  ShieldCheck,
+  UserCheck,
+  Calculator
+} from 'lucide-react';
 
 interface AdminViewProps {
   onBack: () => void;
@@ -35,6 +53,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
     if (confirm('Excluir este usuário permanentemente do Supabase?')) {
       setUsers(prev => prev.filter(u => u.email !== email));
       await StorageService.deleteUser(email);
+    }
+  };
+
+  const togglePermission = async (email: string, field: keyof User) => {
+    const user = users.find(u => u.email === email);
+    if (!user) return;
+
+    const newValue = !user[field];
+    
+    // Atualização Otimista
+    setUsers(prev => prev.map(u => u.email === email ? { ...u, [field]: newValue } : u));
+    
+    try {
+      await StorageService.updateUser(email, { [field]: newValue });
+    } catch (error) {
+      alert('Erro ao atualizar permissão no Supabase.');
+      // Reverte se falhar
+      setUsers(prev => prev.map(u => u.email === email ? { ...u, [field]: !newValue } : u));
     }
   };
 
@@ -72,12 +108,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
         <div>
           <h2 className="text-2xl font-bold text-reque-navy flex items-center gap-3">
             <Shield className="w-7 h-7 text-reque-orange" />
-            Controle de Acesso & Segurança (Supabase Cloud)
+            Controle de Acesso & Segurança Cloud
           </h2>
-          <p className="text-slate-500 text-sm">Gestão de usuários e logs de auditoria.</p>
+          <p className="text-slate-500 text-sm font-medium">Gestão granular de usuários e auditoria.</p>
         </div>
         <button onClick={onBack} className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-600 hover:bg-slate-50 transition-all">
-          Voltar para Calculadora
+          Voltar para Home
         </button>
       </div>
 
@@ -92,7 +128,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
           onClick={() => setActiveTab('logs')}
           className={`px-6 py-3 text-sm font-bold uppercase tracking-wider flex items-center gap-2 transition-all border-b-2 ${activeTab === 'logs' ? 'border-reque-navy text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
-          <History className="w-4 h-4" /> Log de Acesso
+          <History className="w-4 h-4" /> Log de Auditoria
         </button>
       </div>
 
@@ -104,16 +140,21 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
       ) : activeTab === 'users' ? (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <table className="w-full text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 border-b border-slate-200 text-[10px] uppercase font-black text-slate-500 tracking-wider">
+            <thead className="bg-slate-50 border-b border-slate-200 text-[9px] uppercase font-black text-slate-500 tracking-wider">
               <tr>
-                <th className="px-6 py-4">Usuário</th>
-                <th className="px-4 py-4 text-center">Permissão</th>
-                <th className="px-6 py-4 text-center">Ações</th>
+                <th className="px-6 py-4 w-1/4">Usuário</th>
+                <th className="px-4 py-4 text-center">Status</th>
+                <th className="px-4 py-4 text-center">Admin</th>
+                <th className="px-4 py-4 text-center">Planos</th>
+                <th className="px-4 py-4 text-center">In Company</th>
+                <th className="px-4 py-4 text-center">Histórico</th>
+                <th className="px-4 py-4 text-center">Propostas</th>
+                <th className="px-6 py-4 text-center">Gestão</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {users.map((user) => (
-                <tr key={user.email} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={user.email} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-6 py-4">
                     <div className="font-bold text-reque-navy flex items-center gap-2">
                       {user.name}
@@ -122,25 +163,80 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                     <div className="text-[10px] text-slate-400">{user.email}</div>
                   </td>
                   
+                  {/* Toggles de Permissão */}
                   <td className="px-4 py-4 text-center">
-                    <span className={`text-[10px] font-bold uppercase ${user.role === 'admin' ? 'text-reque-orange' : 'text-slate-400'}`}>
-                      {user.role === 'admin' ? 'Acesso Total' : 'Operador'}
-                    </span>
+                    <button 
+                        onClick={() => togglePermission(user.email, 'isApproved')}
+                        className={`p-2 rounded-lg transition-all ${user.isApproved ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
+                        title={user.isApproved ? 'Acesso Liberado' : 'Acesso Bloqueado'}
+                    >
+                        {user.isApproved ? <ShieldCheck className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                    </button>
+                  </td>
+
+                  <td className="px-4 py-4 text-center">
+                    <button 
+                        onClick={() => togglePermission(user.email, 'canAccessAdmin')}
+                        className={`p-2 rounded-lg transition-all ${user.canAccessAdmin ? 'bg-reque-navy text-white' : 'bg-slate-100 text-slate-300'}`}
+                        title="Acesso Admin"
+                    >
+                        <UserCheck className="w-4 h-4" />
+                    </button>
+                  </td>
+
+                  <td className="px-4 py-4 text-center">
+                    <button 
+                        onClick={() => togglePermission(user.email, 'canAccessCalculator')}
+                        className={`p-2 rounded-lg transition-all ${user.canAccessCalculator ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-300'}`}
+                        title="Acesso Calculadora Planos"
+                    >
+                        <Calculator className="w-4 h-4" />
+                    </button>
+                  </td>
+
+                  <td className="px-4 py-4 text-center">
+                    <button 
+                        onClick={() => togglePermission(user.email, 'canAccessInCompany')}
+                        className={`p-2 rounded-lg transition-all ${user.canAccessInCompany ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-300'}`}
+                        title="Acesso In Company"
+                    >
+                        <Truck className="w-4 h-4" />
+                    </button>
+                  </td>
+
+                  <td className="px-4 py-4 text-center">
+                    <button 
+                        onClick={() => togglePermission(user.email, 'canAccessHistory')}
+                        className={`p-2 rounded-lg transition-all ${user.canAccessHistory ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-300'}`}
+                        title="Acesso Histórico"
+                    >
+                        <Clock className="w-4 h-4" />
+                    </button>
+                  </td>
+
+                  <td className="px-4 py-4 text-center">
+                    <button 
+                        onClick={() => togglePermission(user.email, 'canGenerateProposal')}
+                        className={`p-2 rounded-lg transition-all ${user.canGenerateProposal ? 'bg-reque-navy text-reque-orange' : 'bg-slate-100 text-slate-300'}`}
+                        title="Gerar Propostas"
+                    >
+                        <FileText className="w-4 h-4" />
+                    </button>
                   </td>
 
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       {user.role !== 'admin' ? (
                         <>
-                          <button onClick={() => setEditingPassword(user.email)} className="p-2 bg-blue-50 text-blue-600 rounded" title="Trocar Senha">
+                          <button onClick={() => setEditingPassword(user.email)} className="p-2 bg-slate-100 text-slate-400 hover:text-reque-navy rounded transition-all" title="Trocar Senha">
                             <Key className="w-4 h-4" />
                           </button>
-                          <button onClick={() => deleteUser(user.email)} className="p-2 bg-red-50 text-red-600 rounded" title="Excluir">
+                          <button onClick={() => deleteUser(user.email)} className="p-2 bg-slate-100 text-slate-400 hover:text-red-500 rounded transition-all" title="Excluir">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </>
                       ) : (
-                        <div className="text-[9px] font-bold text-slate-300 italic">ADMIN MASTER</div>
+                        <div className="text-[9px] font-black text-slate-300 italic tracking-widest">MASTER</div>
                       )}
                     </div>
                   </td>
@@ -212,8 +308,8 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                   <Key className="w-5 h-5 text-reque-orange" />
                 </div>
                 <div>
-                   <h3 className="font-bold text-reque-navy">Alterar Senha</h3>
-                   <p className="text-xs text-slate-400">Usuário: {editingPassword}</p>
+                   <h3 className="font-bold text-reque-navy">Segurança de Acesso</h3>
+                   <p className="text-xs text-slate-400">Alterar senha de: {editingPassword}</p>
                 </div>
               </div>
               <form onSubmit={handleChangePassword} className="space-y-4">
@@ -226,12 +322,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                      value={newPassword}
                      onChange={e => setNewPassword(e.target.value)}
                      className="w-full p-3 border border-slate-200 rounded-lg outline-none focus:border-reque-blue text-sm"
-                     placeholder="No mínimo 4 dígitos"
+                     placeholder="Mínimo 4 caracteres"
                    />
                  </div>
                  <div className="flex gap-2 pt-2">
                     <button type="button" onClick={() => setEditingPassword(null)} className="flex-1 py-2.5 text-sm font-bold text-slate-500 bg-slate-100 rounded-lg hover:bg-slate-200 transition-all">Cancelar</button>
-                    <button type="submit" className="flex-1 py-2.5 text-sm font-bold text-white bg-reque-navy rounded-lg hover:bg-reque-blue shadow-lg transition-all">Salvar</button>
+                    <button type="submit" className="flex-1 py-2.5 text-sm font-bold text-white bg-reque-navy rounded-lg hover:bg-reque-blue shadow-lg transition-all">Salvar Senha</button>
                  </div>
               </form>
            </div>

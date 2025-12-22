@@ -1,5 +1,3 @@
-
-import { GoogleGenAI } from "@google/genai";
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   PlanType, 

@@ -1,4 +1,3 @@
-
 export enum PlanType {
   EXPRESS = 'SST Express',
   ESSENCIAL = 'SST Essencial',
@@ -76,7 +75,6 @@ export interface ProposalHistoryItem {
   fidelity?: FidelityModel;
   clientDeliveryDate?: string;
   docDeliveryDate?: string;
-  // Dados específicos In Company para restauração
   inCompanyDetails?: {
     profs: ProfessionalInCompany[];
     vehicles: VehicleInCompany[];
@@ -106,6 +104,8 @@ export interface User {
   isApproved: boolean;
   canAccessAdmin: boolean;
   canAccessHistory: boolean;
+  canAccessInCompany: boolean;
+  canAccessCalculator: boolean;
   canGenerateProposal: boolean;
 }
 
@@ -121,7 +121,7 @@ export interface ExamItem {
   deadline: string;
 }
 
-// Tipos para In Company
+// Fixed duplicate interface declarations
 export interface ProfessionalInCompany {
   id: string;
   type: string;

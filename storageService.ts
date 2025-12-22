@@ -2,9 +2,6 @@
 import { ProposalHistoryItem, User, AccessLogEntry } from './types';
 import { supabase } from './supabaseClient';
 
-/**
- * Mapeia os dados do banco para o frontend de forma resiliente.
- */
 const mapProposalData = (data: any): ProposalHistoryItem => {
   if (!data) return data;
   return {
@@ -26,9 +23,6 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
   };
 };
 
-/**
- * Mapeia usuário do banco (snake_case) para o tipo User (camelCase)
- */
 const mapUserData = (data: any): User => {
   if (!data) return data;
   return {
@@ -36,16 +30,15 @@ const mapUserData = (data: any): User => {
     email: data.email || '',
     password: data.password || '',
     role: data.role || 'user',
-    isApproved: data.is_approved || data.isApproved || false,
-    canAccessAdmin: data.can_access_admin || data.canAccessAdmin || false,
-    canAccessHistory: data.can_access_history !== undefined ? data.can_access_history : (data.canAccessHistory || true),
-    canGenerateProposal: data.can_generate_proposal || data.canGenerateProposal || false
+    isApproved: data.is_approved || false,
+    canAccessAdmin: data.can_access_admin || false,
+    canAccessHistory: data.can_access_history !== undefined ? data.can_access_history : true,
+    canAccessInCompany: data.can_access_incompany !== undefined ? data.can_access_incompany : true,
+    canAccessCalculator: data.can_access_calculator !== undefined ? data.can_access_calculator : true,
+    canGenerateProposal: data.can_generate_proposal || false
   };
 };
 
-/**
- * Prepara usuário para o banco (snake_case)
- */
 const sanitizeUserForDb = (user: User) => {
   return {
     name: user.name,
@@ -55,13 +48,12 @@ const sanitizeUserForDb = (user: User) => {
     is_approved: user.isApproved,
     can_access_admin: user.canAccessAdmin,
     can_access_history: user.canAccessHistory,
+    can_access_incompany: user.canAccessInCompany,
+    can_access_calculator: user.canAccessCalculator,
     can_generate_proposal: user.canGenerateProposal
   };
 };
 
-/**
- * Prepara o objeto para persistência no banco.
- */
 const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
   const dbObj: any = {
     id: item.id,
@@ -119,12 +111,26 @@ export const StorageService = {
     }
   },
 
+  deleteProposal: async (id: string): Promise<void> => {
+    try {
+      const { error } = await supabase.from('reque_proposals').delete().eq('id', id);
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Erro ao deletar proposta:', error.message);
+      throw error;
+    }
+  },
+
   getUserForLogin: async (identifier: string): Promise<User | null> => {
     try {
       const { data, error } = await supabase.from('reque_users').select('*').eq('email', identifier).maybeSingle(); 
-      return (error || !data) ? null : mapUserData(data);
-    } catch {
-      return null;
+      if (error) {
+        console.error('Erro Supabase getUser:', error);
+        throw error;
+      }
+      return !data ? null : mapUserData(data);
+    } catch (e) {
+      throw e;
     }
   },
 
@@ -144,7 +150,6 @@ export const StorageService = {
   },
 
   updateUser: async (email: string, updates: Partial<User>) => {
-    // Se updates tiver campos em camelCase, precisamos mapear para snake_case
     const dbUpdates: any = {};
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.password !== undefined) dbUpdates.password = updates.password;
@@ -152,6 +157,8 @@ export const StorageService = {
     if (updates.isApproved !== undefined) dbUpdates.is_approved = updates.isApproved;
     if (updates.canAccessAdmin !== undefined) dbUpdates.can_access_admin = updates.canAccessAdmin;
     if (updates.canAccessHistory !== undefined) dbUpdates.can_access_history = updates.canAccessHistory;
+    if (updates.canAccessInCompany !== undefined) dbUpdates.can_access_incompany = updates.canAccessInCompany;
+    if (updates.canAccessCalculator !== undefined) dbUpdates.can_access_calculator = updates.canAccessCalculator;
     if (updates.canGenerateProposal !== undefined) dbUpdates.can_generate_proposal = updates.canGenerateProposal;
 
     const { error } = await supabase.from('reque_users').update(dbUpdates).eq('email', email);

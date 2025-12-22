@@ -10,15 +10,16 @@ import { StorageService } from './storageService';
 import { 
   Calculator, 
   LogOut, 
-  ChevronRight,
-  Clock,
-  UserCheck,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Truck,
-  Loader2,
-  Wifi,
-  WifiOff
+  ChevronRight, 
+  Clock, 
+  UserCheck, 
+  PanelLeftClose, 
+  PanelLeftOpen, 
+  Truck, 
+  Loader2, 
+  Wifi, 
+  WifiOff, 
+  ShieldAlert 
 } from 'lucide-react';
 
 function App() {
@@ -54,7 +55,17 @@ function App() {
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
-    setCurrentView('calculator');
+    
+    // Define a view inicial baseada na primeira permissão disponível
+    if (user.role === 'admin' || user.canAccessCalculator) {
+      setCurrentView('calculator');
+    } else if (user.canAccessInCompany) {
+      setCurrentView('incompany');
+    } else if (user.canAccessHistory) {
+      setCurrentView('history');
+    } else if (user.canAccessAdmin) {
+      setCurrentView('admin');
+    }
   };
 
   const handleLogout = async () => {
@@ -74,7 +85,16 @@ function App() {
       return savedItem;
     } catch (error) {
       console.error("Erro ao salvar no App:", error);
-      throw error; // Re-lança para que o componente SummaryCard capture
+      throw error;
+    }
+  };
+
+  const handleDeleteHistory = async (id: string) => {
+    try {
+      await StorageService.deleteProposal(id);
+      setHistory(prev => prev.filter(item => item.id !== id));
+    } catch (error) {
+      alert("Erro ao excluir proposta do banco de dados.");
     }
   };
 
@@ -92,27 +112,29 @@ function App() {
       id: 'calculator',
       label: 'CALCULADORA PLANOS SST',
       icon: <Calculator className="w-5 h-5" />,
-      allowed: true
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessCalculator
     },
     {
       id: 'incompany',
       label: 'CALCULADORA IN COMPANY',
       icon: <Truck className="w-5 h-5" />,
-      allowed: true
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessInCompany
     },
     {
       id: 'history',
       label: 'HISTORICO DA PROPOSTA',
       icon: <Clock className="w-5 h-5" />,
-      allowed: currentUser?.canAccessHistory || currentUser?.role === 'admin'
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessHistory
     },
     {
       id: 'admin',
       label: 'CONTROLE DE ACESSO',
       icon: <UserCheck className="w-5 h-5" />,
-      allowed: currentUser?.canAccessAdmin || currentUser?.role === 'admin'
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessAdmin
     }
   ];
+
+  const allowedItems = navItems.filter(i => i.allowed);
 
   const renderContent = () => {
     if (isLoading) {
@@ -124,19 +146,50 @@ function App() {
       );
     }
 
+    if (allowedItems.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400 max-w-lg mx-auto text-center">
+          <ShieldAlert className="w-16 h-16 text-reque-orange mb-6" />
+          <h3 className="text-xl font-black text-reque-navy uppercase tracking-tight mb-2">Sem Acesso Liberado</h3>
+          <p className="text-sm font-medium leading-relaxed">
+            Sua conta está aprovada, mas nenhum módulo específico do sistema foi liberado para você. 
+            Entre em contato com o administrador para habilitar as ferramentas necessárias.
+          </p>
+          <button 
+            onClick={handleLogout}
+            className="mt-8 px-8 py-3 bg-reque-navy text-white font-bold rounded-xl uppercase text-xs tracking-widest hover:bg-reque-blue transition-all"
+          >
+            Sair do Sistema
+          </button>
+        </div>
+      );
+    }
+
+    // Proteção de View
+    const canAccessCurrent = navItems.find(i => i.id === currentView)?.allowed;
+    if (!canAccessCurrent) {
+        return (
+            <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400">
+                <p className="font-black uppercase tracking-widest text-xs">Acesso negado a este módulo.</p>
+            </div>
+        );
+    }
+
     switch(currentView) {
       case 'history':
         return (
           <HistoryView 
             history={history} 
             onEdit={handleEditHistory} 
-            onBack={() => setCurrentView('calculator')} 
+            onDelete={handleDeleteHistory}
+            isAdmin={currentUser?.role === 'admin'}
+            onBack={() => setCurrentView(allowedItems[0].id as ViewType)} 
           />
         );
       case 'admin':
-        return <AdminView onBack={() => setCurrentView('calculator')} />;
+        return <AdminView onBack={() => setCurrentView(allowedItems[0].id as ViewType)} />;
       case 'incompany':
-        return <InCompanyCalculator onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'incompany' ? editingItem : null} />;
+        return <InCompanyCalculator currentUser={currentUser} onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'incompany' ? editingItem : null} />;
       case 'calculator':
       default:
         return (
@@ -190,7 +243,7 @@ function App() {
         </div>
 
         <nav className="flex-1 px-4 space-y-2">
-          {navItems.filter(i => i.allowed).map((item) => (
+          {allowedItems.map((item) => (
             <button
               key={item.id}
               onClick={() => {
