@@ -12,10 +12,14 @@
   "dependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "lucide-react": "^0.460.0",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.4"
-  },
+"dependencies": {
+  "react": "^19.0.0",
+  "react-dom": "^19.0.0",
+  "@supabase/supabase-js": "^2.47.10",
+  "lucide-react": "^0.460.0",
+  "clsx": "^2.1.1",
+  "tailwind-merge": "^2.5.4"
+},
   "devDependencies": {
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
