@@ -178,8 +178,7 @@ export const ProposalView: React.FC<{
         .proposal-container {
           width: 100%;
           display: flex;
-          flex-direction: column;
-          align-items: center;
+          justify-content: center;
         }
 
         table {
@@ -223,8 +222,8 @@ export const ProposalView: React.FC<{
         </div>
       </div>
 
-      <div className="proposal-container overflow-x-auto lg:overflow-x-visible">
-        <div ref={contentRef} className="print:m-0 w-full flex flex-col items-center transition-all">
+      <div className="proposal-container overflow-x-auto lg:overflow-x-visible px-4">
+        <div ref={contentRef} className="print:m-0 w-fit mx-auto flex flex-col items-center transition-all">
           
           {/* PÁGINA 1: APRESENTAÇÃO E INVESTIMENTO */}
           <A4Page pageNumber={1} totalPages={totalPages} plan={plan.toUpperCase()}>
