@@ -8,18 +8,24 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     id: data.id,
     type: data.type || 'standard',
     createdAt: data.created_at || data.createdAt || data.timestamp || data.inserted_at || new Date().toISOString(),
-    companyName: data.company_name || data.companyName || data.empresa || data.company || data.name || '',
+    createdBy: data.created_by || data.createdBy || '',
+    companyName: data.company_name || data.company || data.companyName || data.empresa || data.name || '',
     contactName: data.contact_name || data.contactName || data.contato || data.contact || '',
     cnpj: data.cnpj || '',
     initialTotal: data.initial_total || data.initialTotal || data.valor_total || data.total || data.value || 0,
-    numEmployees: data.num_employees || data.num_employees || data.vidas || 0,
-    plan: data.plan || data.plano || '',
-    riskLevel: data.risk_level || data.risk_level || '',
-    fidelity: data.fidelity || data.fidelidade || '',
-    selectedUnit: data.selected_unit || data.unidade || '',
-    clientDeliveryDate: data.client_delivery_date || data.data_entrega_cliente,
-    docDeliveryDate: data.doc_delivery_date || data.data_entrega_doc,
-    inCompanyDetails: data.in_company_details || data.detalhes_incompany
+    numEmployees: data.num_employees || 0,
+    plan: data.plan || '',
+    riskLevel: data.risk_level || '',
+    fidelity: data.fidelity || '',
+    // Fix: Use correct camelCase property name from types.ts
+    selectedUnit: data.selected_unit || '',
+    clientDeliveryDate: data.client_delivery_date,
+    docDeliveryDate: data.doc_delivery_date,
+    taxaInCompany: data.taxa_in_company,
+    margemAtendimentoValor: data.margem_atendimento_valor,
+    impostoAplicado: data.imposto_aplicado,
+    comissaoAplicada: data.comissao_aplicada,
+    inCompanyDetails: data.in_company_details
   };
 };
 
@@ -59,19 +65,24 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     id: item.id,
     type: item.type,
     cnpj: item.cnpj,
-    company_name: item.companyName, 
+    company_name: item.companyName, // Alterado de company para company_name
     contact_name: item.contactName,
-    initial_total: item.initialTotal
+    initial_total: item.initialTotal,
+    created_by: item.createdBy,
+    taxa_in_company: item.taxaInCompany,
+    margem_atendimento_valor: item.margemAtendimentoValor,
+    imposto_aplicado: item.impostoAplicado,
+    comissao_aplicada: item.comissaoAplicada,
+    num_employees: item.numEmployees,
+    plan: item.plan,
+    risk_level: item.riskLevel,
+    fidelity: item.fidelity,
+    // Fix: Use correct camelCase property name from types.ts
+    selected_unit: item.selectedUnit,
+    client_delivery_date: item.clientDeliveryDate,
+    doc_delivery_date: item.docDeliveryDate,
+    in_company_details: item.inCompanyDetails
   };
-
-  if (item.numEmployees !== undefined) dbObj.num_employees = item.numEmployees;
-  if (item.plan) dbObj.plan = item.plan;
-  if (item.riskLevel) dbObj.risk_level = item.riskLevel;
-  if (item.fidelity) dbObj.fidelity = item.fidelity;
-  if (item.selectedUnit) dbObj.selected_unit = item.selectedUnit;
-  if (item.clientDeliveryDate) dbObj.client_delivery_date = item.clientDeliveryDate;
-  if (item.docDeliveryDate) dbObj.doc_delivery_date = item.docDeliveryDate;
-  if (item.inCompanyDetails) dbObj.in_company_details = item.inCompanyDetails;
 
   return dbObj;
 };
@@ -86,15 +97,23 @@ export const StorageService = {
     }
   },
 
-  getHistory: async (): Promise<ProposalHistoryItem[]> => {
+  getHistory: async (identifier?: string, isAdmin: boolean = false): Promise<ProposalHistoryItem[]> => {
     try {
-      const { data, error } = await supabase.from('reque_proposals').select('*');
+      let query = supabase.from('reque_proposals').select('*');
+      
+      // Se não for admin, filtra pelo identificador (que agora pode ser Nome ou Email)
+      if (!isAdmin && identifier) {
+        query = query.eq('created_by', identifier);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []).map(mapProposalData).sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     } catch (error: any) {
-      console.error('Erro ao buscar histórico:', error.message);
+      const msg = error?.message || error?.details || JSON.stringify(error);
+      console.error('Erro ao buscar histórico:', msg);
       return [];
     }
   },
@@ -106,8 +125,9 @@ export const StorageService = {
       if (error) throw error;
       return mapProposalData(data);
     } catch (error: any) {
-      console.error('Erro ao salvar proposta:', error.message);
-      throw error;
+      const msg = error?.message || error?.details || JSON.stringify(error);
+      console.error('Erro ao salvar proposta:', msg);
+      throw new Error(msg);
     }
   },
 
@@ -116,21 +136,20 @@ export const StorageService = {
       const { error } = await supabase.from('reque_proposals').delete().eq('id', id);
       if (error) throw error;
     } catch (error: any) {
-      console.error('Erro ao deletar proposta:', error.message);
-      throw error;
+      const msg = error?.message || error?.details || JSON.stringify(error);
+      console.error('Erro ao deletar proposta:', msg);
+      throw new Error(msg);
     }
   },
 
   getUserForLogin: async (identifier: string): Promise<User | null> => {
     try {
       const { data, error } = await supabase.from('reque_users').select('*').eq('email', identifier).maybeSingle(); 
-      if (error) {
-        console.error('Erro Supabase getUser:', error);
-        throw error;
-      }
+      if (error) throw error;
       return !data ? null : mapUserData(data);
-    } catch (e) {
-      throw e;
+    } catch (error: any) {
+      const msg = error?.message || JSON.stringify(error);
+      throw new Error(msg);
     }
   },
 

@@ -64,8 +64,8 @@ export const InCompanyCalculator: React.FC<{
   const [mealsPerDay, setMealsPerDay] = useState<1 | 2>(initialData?.inCompanyDetails?.mealsPerDay as (1|2) || 1); 
   
   // Parâmetros Financeiros Modificados conforme solicitado
-  const [taxRate, setTaxRate] = useState(10); // Padrão 10%
-  const [comissionRate, setComissionRate] = useState(1); // Padrão 1%
+  const [taxRate, setTaxRate] = useState(initialData?.impostoAplicado || 10); 
+  const [comissionRate, setComissionRate] = useState(initialData?.comissaoAplicada || 1); 
   const [targetMargin, setTargetMargin] = useState(30);
   
   const [printCost, setPrintCost] = useState(0);
@@ -78,7 +78,6 @@ export const InCompanyCalculator: React.FC<{
     { id: '1', name: 'AVALIAÇÃO CLÍNICA', quantity: 1, clientPrice: 50, costPrice: 20 }
   ]);
   
-  // Estados para integração com Supabase (Exames)
   const [allExamsFromDb, setAllExamsFromDb] = useState<any[]>([]);
   const [filteredExams, setFilteredExams] = useState<any[]>([]);
   const [searchingRowIndex, setSearchingRowIndex] = useState<number | null>(null);
@@ -88,25 +87,18 @@ export const InCompanyCalculator: React.FC<{
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
 
-  // Checagem de Admin para edição de Imposto e Comissão
   const isAdmin = useMemo(() => {
     return currentUser?.role === 'admin' || currentUser?.canAccessAdmin === true;
   }, [currentUser]);
 
-  // Carregar exames do banco
   useEffect(() => {
     const fetchExams = async () => {
       setIsFetchingExams(true);
       try {
-        const { data, error } = await supabase
-          .from('exames')
-          .select('nome, valor');
-        
-        if (!error && data) {
-          setAllExamsFromDb(data);
-        }
+        const { data, error } = await supabase.from('exames').select('nome, valor');
+        if (!error && data) setAllExamsFromDb(data);
       } catch (err) {
-        console.error("Erro ao carregar exames do Supabase:", err);
+        console.error("Erro ao carregar exames:", err);
       } finally {
         setIsFetchingExams(false);
       }
@@ -131,9 +123,7 @@ export const InCompanyCalculator: React.FC<{
     const travelCost = vehicles.reduce((acc, v) => {
       const rate = VEHICLE_RATES[v.type as keyof typeof VEHICLE_RATES] || 1.2;
       let cost = v.distance * rate + v.pedagios;
-      if (v.isDoctorOwnCar) {
-        cost += (v.distance * rate + v.pedagios);
-      }
+      if (v.isDoctorOwnCar) cost += (v.distance * rate + v.pedagios);
       return acc + cost;
     }, 0);
 
@@ -163,8 +153,6 @@ export const InCompanyCalculator: React.FC<{
       : 0;
       
     const taxaInCompany = finalValue - examStats.receitaTotal;
-
-    // Fórmula: Valor Final - (Impostos + Comissões) - Custo Operacional
     const totalTaxAndComissionValue = finalValue * taxAndComissionRate;
     const margemAtendimentoTotal = finalValue - totalTaxAndComissionValue - totalOperationCost;
     const margemAtendimentoDiaria = executionDays > 0 ? margemAtendimentoTotal / executionDays : margemAtendimentoTotal;
@@ -189,12 +177,8 @@ export const InCompanyCalculator: React.FC<{
     const newExams = [...exams];
     newExams[index].name = query.toUpperCase();
     setExams(newExams);
-
     if (query.length >= 2) {
-      const filtered = allExamsFromDb.filter(exam => 
-        exam.nome.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 10);
-      setFilteredExams(filtered);
+      setFilteredExams(allExamsFromDb.filter(exam => exam.nome.toLowerCase().includes(query.toLowerCase())).slice(0, 10));
       setSearchingRowIndex(index);
     } else {
       setFilteredExams([]);
@@ -230,6 +214,10 @@ export const InCompanyCalculator: React.FC<{
         contactName,
         cnpj,
         initialTotal: results.finalValue,
+        taxaInCompany: results.taxaInCompany,
+        margemAtendimentoValor: results.margemAtendimentoTotal,
+        impostoAplicado: Number(taxRate),
+        comissaoAplicada: Number(comissionRate),
         inCompanyDetails: {
           profs, vehicles, exams, executionDays, isEarlyDeparture, mealsPerDay,
           taxaInCompany: results.taxaInCompany,
@@ -264,7 +252,6 @@ export const InCompanyCalculator: React.FC<{
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-8 space-y-6">
-          {/* Dados Contratante */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-xs font-black text-reque-navy uppercase mb-6 tracking-widest flex items-center gap-2">
               <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
@@ -294,7 +281,6 @@ export const InCompanyCalculator: React.FC<{
             </div>
           </section>
 
-          {/* Deslocamento */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
@@ -390,7 +376,6 @@ export const InCompanyCalculator: React.FC<{
             </div>
           </section>
 
-          {/* Profissionais */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
@@ -447,7 +432,6 @@ export const InCompanyCalculator: React.FC<{
             </div>
           </section>
 
-          {/* Tabela de Exames */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-xs font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
@@ -488,11 +472,7 @@ export const InCompanyCalculator: React.FC<{
                           {searchingRowIndex === idx && filteredExams.length > 0 && (
                             <div className="absolute z-[100] mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-2xl max-h-52 overflow-auto animate-in fade-in slide-in-from-top-2">
                                {filteredExams.map((res, rIdx) => (
-                                 <button 
-                                  key={rIdx} 
-                                  onClick={() => selectExamFromDb(res, idx)}
-                                  className="w-full text-left p-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors"
-                                 >
+                                 <button key={rIdx} onClick={() => selectExamFromDb(res, idx)} className="w-full text-left p-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 transition-colors">
                                     <div className="text-[10px] font-black text-reque-navy uppercase">{res.nome}</div>
                                     <div className="text-[9px] text-reque-orange font-bold">Preço de Tabela: {formatCurrency(res.valor)}</div>
                                  </button>
@@ -522,7 +502,6 @@ export const InCompanyCalculator: React.FC<{
             </div>
           </section>
 
-          {/* 7. Parâmetros de Precificação */}
           <section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
             <h3 className="text-xs font-black text-reque-navy uppercase mb-6 tracking-widest flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-reque-orange" /> 7. Parâmetros Financeiros
@@ -574,7 +553,6 @@ export const InCompanyCalculator: React.FC<{
                   <div className="absolute right-3 top-2.5 text-slate-300 font-bold">%</div>
                 </div>
                 
-                {/* DESTAQUE DO LUCRO ESTIMADO */}
                 <div className="mt-3 p-2.5 bg-green-50/50 rounded-xl border border-green-100 animate-in fade-in duration-300">
                   <div className="flex items-center gap-1.5 mb-1">
                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Lucro Estimado:</span>
@@ -583,7 +561,7 @@ export const InCompanyCalculator: React.FC<{
                     </span>
                   </div>
                   <p className="text-[9px] text-slate-500 font-medium leading-tight italic">
-                    Para essa precificação a margem utilizada é de {formatCurrency(results.margemAtendimentoDiaria)}/dia, o calculo deve ser feito baseado na margem diária
+                    Para essa precificação a margem utilizada é de {formatCurrency(results.margemAtendimentoDiaria)}/dia.
                   </p>
                 </div>
               </div>
@@ -602,7 +580,6 @@ export const InCompanyCalculator: React.FC<{
           </section>
         </div>
 
-        {/* Resumo Lateral */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden sticky top-6">
             <div className="bg-reque-navy p-5 text-white flex items-center justify-between border-b-4 border-reque-orange">
@@ -652,10 +629,10 @@ export const InCompanyCalculator: React.FC<{
                   } disabled:opacity-70`}
                 >
                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : isSaved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
-                    {isSaving ? 'Salvando...' : isSaved ? 'Salvo!' : 'Salvar Simulação'}
+                    {isSaving ? 'Salvando...' : isSaved ? 'Simulação Salva!' : 'Salvar Simulação'}
                  </button>
                  <button onClick={() => setShowProposal(true)} className="w-full py-4 bg-reque-orange hover:bg-reque-orange/90 text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-2">
-                    <FileText className="w-4 h-4" /> Gerar Proposta In Company
+                    <FileText className="w-4 h-4" /> Gerar Proposta Formal
                  </button>
               </div>
             </div>

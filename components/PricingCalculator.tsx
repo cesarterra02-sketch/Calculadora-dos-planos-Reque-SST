@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   PlanType, 
@@ -112,7 +113,8 @@ export const PricingCalculator: React.FC<{
       billingCycle = BillingCycle.ANNUAL;
     }
 
-    const paymentMethod = (activePlan === PlanType.EXPRESS && !isFidelity) 
+    // Ajuste solicitado: Express é sempre Cartão de Crédito
+    const paymentMethod = (activePlan === PlanType.EXPRESS) 
       ? PaymentMethod.CREDIT_CARD 
       : PaymentMethod.BOLETO;
 

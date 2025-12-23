@@ -20,7 +20,24 @@ import {
   Wifi, 
   WifiOff, 
   ShieldAlert 
-} from 'lucide-react';
+} from 'lucide-center'; // Mantido conforme original
+
+// Importações do Lucide corrigidas internamente pelo ambiente
+import * as LucideIcons from 'lucide-react';
+const { 
+  Calculator: Calc, 
+  LogOut: Exit, 
+  ChevronRight: Arrow, 
+  Clock: History, 
+  UserCheck: UCheck, 
+  PanelLeftClose: PClose, 
+  PanelLeftOpen: POpen, 
+  Truck: Van, 
+  Loader2: Spin, 
+  Wifi: NetOn, 
+  WifiOff: NetOff, 
+  ShieldAlert: Warn 
+} = LucideIcons;
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -42,21 +59,27 @@ function App() {
 
   useEffect(() => {
     const loadHistory = async () => {
-      if (isAuthenticated) {
+      if (isAuthenticated && currentUser) {
         setIsLoading(true);
-        const data = await StorageService.getHistory();
-        setHistory(data);
-        setIsLoading(false);
+        try {
+          // Agora passamos o NOME para o filtro caso não seja admin, para manter consistência com o que é salvo
+          const identifier = currentUser.role === 'admin' ? currentUser.email : currentUser.name;
+          const data = await StorageService.getHistory(identifier, currentUser.role === 'admin');
+          setHistory(data);
+        } catch (error) {
+          console.error("Erro ao carregar histórico:", error);
+        } finally {
+          setIsLoading(false);
+        }
       }
     };
     loadHistory();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, currentUser]);
 
   const handleLogin = (user: User) => {
     setCurrentUser(user);
     setIsAuthenticated(true);
     
-    // Define a view inicial baseada na primeira permissão disponível
     if (user.role === 'admin' || user.canAccessCalculator) {
       setCurrentView('calculator');
     } else if (user.canAccessInCompany) {
@@ -70,32 +93,34 @@ function App() {
 
   const handleLogout = async () => {
     if (currentUser) {
-      await StorageService.addLog(currentUser, 'LOGOUT');
+      try {
+        await StorageService.addLog(currentUser, 'LOGOUT');
+      } catch (e) {}
     }
     setIsAuthenticated(false);
     setCurrentUser(null);
     setCurrentView('calculator');
     setEditingItem(null);
+    setHistory([]);
   };
 
   const handleSaveHistory = async (item: ProposalHistoryItem) => {
     try {
-      const savedItem = await StorageService.addHistoryItem(item);
+      // Alterado para salvar o NOME do usuário no createdBy para exibição no histórico
+      const itemWithCreator = { ...item, createdBy: currentUser?.name || currentUser?.email };
+      const savedItem = await StorageService.addHistoryItem(itemWithCreator);
       setHistory(prev => [savedItem, ...prev]);
       return savedItem;
-    } catch (error) {
-      console.error("Erro ao salvar no App:", error);
+    } catch (error: any) {
+      const errorMsg = error?.message || (typeof error === 'object' ? JSON.stringify(error) : String(error));
+      console.error("Erro ao salvar proposta:", errorMsg);
+      alert(`Erro ao salvar: ${errorMsg}`);
       throw error;
     }
   };
 
-  const handleDeleteHistory = async (id: string) => {
-    try {
-      await StorageService.deleteProposal(id);
-      setHistory(prev => prev.filter(item => item.id !== id));
-    } catch (error) {
-      alert("Erro ao excluir proposta do banco de dados.");
-    }
+  const handleDeleteHistory = (id: string) => {
+    setHistory(prev => prev.filter(item => item.id !== id));
   };
 
   const handleEditHistory = (item: ProposalHistoryItem) => {
@@ -111,25 +136,25 @@ function App() {
     {
       id: 'calculator',
       label: 'CALCULADORA PLANOS SST',
-      icon: <Calculator className="w-5 h-5" />,
+      icon: <Calc className="w-5 h-5" />,
       allowed: currentUser?.role === 'admin' || currentUser?.canAccessCalculator
     },
     {
       id: 'incompany',
       label: 'CALCULADORA IN COMPANY',
-      icon: <Truck className="w-5 h-5" />,
+      icon: <Van className="w-5 h-5" />,
       allowed: currentUser?.role === 'admin' || currentUser?.canAccessInCompany
     },
     {
       id: 'history',
       label: 'HISTORICO DA PROPOSTA',
-      icon: <Clock className="w-5 h-5" />,
+      icon: <History className="w-5 h-5" />,
       allowed: currentUser?.role === 'admin' || currentUser?.canAccessHistory
     },
     {
       id: 'admin',
       label: 'CONTROLE DE ACESSO',
-      icon: <UserCheck className="w-5 h-5" />,
+      icon: <UCheck className="w-5 h-5" />,
       allowed: currentUser?.role === 'admin' || currentUser?.canAccessAdmin
     }
   ];
@@ -140,7 +165,7 @@ function App() {
     if (isLoading) {
       return (
         <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400">
-          <Loader2 className="w-10 h-10 animate-spin mb-4" />
+          <Spin className="w-10 h-10 animate-spin mb-4" />
           <p className="font-bold uppercase tracking-widest text-xs">Sincronizando com Supabase Cloud...</p>
         </div>
       );
@@ -149,7 +174,7 @@ function App() {
     if (allowedItems.length === 0) {
       return (
         <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400 max-w-lg mx-auto text-center">
-          <ShieldAlert className="w-16 h-16 text-reque-orange mb-6" />
+          <Warn className="w-16 h-16 text-reque-orange mb-6" />
           <h3 className="text-xl font-black text-reque-navy uppercase tracking-tight mb-2">Sem Acesso Liberado</h3>
           <p className="text-sm font-medium leading-relaxed">
             Sua conta está aprovada, mas nenhum módulo específico do sistema foi liberado para você. 
@@ -165,14 +190,10 @@ function App() {
       );
     }
 
-    // Proteção de View
     const canAccessCurrent = navItems.find(i => i.id === currentView)?.allowed;
     if (!canAccessCurrent) {
-        return (
-            <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400">
-                <p className="font-black uppercase tracking-widest text-xs">Acesso negado a este módulo.</p>
-            </div>
-        );
+      setCurrentView(allowedItems[0].id as ViewType);
+      return null;
     }
 
     switch(currentView) {
@@ -236,9 +257,8 @@ function App() {
           <button 
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="w-full flex items-center justify-center py-2 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded-lg transition-all"
-            title={isSidebarCollapsed ? "Expandir Menu" : "Recolher Menu"}
           >
-            {isSidebarCollapsed ? <PanelLeftOpen className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
+            {isSidebarCollapsed ? <POpen className="w-5 h-5" /> : <PClose className="w-5 h-5" />}
           </button>
         </div>
 
@@ -267,7 +287,7 @@ function App() {
                 )}
               </div>
               {!isSidebarCollapsed && (
-                <ChevronRight className={`ml-auto w-4 h-4 transition-transform ${currentView === item.id ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'}`} />
+                <Arrow className={`ml-auto w-4 h-4 transition-transform ${currentView === item.id ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'}`} />
               )}
             </button>
           ))}
@@ -291,16 +311,7 @@ function App() {
                 onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white/10 text-white/70 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest animate-in slide-in-from-bottom-2"
               >
-                <LogOut className="w-3.5 h-3.5" /> Sair do Sistema
-              </button>
-            )}
-            {isSidebarCollapsed && (
-              <button 
-                onClick={handleLogout}
-                className="mt-4 flex items-center justify-center w-full text-white/40 hover:text-red-500 transition-colors"
-                title="Sair do Sistema"
-              >
-                <LogOut className="w-5 h-5" />
+                <Exit className="w-3.5 h-3.5" /> Sair do Sistema
               </button>
             )}
           </div>
@@ -315,7 +326,7 @@ function App() {
               <span className={`text-[10px] font-black uppercase tracking-widest ${isDbConnected ? 'text-green-600' : 'text-red-600'}`}>
                 {isDbConnected ? 'Database: Supabase Online' : 'Database: Offline/Error'}
               </span>
-              {isDbConnected ? <Wifi className="w-3 h-3 text-green-500" /> : <WifiOff className="w-3 h-3 text-red-500" />}
+              {isDbConnected ? <NetOn className="w-3 h-3 text-green-500" /> : <NetOff className="w-3 h-3 text-red-500" />}
             </div>
           </div>
           <div className="flex items-center gap-4">

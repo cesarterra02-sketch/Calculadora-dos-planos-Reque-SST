@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ProposalHistoryItem, FidelityModel } from '../types';
-import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText } from 'lucide-react';
+import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User } from 'lucide-react';
+import { supabase } from '../supabaseClient';
 
 interface HistoryViewProps {
   history: ProposalHistoryItem[];
@@ -12,17 +13,36 @@ interface HistoryViewProps {
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDelete, onBack, isAdmin }) => {
+  const [itemToDelete, setItemToDelete] = useState<{ id: string, name: string } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
 
-  const handleDeleteClick = (id: string, companyName: string) => {
-    if (window.confirm(`Deseja realmente excluir a proposta da empresa "${companyName}"? Esta ação não pode ser desfeita.`)) {
-      onDelete(id);
+  const handleDelete = async () => {
+    if (!itemToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('reque_proposals')
+        .delete()
+        .eq('id', itemToDelete.id);
+        
+      if (error) throw error;
+      
+      onDelete(itemToDelete.id);
+      setItemToDelete(null);
+    } catch (error: any) {
+      console.error("Erro ao excluir:", error.message);
+      alert(`Erro técnico ao tentar excluir: ${error.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <button 
@@ -41,9 +61,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
       {history.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
           <FileSearch className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-slate-600">Nenhuma simulação salva</h3>
+          <h3 className="text-lg font-bold text-slate-600">Você ainda não possui propostas salvas.</h3>
           <p className="text-slate-400 text-sm mt-1">
-            As simulações que você salvar aparecerão aqui para consulta futura.
+            As simulações que você realizar e salvar aparecerão aqui.
           </p>
           <button 
              onClick={onBack}
@@ -61,6 +81,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                   <th className="px-6 py-4">Data/Hora</th>
                   <th className="px-6 py-4">Tipo</th>
                   <th className="px-6 py-4">Empresa / Contato</th>
+                  <th className="px-6 py-4">Criado por</th>
                   <th className="px-6 py-4">Detalhes</th>
                   <th className="px-6 py-4 text-right">Valor Total</th>
                   <th className="px-6 py-4 text-center">Ações</th>
@@ -94,6 +115,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                       </div>
                     </td>
                     <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <User className="w-3 h-3 text-reque-orange opacity-70" />
+                        <span className="text-[10px] font-black text-reque-navy uppercase truncate max-w-[160px]" title={item.createdBy}>
+                          {item.createdBy || 'Sistema'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
                       {item.type === 'incompany' ? (
                         <div className="text-xs text-slate-500">
                           {item.inCompanyDetails?.profs.length} profissionais • {item.inCompanyDetails?.exams.length} exames
@@ -117,9 +146,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                           <RotateCcw className="w-3 h-3" />
                           Editar
                         </button>
+                        
+                        {/* Botão de Excluir restrito a Administradores */}
                         {isAdmin && (
                           <button 
-                            onClick={() => handleDeleteClick(item.id, item.companyName)}
+                            onClick={(e) => { e.stopPropagation(); setItemToDelete({ id: item.id, name: item.companyName }); }}
                             className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                             title="Excluir proposta permanentemente"
                           >
@@ -132,6 +163,58 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE CONFIRMAÇÃO CUSTOMIZADO */}
+      {itemToDelete && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="p-3 bg-red-100 rounded-xl">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <button 
+                  onClick={() => setItemToDelete(null)}
+                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              
+              <h3 className="text-lg font-black text-reque-navy uppercase tracking-tight mb-2">Confirmar Exclusão?</h3>
+              <p className="text-sm text-slate-500 font-medium leading-relaxed">
+                Você está prestes a excluir permanentemente a proposta da empresa 
+                <strong className="text-reque-navy"> {itemToDelete.name}</strong>. 
+                Esta ação não pode ser desfeita no banco de dados.
+              </p>
+            </div>
+            
+            <div className="bg-slate-50 px-6 py-4 flex gap-3">
+              <button 
+                onClick={() => setItemToDelete(null)}
+                disabled={isDeleting}
+                className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-50 transition-all disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleDelete}
+                disabled={isDeleting}
+                className="flex-1 py-3 bg-red-600 text-white font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-red-700 shadow-lg shadow-red-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Excluindo...
+                  </>
+                ) : (
+                  'Excluir Permanentemente'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
