@@ -9,7 +9,8 @@ import {
   PaymentMethod,
   ProposalHistoryItem,
   RequeUnit,
-  RiskLevel
+  RiskLevel,
+  User
 } from '../types';
 import { 
   EMPLOYEE_RANGES, 
@@ -59,16 +60,18 @@ const validateCNPJ = (cnpj: string): boolean => {
 };
 
 export const PricingCalculator: React.FC<{
+  currentUser: User | null;
   onSaveHistory: (item: ProposalHistoryItem) => Promise<any>;
   initialData?: ProposalHistoryItem | null;
   canGenerateProposal?: boolean;
-}> = ({ onSaveHistory, initialData, canGenerateProposal = true }) => {
+}> = ({ currentUser, onSaveHistory, initialData, canGenerateProposal = true }) => {
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [isCnpjValid, setIsCnpjValid] = useState<boolean | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<RequeUnit>(RequeUnit.PONTA_GROSSA);
   const [numEmployees, setNumEmployees] = useState(1);
+  const [externalLivesCount, setExternalLivesCount] = useState(0);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>(RiskLevel.RISK_1);
   const [fidelity, setFidelity] = useState<FidelityModel>(FidelityModel.WITH_FIDELITY);
   const [clientDeliveryDate, setClientDeliveryDate] = useState('');
@@ -81,6 +84,7 @@ export const PricingCalculator: React.FC<{
       setContactName(initialData.contactName || '');
       setCnpj(initialData.cnpj || '');
       setNumEmployees(initialData.numEmployees || 1);
+      setExternalLivesCount(initialData.externalLivesCount || 0);
       setFidelity(initialData.fidelity || FidelityModel.WITH_FIDELITY);
       setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
       setRiskLevel(initialData.riskLevel || RiskLevel.RISK_1);
@@ -105,6 +109,9 @@ export const PricingCalculator: React.FC<{
     const monthlyBase = monthlyTable[range.id] || 0;
     const programFeeBase = PROGRAM_FEES_TABLE[range.id] || 0;
 
+    const schedulingCostTotal = externalLivesCount * 5.50;
+    const monthlyValue = monthlyBase + schedulingCostTotal;
+
     const isFidelity = fidelity === FidelityModel.WITH_FIDELITY;
     const programFee = isFidelity ? 0 : programFeeBase;
 
@@ -113,16 +120,15 @@ export const PricingCalculator: React.FC<{
       billingCycle = BillingCycle.ANNUAL;
     }
 
-    // Ajuste solicitado: Express é sempre Cartão de Crédito
     const paymentMethod = (activePlan === PlanType.EXPRESS) 
       ? PaymentMethod.CREDIT_CARD 
       : PaymentMethod.BOLETO;
 
-    const initialAssinatura = billingCycle === BillingCycle.ANNUAL ? monthlyBase * 12 : monthlyBase;
+    const initialAssinatura = billingCycle === BillingCycle.ANNUAL ? monthlyValue * 12 : monthlyValue;
 
     return {
       rangeLabel: range.label,
-      monthlyValue: monthlyBase,
+      monthlyValue: monthlyValue,
       billingCycle,
       paymentMethod,
       programFee,
@@ -135,11 +141,13 @@ export const PricingCalculator: React.FC<{
       contractTotalCurrentCycle: initialAssinatura,
       initialPaymentAmount: initialAssinatura + programFee,
       isCustomQuote: monthlyBase === 0,
+      externalLivesCount,
+      schedulingCostTotal,
       commercialSummary: isFidelity 
-        ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (PGR/PCMSO).` 
-        : `Plano sem fidelidade. Cobrança integral da taxa de elaboração dos programas.`
+        ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (PGR/PCMSO).${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}` 
+        : `Plano sem fidelidade. Cobrança integral da taxa de elaboração dos programas.${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}`
     };
-  }, [numEmployees, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate]);
+  }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -243,15 +251,38 @@ export const PricingCalculator: React.FC<{
               </div>
 
               <div className="space-y-6">
-                <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
-                  <div className="flex justify-between items-end mb-4">
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nº de Funcionários</label>
-                      <p className="text-[9px] text-slate-400 italic">Total de vidas ativas no contrato</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
+                    <div className="flex justify-between items-end mb-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Nº de Funcionários</label>
+                        <p className="text-[9px] text-slate-400 italic">Total de vidas ativas</p>
+                      </div>
+                      <span className="text-4xl font-black text-reque-navy tracking-tighter">{numEmployees}</span>
                     </div>
-                    <span className="text-4xl font-black text-reque-navy tracking-tighter">{numEmployees}</span>
+                    <input type="range" min="1" max="200" value={numEmployees} onChange={e => {
+                      const val = parseInt(e.target.value);
+                      setNumEmployees(val);
+                      if (externalLivesCount > val) setExternalLivesCount(val);
+                    }} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-reque-orange cursor-pointer hover:accent-reque-navy transition-all" />
                   </div>
-                  <input type="range" min="1" max="200" value={numEmployees} onChange={e => setNumEmployees(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-reque-orange cursor-pointer hover:accent-reque-navy transition-all" />
+
+                  <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100/50">
+                    <div className="flex justify-between items-end mb-4">
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                          Gestão de agendamento
+                        </label>
+                        <p className="text-[9px] text-slate-400 italic">Vidas atendidas fora das unidades Reque</p>
+                      </div>
+                      <span className="text-4xl font-black text-reque-orange tracking-tighter">{externalLivesCount}</span>
+                    </div>
+                    <input type="range" min="0" max={numEmployees} value={externalLivesCount} onChange={e => setExternalLivesCount(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none accent-reque-orange cursor-pointer hover:accent-reque-navy transition-all" />
+                    <div className="flex justify-between mt-1 px-1">
+                       <span className="text-[8px] font-bold text-slate-400 uppercase">Interno (Reque)</span>
+                       <span className="text-[8px] font-bold text-reque-orange uppercase">Externo (+R$ 5,50/vida)</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -303,6 +334,8 @@ export const PricingCalculator: React.FC<{
             {calculationResult && (
               <SummaryCard 
                 result={calculationResult} 
+                plan={activePlan}
+                currentUser={currentUser}
                 onSaveHistory={() => {
                   return onSaveHistory({
                     id: crypto.randomUUID(),
@@ -314,6 +347,7 @@ export const PricingCalculator: React.FC<{
                     selectedUnit,
                     plan: activePlan,
                     numEmployees,
+                    externalLivesCount,
                     riskLevel,
                     monthlyValue: calculationResult.monthlyValue,
                     initialTotal: calculationResult.initialPaymentAmount,

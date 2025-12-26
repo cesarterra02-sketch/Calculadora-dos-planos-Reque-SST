@@ -7,22 +7,8 @@ import { LoginView } from './components/LoginView';
 import { AdminView } from './components/AdminView';
 import { ProposalHistoryItem, ViewType, User } from './types';
 import { StorageService } from './storageService';
-import { 
-  Calculator, 
-  LogOut, 
-  ChevronRight, 
-  Clock, 
-  UserCheck, 
-  PanelLeftClose, 
-  PanelLeftOpen, 
-  Truck, 
-  Loader2, 
-  Wifi, 
-  WifiOff, 
-  ShieldAlert 
-} from 'lucide-center'; // Mantido conforme original
 
-// Importações do Lucide corrigidas internamente pelo ambiente
+// Importações do Lucide corrigidas
 import * as LucideIcons from 'lucide-react';
 const { 
   Calculator: Calc, 
@@ -62,7 +48,6 @@ function App() {
       if (isAuthenticated && currentUser) {
         setIsLoading(true);
         try {
-          // Agora passamos o NOME para o filtro caso não seja admin, para manter consistência com o que é salvo
           const identifier = currentUser.role === 'admin' ? currentUser.email : currentUser.name;
           const data = await StorageService.getHistory(identifier, currentUser.role === 'admin');
           setHistory(data);
@@ -106,7 +91,6 @@ function App() {
 
   const handleSaveHistory = async (item: ProposalHistoryItem) => {
     try {
-      // Alterado para salvar o NOME do usuário no createdBy para exibição no histórico
       const itemWithCreator = { ...item, createdBy: currentUser?.name || currentUser?.email };
       const savedItem = await StorageService.addHistoryItem(itemWithCreator);
       setHistory(prev => [savedItem, ...prev]);
@@ -223,6 +207,7 @@ function App() {
             </div>
 
             <PricingCalculator 
+              currentUser={currentUser}
               onSaveHistory={handleSaveHistory} 
               initialData={editingItem?.type === 'standard' ? editingItem : null}
               canGenerateProposal={currentUser?.canGenerateProposal || currentUser?.role === 'admin'}

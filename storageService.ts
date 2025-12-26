@@ -1,4 +1,3 @@
-
 import { ProposalHistoryItem, User, AccessLogEntry } from './types';
 import { supabase } from './supabaseClient';
 
@@ -14,10 +13,11 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     cnpj: data.cnpj || '',
     initialTotal: data.initial_total || data.initialTotal || data.valor_total || data.total || data.value || 0,
     numEmployees: data.num_employees || 0,
+    externalLivesCount: data.external_lives_count || 0,
     plan: data.plan || '',
     riskLevel: data.risk_level || '',
     fidelity: data.fidelity || '',
-    // Fix: Use correct camelCase property name from types.ts
+    // Fix: Use 'selectedUnit' instead of 'selected_unit' to match the ProposalHistoryItem interface
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
     docDeliveryDate: data.doc_delivery_date,
@@ -65,19 +65,20 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     id: item.id,
     type: item.type,
     cnpj: item.cnpj,
-    company_name: item.companyName, // Alterado de company para company_name
+    company_name: item.companyName, 
     contact_name: item.contactName,
     initial_total: item.initialTotal,
     created_by: item.createdBy,
     taxa_in_company: item.taxaInCompany,
     margem_atendimento_valor: item.margemAtendimentoValor,
     imposto_aplicado: item.impostoAplicado,
-    comissao_aplicada: item.comissaoAplicada,
+    comissaoAplicada: item.comissaoAplicada,
     num_employees: item.numEmployees,
+    external_lives_count: item.externalLivesCount,
     plan: item.plan,
+    // Fix: corrected property name from risk_level to riskLevel to match ProposalHistoryItem interface
     risk_level: item.riskLevel,
     fidelity: item.fidelity,
-    // Fix: Use correct camelCase property name from types.ts
     selected_unit: item.selectedUnit,
     client_delivery_date: item.clientDeliveryDate,
     doc_delivery_date: item.docDeliveryDate,
@@ -100,20 +101,16 @@ export const StorageService = {
   getHistory: async (identifier?: string, isAdmin: boolean = false): Promise<ProposalHistoryItem[]> => {
     try {
       let query = supabase.from('reque_proposals').select('*');
-      
-      // Se não for admin, filtra pelo identificador (que agora pode ser Nome ou Email)
       if (!isAdmin && identifier) {
         query = query.eq('created_by', identifier);
       }
-      
       const { data, error } = await query;
       if (error) throw error;
       return (data || []).map(mapProposalData).sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
     } catch (error: any) {
-      const msg = error?.message || error?.details || JSON.stringify(error);
-      console.error('Erro ao buscar histórico:', msg);
+      console.error('Erro ao buscar histórico:', error?.message || error);
       return [];
     }
   },
@@ -125,9 +122,7 @@ export const StorageService = {
       if (error) throw error;
       return mapProposalData(data);
     } catch (error: any) {
-      const msg = error?.message || error?.details || JSON.stringify(error);
-      console.error('Erro ao salvar proposta:', msg);
-      throw new Error(msg);
+      throw new Error(error?.message || 'Erro ao salvar proposta');
     }
   },
 
@@ -136,9 +131,7 @@ export const StorageService = {
       const { error } = await supabase.from('reque_proposals').delete().eq('id', id);
       if (error) throw error;
     } catch (error: any) {
-      const msg = error?.message || error?.details || JSON.stringify(error);
-      console.error('Erro ao deletar proposta:', msg);
-      throw new Error(msg);
+      throw new Error(error?.message || 'Erro ao deletar proposta');
     }
   },
 
@@ -148,8 +141,7 @@ export const StorageService = {
       if (error) throw error;
       return !data ? null : mapUserData(data);
     } catch (error: any) {
-      const msg = error?.message || JSON.stringify(error);
-      throw new Error(msg);
+      throw new Error(error?.message || 'Erro no login');
     }
   },
 
@@ -202,6 +194,7 @@ export const StorageService = {
         userAgent: l.user_agent || ''
       })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } catch (error: any) {
+      console.error('Erro ao buscar logs:', error?.message || error);
       return [];
     }
   },
@@ -216,10 +209,52 @@ export const StorageService = {
         user_agent: navigator.userAgent
       };
       await supabase.from('reque_access_logs').insert([dbLog]);
-    } catch (e) {}
+    } catch {}
   },
 
   clearLogs: async () => {
     await supabase.from('reque_access_logs').delete().not('id', 'is', null);
+  },
+
+  getPaymentSettings: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('reque_payment_settings')
+        .select('*')
+        .order('installment_number', { ascending: true });
+      
+      if (error) {
+        // Se a tabela não existe (42P01), tenta buscar no LocalStorage
+        if (error.code === '42P01') {
+          const localData = localStorage.getItem('reque_local_payment_settings');
+          return localData ? JSON.parse(localData) : [];
+        }
+        throw error;
+      }
+      return data || [];
+    } catch (error: any) {
+      console.warn('Fallback: Usando configurações locais devido a erro no Supabase:', error?.message);
+      const localData = localStorage.getItem('reque_local_payment_settings');
+      return localData ? JSON.parse(localData) : [];
+    }
+  },
+
+  updatePaymentSettings: async (settings: { installment_number: number, interest_rate: number }[]) => {
+    try {
+      // Sempre guarda uma cópia no LocalStorage como backup imediato
+      localStorage.setItem('reque_local_payment_settings', JSON.stringify(settings));
+
+      const { error } = await supabase
+        .from('reque_payment_settings')
+        .upsert(settings, { onConflict: 'installment_number' });
+      
+      if (error) throw error;
+    } catch (error: any) {
+      console.warn('Aviso: Salvo apenas localmente. Erro no Supabase:', error?.message);
+      // Se for erro de tabela inexistente, não lançamos exceção pois já salvou no LocalStorage
+      if (error?.code !== '42P01') {
+        throw error;
+      }
+    }
   }
 };

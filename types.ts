@@ -58,6 +58,8 @@ export interface PricingResult {
   initialPaymentAmount: number;
   isCustomQuote: boolean;
   commercialSummary: string;
+  externalLivesCount: number;
+  schedulingCostTotal: number;
 }
 
 export interface ProposalHistoryItem {
@@ -71,6 +73,7 @@ export interface ProposalHistoryItem {
   selectedUnit?: RequeUnit;
   plan?: PlanType;
   numEmployees?: number;
+  externalLivesCount?: number;
   riskLevel?: RiskLevel;
   monthlyValue?: number;
   initialTotal: number;
