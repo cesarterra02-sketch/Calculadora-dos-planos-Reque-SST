@@ -3,7 +3,7 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { PricingResult, PlanType, FidelityModel, BillingCycle, RequeUnit } from '../types';
 import { PLAN_SERVICES, UNIT_EXAM_TABLES, SYSTEM_FEATURES, ADDITIONAL_SERVICES } from '../constants';
 import { StorageService } from '../storageService';
-import { Printer, Download, Loader2, ArrowLeft, AlertTriangle, Clock, CheckSquare, FileWarning, ClipboardList, CreditCard, Mail, Truck, PlusCircle, Users, Briefcase, Info, ShieldCheck } from 'lucide-react';
+import { Printer, Download, Loader2, ArrowLeft, AlertTriangle, Clock, CheckSquare, FileWarning, ClipboardList, CreditCard, Mail, Truck, PlusCircle, Users, Briefcase, Info, ShieldCheck, Sparkles } from 'lucide-react';
 
 declare var html2pdf: any;
 
@@ -319,7 +319,7 @@ export const ProposalView: React.FC<{
 
             <section className="mb-3 break-inside-avoid w-full">
               <h3 className="text-[9px] font-black text-[#190c59] uppercase mb-2 tracking-widest flex items-center gap-2 border-b-2 border-slate-200 pb-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#ec9d23]"></span> 3. FUNCIONALIDADES DO SISTEMA SOC
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ec9d23]"></span> 3. FUNCIONALIDADES DO SISTEMA SOC INCLUSAS NO PLANO
               </h3>
               <div className="grid grid-cols-3 gap-x-5 gap-y-1.5 p-3 bg-slate-100/60 rounded-2xl border border-slate-200 shadow-inner">
                  {SYSTEM_FEATURES.slice(0, 12).map((feat, idx) => (
@@ -330,6 +330,20 @@ export const ProposalView: React.FC<{
                  ))}
               </div>
             </section>
+
+            {plan === PlanType.PRO && (
+              <section className="mb-3 break-inside-avoid w-full bg-slate-50 border border-reque-navy/10 p-3 rounded-2xl shadow-sm">
+                <h3 className="text-[9px] font-black text-[#190c59] uppercase mb-2 tracking-widest flex items-center gap-2 border-b border-reque-navy/5 pb-1">
+                  <Sparkles className="w-3 h-3 text-[#ec9d23]" /> BENEFÍCIOS EXCLUSIVOS ASSINATURA PRÓ
+                </h3>
+                <ul className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-slate-700 font-bold text-[8px] uppercase tracking-tighter leading-tight">
+                   <li className="flex gap-2"><span className="text-[#ec9d23] font-black">•</span> Inclusões de novos cargos/GHE (Até 20%)</li>
+                   <li className="flex gap-2"><span className="text-[#ec9d23] font-black">•</span> Funcionários ativos no sistema (Até 20%)</li>
+                   <li className="flex gap-2"><span className="text-[#ec9d23] font-black">•</span> Visita técnica bienal (Avaliação de riscos)</li>
+                   <li className="flex gap-2"><span className="text-[#ec9d23] font-black">•</span> Atualização PCMSO p/ cargos contratados</li>
+                </ul>
+              </section>
+            )}
 
             <section className="break-inside-avoid w-full flex-1 flex flex-col justify-start">
               <h3 className="text-[11px] font-black text-[#190c59] uppercase mb-2.5 tracking-widest flex items-center gap-2 border-b-2 border-slate-200 pb-1">
@@ -365,7 +379,7 @@ export const ProposalView: React.FC<{
                        </tr>
                        <tr className="bg-white">
                           <td className="p-3 px-6 font-black text-[#190c59] uppercase border-r border-slate-300 text-center text-[11px] leading-none">Ref. Mensal</td>
-                          <td className="p-3 px-6 text-slate-600 font-bold italic leading-snug text-[10px]">Atendimento, sistema de gestão e envio eSocial<br/><span className="text-[8px] font-black text-[#ec9d23] uppercase tracking-tight">{fidelity === FidelityModel.WITH_FIDELITY ? 'Fidelidade 24 meses' : 'Mensal Livre'}</span></td>
+                          <td className="p-3 px-6 text-slate-600 font-bold italic leading-snug text-[10px]">Revisão Bianual dos riscos, Sistema de Gestão e eSocial<br/><span className="text-[8px] font-black text-[#ec9d23] uppercase tracking-tight">{fidelity === FidelityModel.WITH_FIDELITY ? 'Fidelidade 24 meses' : 'Mensal Livre'}</span></td>
                           <td className="p-3 px-6 text-center font-[900] text-[#190c59] text-[20px] tracking-tighter border-r border-slate-300 leading-none">{formatCurrency(result.monthlyValue)}</td>
                           <td className="p-3 px-6 text-center w-[18%] text-slate-500 font-[900] italic text-[9px] uppercase tracking-tighter">REF. MENSAL</td>
                        </tr>
@@ -436,7 +450,7 @@ export const ProposalView: React.FC<{
                       <PlusCircle className="w-4 h-4 text-[#ec9d23]" /> Visita Técnica
                     </h4>
                     <p className="text-[10px] font-bold leading-relaxed text-slate-600 italic">
-                      Sendo solicitado pela CONTRATANTE, ou por necessidade de cargos, será cobrado <strong className="text-reque-navy">R$ 100,00/hora</strong>, mais <strong className="text-reque-navy">R$ 2,50 por km</strong> rodado. Valor ajustado previamente.
+                      Quando solicitado pela CONTRATANTE, ou nos casos em que o cargo exigir visita técnica, será cobrado o valor de <strong className="text-reque-navy">R$ 100,00 por hora</strong>, acrescido de <strong className="text-reque-navy">R$ 2,50 por quilômetro rodado</strong>, com valores ajustados previamente entre as partes.
                     </p>
                   </div>
                   <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col gap-3 shadow-sm">

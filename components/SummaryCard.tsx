@@ -15,7 +15,8 @@ import {
   Check, 
   Settings, 
   X,
-  CreditCard as CardIcon
+  CreditCard as CardIcon,
+  Sparkles
 } from 'lucide-react';
 
 interface SummaryCardProps {
@@ -136,8 +137,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
             <Calculator className="w-5 h-5 text-[#ec9d23]" />
           </div>
           <div>
-            <h2 className="font-bold text-lg leading-tight uppercase tracking-tight">Resumo de Investimento</h2>
-            <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest">Book Empresarial 2025</p>
+            <h2 className="font-bold text-lg leading-tight uppercase tracking-tight">Resumo da Oferta</h2>
+            <p className="text-[10px] text-white/60 font-bold uppercase tracking-widest">
+              Book Empresarial 2025 • {plan.toUpperCase()}
+            </p>
           </div>
         </div>
         
@@ -159,6 +162,20 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Composição de Valores</h3>
           
           <div className="space-y-3">
+            {/* Item do Plano Selecionado - Nova Inclusão */}
+            <div className="flex justify-between items-start py-3 border-b border-slate-50">
+              <div className="flex gap-3">
+                <div className="mt-0.5"><Sparkles className="w-4 h-4 text-reque-orange opacity-70" /></div>
+                <div>
+                  <p className="text-xs font-bold text-slate-700 uppercase">Plano Selecionado</p>
+                  <p className="text-[10px] text-slate-400 font-medium">Categoria {plan}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] font-black text-reque-navy bg-slate-100 px-2.5 py-1 rounded-md uppercase tracking-tighter">OFERTA ATIVA</span>
+              </div>
+            </div>
+
             {result.programFeeDiscounted && (
               <div className="flex justify-between items-start py-3 border-b border-slate-50">
                 <div className="flex gap-3">
@@ -210,19 +227,21 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             </div>
 
-            <div className="flex justify-between items-start py-3 bg-slate-50/50 px-2 rounded-lg">
-              <div className="flex gap-3">
-                <div className="mt-0.5"><CreditCard className="w-4 h-4 text-reque-blue opacity-50" /></div>
-                <div><p className="text-xs font-bold text-slate-700">Total anual do plano</p></div>
+            {plan !== PlanType.PRO && (
+              <div className="flex justify-between items-start py-3 bg-slate-50/50 px-2 rounded-lg">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><CreditCard className="w-4 h-4 text-reque-blue opacity-50" /></div>
+                  <div><p className="text-xs font-bold text-slate-700">Total anual do plano</p></div>
+                </div>
+                <span className="text-sm font-bold text-[#190c59]">{formatCurrency(assinaturaNoCiclo)}</span>
               </div>
-              <span className="text-sm font-bold text-[#190c59]">{formatCurrency(assinaturaNoCiclo)}</span>
-            </div>
+            )}
           </div>
         </div>
 
         <div className="bg-[#190c59] p-5 rounded-2xl relative overflow-hidden shadow-lg border border-white/10">
            <div className="relative z-10">
-              <span className="text-[10px] font-black text-[#ec9d23] uppercase tracking-[0.25em]">Valor Total da Entrada</span>
+              <span className="text-[10px] font-black text-[#ec9d23] uppercase tracking-[0.25em]">Valor total da Oferta</span>
               <div className="flex items-baseline gap-1 mt-1 text-white">
                  <span className="text-3xl font-black tracking-tighter">
                     {result.isCustomQuote ? 'Sob Consulta' : formatCurrency(finalTotalWithInterest)}
