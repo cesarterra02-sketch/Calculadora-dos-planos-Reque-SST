@@ -16,7 +16,8 @@ import {
   Settings, 
   X,
   CreditCard as CardIcon,
-  Sparkles
+  Sparkles,
+  RefreshCcw
 } from 'lucide-react';
 
 interface SummaryCardProps {
@@ -162,7 +163,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Composição de Valores</h3>
           
           <div className="space-y-3">
-            {/* Item do Plano Selecionado - Nova Inclusão */}
+            {/* Item do Plano Selecionado */}
             <div className="flex justify-between items-start py-3 border-b border-slate-50">
               <div className="flex gap-3">
                 <div className="mt-0.5"><Sparkles className="w-4 h-4 text-reque-orange opacity-70" /></div>
@@ -176,7 +177,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             </div>
 
-            {result.programFeeDiscounted && (
+            {result.programFeeDiscounted && !result.isRenewal && (
               <div className="flex justify-between items-start py-3 border-b border-slate-50">
                 <div className="flex gap-3">
                   <div className="mt-0.5"><ShieldCheck className="w-4 h-4 text-reque-navy opacity-60" /></div>
@@ -193,17 +194,24 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
             <div className="flex justify-between items-start py-3 border-b border-slate-50">
               <div className="flex gap-3">
-                <div className="mt-0.5"><FileCheck className="w-4 h-4 text-reque-blue opacity-50" /></div>
+                <div className="mt-0.5">
+                  {result.isRenewal ? <RefreshCcw className="w-4 h-4 text-reque-orange opacity-70" /> : <FileCheck className="w-4 h-4 text-reque-blue opacity-50" />}
+                </div>
                 <div>
-                  <p className="text-xs font-bold text-slate-700">Programas (PGR e PCMSO)</p>
-                  <p className="text-[10px] text-slate-400">Taxa de elaboração técnica inicial</p>
+                  <p className="text-xs font-bold text-slate-700">{result.isRenewal ? 'Revisão e Manutenção (Programas)' : 'Programas (PGR e PCMSO)'}</p>
+                  <p className="text-[10px] text-slate-400">{result.isRenewal ? 'Ciclo de renovação vigente' : 'Taxa de elaboração técnica inicial'}</p>
                 </div>
               </div>
               <div className="text-right">
                 {result.programFeeDiscounted ? (
                   <div className="flex flex-col items-end">
-                    <span className="text-[11px] font-black text-green-700 bg-green-100 px-3 py-1 rounded-lg border border-green-200">BONIFICAÇÃO</span>
-                    <span className="text-[11px] text-slate-400 line-through font-black mt-1">De {formatCurrency(result.originalProgramFee)}</span>
+                    <span className={`text-[11px] font-black ${result.isRenewal ? 'text-reque-orange bg-orange-50 border-orange-200' : 'text-green-700 bg-green-100 border-green-200'} px-3 py-1 rounded-lg border`}>
+                      {result.isRenewal ? '50% DESCONTO' : 'BONIFICAÇÃO'}
+                    </span>
+                    <div className="flex flex-col items-end mt-1">
+                      {result.isRenewal && <span className="text-[11px] font-black text-reque-navy">{formatCurrency(result.programFee)}</span>}
+                      <span className="text-[11px] text-slate-400 line-through font-black">De {formatCurrency(result.originalProgramFee)}</span>
+                    </div>
                   </div>
                 ) : (
                   <span className="text-sm font-black text-slate-700">{formatCurrency(result.programFee)}</span>
@@ -222,7 +230,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               <div className="text-right flex flex-col items-end">
                 <span className="text-sm font-black text-[#190c59]">{formatCurrency(monthlyBase)}/mês</span>
                 {result.billingCycle === BillingCycle.ANNUAL && (
-                  <span className="text-[9px] font-black text-reque-orange uppercase mt-1">Cobrança anual no Cartão</span>
+                  <span className="text-[9px] font-black text-reque-orange uppercase mt-1">Anual Antecipado</span>
                 )}
               </div>
             </div>

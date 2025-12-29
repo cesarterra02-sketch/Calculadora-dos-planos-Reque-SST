@@ -50,6 +50,7 @@ export interface PricingResult {
   programFee: number;
   originalProgramFee: number;
   programFeeDiscounted: boolean;
+  isRenewal?: boolean;
   riskLevel: RiskLevel;
   clientDeliveryDate: string;
   docDeliveryDate: string;
@@ -78,9 +79,9 @@ export interface ProposalHistoryItem {
   monthlyValue?: number;
   initialTotal: number;
   fidelity?: FidelityModel;
+  isRenewal?: boolean;
   clientDeliveryDate?: string;
   docDeliveryDate?: string;
-  // Campos financeiros para auditoria
   taxaInCompany?: number;
   margemAtendimentoValor?: number;
   impostoAplicado?: number;

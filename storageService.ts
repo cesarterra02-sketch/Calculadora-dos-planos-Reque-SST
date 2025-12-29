@@ -1,3 +1,4 @@
+
 import { ProposalHistoryItem, User, AccessLogEntry } from './types';
 import { supabase } from './supabaseClient';
 
@@ -17,7 +18,7 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     plan: data.plan || '',
     riskLevel: data.risk_level || '',
     fidelity: data.fidelity || '',
-    // Fix: Use 'selectedUnit' instead of 'selected_unit' to match the ProposalHistoryItem interface
+    isRenewal: data.is_renewal || false,
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
     docDeliveryDate: data.doc_delivery_date,
@@ -76,9 +77,9 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     num_employees: item.numEmployees,
     external_lives_count: item.externalLivesCount,
     plan: item.plan,
-    // Fix: corrected property name from risk_level to riskLevel to match ProposalHistoryItem interface
     risk_level: item.riskLevel,
     fidelity: item.fidelity,
+    is_renewal: item.isRenewal,
     selected_unit: item.selectedUnit,
     client_delivery_date: item.clientDeliveryDate,
     doc_delivery_date: item.docDeliveryDate,
@@ -166,6 +167,7 @@ export const StorageService = {
     if (updates.password !== undefined) dbUpdates.password = updates.password;
     if (updates.role !== undefined) dbUpdates.role = updates.role;
     if (updates.isApproved !== undefined) dbUpdates.is_approved = updates.isApproved;
+    // Fix: Use correct camelCase property names from the User interface for comparison
     if (updates.canAccessAdmin !== undefined) dbUpdates.can_access_admin = updates.canAccessAdmin;
     if (updates.canAccessHistory !== undefined) dbUpdates.can_access_history = updates.canAccessHistory;
     if (updates.canAccessInCompany !== undefined) dbUpdates.can_access_incompany = updates.canAccessInCompany;
@@ -224,7 +226,6 @@ export const StorageService = {
         .order('installment_number', { ascending: true });
       
       if (error) {
-        // Se a tabela não existe (42P01), tenta buscar no LocalStorage
         if (error.code === '42P01') {
           const localData = localStorage.getItem('reque_local_payment_settings');
           return localData ? JSON.parse(localData) : [];
@@ -233,7 +234,6 @@ export const StorageService = {
       }
       return data || [];
     } catch (error: any) {
-      console.warn('Fallback: Usando configurações locais devido a erro no Supabase:', error?.message);
       const localData = localStorage.getItem('reque_local_payment_settings');
       return localData ? JSON.parse(localData) : [];
     }
@@ -241,20 +241,13 @@ export const StorageService = {
 
   updatePaymentSettings: async (settings: { installment_number: number, interest_rate: number }[]) => {
     try {
-      // Sempre guarda uma cópia no LocalStorage como backup imediato
       localStorage.setItem('reque_local_payment_settings', JSON.stringify(settings));
-
       const { error } = await supabase
         .from('reque_payment_settings')
         .upsert(settings, { onConflict: 'installment_number' });
-      
       if (error) throw error;
     } catch (error: any) {
-      console.warn('Aviso: Salvo apenas localmente. Erro no Supabase:', error?.message);
-      // Se for erro de tabela inexistente, não lançamos exceção pois já salvou no LocalStorage
-      if (error?.code !== '42P01') {
-        throw error;
-      }
+      if (error?.code !== '42P01') throw error;
     }
   }
 };

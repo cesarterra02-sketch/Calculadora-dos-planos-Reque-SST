@@ -21,7 +21,7 @@ import {
 } from '../constants';
 import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
-import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays } from 'lucide-react';
+import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus } from 'lucide-react';
 
 const formatCNPJ = (value: string) => {
   return value
@@ -74,6 +74,7 @@ export const PricingCalculator: React.FC<{
   const [externalLivesCount, setExternalLivesCount] = useState(0);
   const [riskLevel, setRiskLevel] = useState<RiskLevel>(RiskLevel.RISK_1);
   const [fidelity, setFidelity] = useState<FidelityModel>(FidelityModel.WITH_FIDELITY);
+  const [isRenewal, setIsRenewal] = useState(false);
   const [clientDeliveryDate, setClientDeliveryDate] = useState('');
   const [docDeliveryDate, setDocDeliveryDate] = useState('');
   const [showProposal, setShowProposal] = useState(false);
@@ -86,6 +87,7 @@ export const PricingCalculator: React.FC<{
       setNumEmployees(initialData.numEmployees || 1);
       setExternalLivesCount(initialData.externalLivesCount || 0);
       setFidelity(initialData.fidelity || FidelityModel.WITH_FIDELITY);
+      setIsRenewal(initialData.isRenewal || false);
       setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
       setRiskLevel(initialData.riskLevel || RiskLevel.RISK_1);
       setClientDeliveryDate(initialData.clientDeliveryDate || '');
@@ -113,7 +115,10 @@ export const PricingCalculator: React.FC<{
     const monthlyValue = monthlyBase + schedulingCostTotal;
 
     const isFidelity = fidelity === FidelityModel.WITH_FIDELITY;
-    const programFee = isFidelity ? 0 : programFeeBase;
+    
+    // Regra de Renovação: 50% de desconto na taxa de programas
+    const baseFee = isFidelity ? 0 : programFeeBase;
+    const programFee = isRenewal && !isFidelity ? baseFee * 0.5 : baseFee;
 
     let billingCycle = BillingCycle.MONTHLY;
     if (isFidelity && (activePlan === PlanType.EXPRESS || activePlan === PlanType.ESSENCIAL)) {
@@ -132,8 +137,9 @@ export const PricingCalculator: React.FC<{
       billingCycle,
       paymentMethod,
       programFee,
+      isRenewal,
       originalProgramFee: programFeeBase,
-      programFeeDiscounted: isFidelity,
+      programFeeDiscounted: isFidelity || isRenewal,
       riskLevel,
       clientDeliveryDate,
       docDeliveryDate,
@@ -145,9 +151,9 @@ export const PricingCalculator: React.FC<{
       schedulingCostTotal,
       commercialSummary: isFidelity 
         ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (PGR/PCMSO).${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}` 
-        : `Plano sem fidelidade. Cobrança integral da taxa de elaboração dos programas.${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}`
+        : `${isRenewal ? 'Renovação de plano com 50% de desconto na revisão técnica. ' : 'Plano sem fidelidade. '}Cobrança integral da taxa de elaboração dos programas.${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}`
     };
-  }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate]);
+  }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate, isRenewal]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -169,9 +175,28 @@ export const PricingCalculator: React.FC<{
         <>
           <div className="flex-1 w-full space-y-4">
             <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200/60">
-              <h3 className="text-[11px] font-black text-reque-navy uppercase mb-4 tracking-wider flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
-              </h3>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-[11px] font-black text-reque-navy uppercase tracking-wider flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
+                </h3>
+                
+                {/* Seletor de Tipo de Cliente (Renovação) */}
+                <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
+                  <button 
+                    onClick={() => setIsRenewal(false)}
+                    className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg font-black text-[9px] uppercase transition-all ${!isRenewal ? 'bg-white text-reque-navy shadow-sm ring-1 ring-slate-200' : 'text-slate-400'}`}
+                  >
+                    <UserPlus className="w-3 h-3" /> Cliente Novo
+                  </button>
+                  <button 
+                    onClick={() => setIsRenewal(true)}
+                    className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg font-black text-[9px] uppercase transition-all ${isRenewal ? 'bg-reque-navy text-white shadow-sm' : 'text-slate-400'}`}
+                  >
+                    <RefreshCcw className="w-3 h-3" /> Renovação (50%)
+                  </button>
+                </div>
+              </div>
+              
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                 <div className="md:col-span-7">
                   <div className="relative">
@@ -349,6 +374,7 @@ export const PricingCalculator: React.FC<{
                     numEmployees,
                     externalLivesCount,
                     riskLevel,
+                    isRenewal,
                     monthlyValue: calculationResult.monthlyValue,
                     initialTotal: calculationResult.initialPaymentAmount,
                     fidelity,
