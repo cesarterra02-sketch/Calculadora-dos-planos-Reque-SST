@@ -9,7 +9,6 @@ import {
   Monitor, 
   Calendar, 
   UserCog, 
-  Check, 
   Loader2, 
   Trash2, 
   Lock, 
@@ -264,7 +263,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5 text-slate-300 font-black italic uppercase text-[9px]">
-                            Acesso Web
+                            Acesso Web Standard
                           </div>
                         </td>
                         <td className="px-6 py-4">

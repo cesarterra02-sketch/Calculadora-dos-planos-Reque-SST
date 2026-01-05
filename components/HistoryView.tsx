@@ -158,7 +158,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso Web</span>
+                      <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso Web Standard</span>
                     </td>
                     <td className="px-6 py-4 text-right font-black text-reque-navy">
                       {formatCurrency(item.initialTotal)}
