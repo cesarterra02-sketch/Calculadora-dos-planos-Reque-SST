@@ -80,7 +80,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           const isMasterAdmin = identifier === 'cesguitar' || identifier === 'danielreque';
           
           if (user.isApproved || isMasterAdmin) {
-            // Log de login sem geolocalização
+            // Log de acesso simplificado
             await StorageService.addLog(user, 'LOGIN');
             onLogin(user);
           } else {
