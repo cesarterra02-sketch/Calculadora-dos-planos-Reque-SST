@@ -207,9 +207,10 @@ export const StorageService = {
         action: action,
         user_agent: navigator.userAgent
       };
+      // Gravação direta e estável, sem geolocalização
       await supabase.from('reque_access_logs').insert([dbLog]);
     } catch (err) {
-      console.error("Erro ao registrar log no banco:", err);
+      console.error("Erro crítico ao registrar log no banco:", err);
     }
   },
 
