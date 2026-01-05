@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ProposalHistoryItem, FidelityModel } from '../types';
-import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User } from 'lucide-react';
+import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User, Search, MapPin } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface HistoryViewProps {
@@ -15,6 +15,7 @@ interface HistoryViewProps {
 export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDelete, onBack, isAdmin }) => {
   const [itemToDelete, setItemToDelete] = useState<{ id: string, name: string } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -41,18 +42,39 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
     }
   };
 
+  const filteredHistory = history.filter(item => {
+    const term = searchTerm.toLowerCase();
+    return (
+      item.companyName.toLowerCase().includes(term) ||
+      item.contactName.toLowerCase().includes(term) ||
+      item.cnpj.toLowerCase().includes(term)
+    );
+  });
+
   return (
     <div className="space-y-6 relative">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
         <button 
           onClick={onBack}
-          className="flex items-center gap-2 text-reque-navy font-bold hover:text-reque-blue transition-colors"
+          className="flex items-center gap-2 text-reque-navy font-bold hover:text-reque-blue transition-colors shrink-0"
         >
           <ArrowLeft className="w-5 h-5" />
           Voltar para Calculadora
         </button>
-        <h2 className="text-2xl font-bold text-reque-navy flex items-center gap-3">
+
+        <div className="relative flex-1 max-w-md w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#1a067c]" />
+          <input 
+            type="text" 
+            placeholder="Pesquisa Histórico" 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-white border-2 border-[#1a067c]/30 rounded-lg text-sm font-bold text-reque-navy outline-none focus:border-[#1a067c] transition-all"
+          />
+        </div>
+
+        <h2 className="text-2xl font-bold text-reque-navy flex items-center gap-3 shrink-0">
           <Clock className="w-6 h-6 text-reque-orange" />
           Histórico de Propostas
         </h2>
@@ -72,6 +94,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
             Nova Simulação
           </button>
         </div>
+      ) : filteredHistory.length === 0 ? (
+        <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
+          <Search className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-slate-600">Nenhum resultado encontrado.</h3>
+          <p className="text-slate-400 text-sm mt-1">
+            Tente ajustar os termos da sua pesquisa.
+          </p>
+          <button 
+             onClick={() => setSearchTerm('')}
+             className="mt-6 px-6 py-2 border-2 border-reque-navy text-reque-navy font-bold rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            Limpar Pesquisa
+          </button>
+        </div>
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
@@ -82,13 +118,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                   <th className="px-6 py-4">Tipo</th>
                   <th className="px-6 py-4">Empresa / Contato</th>
                   <th className="px-6 py-4">Criado por</th>
-                  <th className="px-6 py-4">Detalhes</th>
+                  <th className="px-6 py-4">Localização</th>
                   <th className="px-6 py-4 text-right">Valor Total</th>
                   <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {history.map((item) => (
+                {filteredHistory.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
                     <td className="px-6 py-4 whitespace-nowrap">
                        <div className="flex flex-col">
@@ -117,20 +153,19 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-1.5">
                         <User className="w-3 h-3 text-reque-orange opacity-70" />
-                        <span className="text-[10px] font-black text-reque-navy uppercase truncate max-w-[160px]" title={item.createdBy}>
+                        <span className="text-[10px] font-black text-reque-navy uppercase truncate max-w-[120px]" title={item.createdBy}>
                           {item.createdBy || 'Sistema'}
                         </span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {item.type === 'incompany' ? (
-                        <div className="text-xs text-slate-500">
-                          {item.inCompanyDetails?.profs.length} profissionais • {item.inCompanyDetails?.exams.length} exames
+                      {item.city ? (
+                        <div className="flex items-center gap-1.5 text-reque-navy font-bold text-[10px] uppercase">
+                          <MapPin className="w-3 h-3 text-reque-orange shrink-0" />
+                          <span className="truncate max-w-[150px]">{item.city}{item.region ? ` - ${item.region}` : ''}</span>
                         </div>
                       ) : (
-                        <div className="text-xs text-slate-500">
-                          {item.numEmployees} vidas • {item.fidelity === FidelityModel.WITH_FIDELITY ? 'Fidelidade 24m' : 'Sem Fidelidade'}
-                        </div>
+                        <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso via Web - Localização Protegida</span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right font-black text-reque-navy">

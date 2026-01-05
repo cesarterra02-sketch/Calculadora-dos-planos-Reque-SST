@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { User, AccessLogEntry } from '../types';
 import { StorageService } from '../storageService';
+import L from 'leaflet';
 import { 
   Shield, 
   Key, 
@@ -20,7 +21,9 @@ import {
   ShieldCheck,
   UserCheck,
   Calculator,
-  User as UserIcon
+  User as UserIcon,
+  MapPin,
+  Globe
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -30,14 +33,76 @@ interface AdminViewProps {
 export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
   const [users, setUsers] = useState<Omit<User, 'password'>[]>([]);
   const [logs, setLogs] = useState<AccessLogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'map'>('users');
   const [editingPassword, setEditingPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'map' && logs.length > 0 && mapContainerRef.current) {
+      initMap();
+    }
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, [activeTab, logs]);
+
+  const initMap = () => {
+    if (!mapContainerRef.current) return;
+    
+    // Filtra apenas logs que possuem coordenadas
+    const geoLogs = logs.filter(l => l.latitude && l.longitude);
+    
+    const center: L.LatLngExpression = geoLogs.length > 0 
+      ? [geoLogs[0].latitude!, geoLogs[0].longitude!] 
+      : [-15.7801, -47.9292]; // Brasília por padrão
+
+    const map = L.map(mapContainerRef.current).setView(center, 4);
+    mapInstanceRef.current = map;
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    geoLogs.forEach(log => {
+      if (log.latitude && log.longitude) {
+        const marker = L.circleMarker([log.latitude, log.longitude], {
+          radius: 8,
+          fillColor: '#ec9d23',
+          color: '#190c59',
+          weight: 1,
+          opacity: 1,
+          fillOpacity: 0.8
+        }).addTo(map);
+
+        const popupContent = `
+          <div style="font-family: sans-serif; padding: 4px;">
+            <b style="color: #190c59; display: block; margin-bottom: 2px;">${log.userName}</b>
+            <span style="font-size: 10px; color: #64748b;">${log.userEmail}</span>
+            <hr style="margin: 8px 0; border: none; border-top: 1px solid #f1f5f9;">
+            <div style="font-size: 11px; font-weight: bold; color: #ec9d23;">${log.city || 'Desconhecido'}${log.region ? ` - ${log.region}` : ''}</div>
+            <div style="font-size: 9px; color: #94a3b8; margin-top: 4px;">${new Date(log.timestamp).toLocaleString('pt-BR')}</div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent);
+      }
+    });
+
+    if (geoLogs.length > 0) {
+      const group = L.featureGroup(geoLogs.map(l => L.marker([l.latitude!, l.longitude!])));
+      map.fitBounds(group.getBounds().pad(0.1));
+    }
+  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -62,15 +127,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
     if (!user) return;
 
     const newValue = !user[field];
-    
-    // Atualização Otimista
     setUsers(prev => prev.map(u => u.email === email ? { ...u, [field]: newValue } : u));
     
     try {
       await StorageService.updateUser(email, { [field]: newValue });
     } catch (error) {
       alert('Erro ao atualizar permissão no Supabase.');
-      // Reverte se falhar
       setUsers(prev => prev.map(u => u.email === email ? { ...u, [field]: !newValue } : u));
     }
   };
@@ -111,7 +173,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
             <Shield className="w-7 h-7 text-reque-orange" />
             Controle de Acesso & Segurança Cloud
           </h2>
-          <p className="text-slate-500 text-sm font-medium">Gestão granular de usuários e auditoria.</p>
+          <p className="text-slate-500 text-sm font-medium">Gestão granular de usuários e auditoria geográfica.</p>
         </div>
         <button onClick={onBack} className="px-5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm">
           Voltar para Home
@@ -130,6 +192,12 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
           className={`px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'logs' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           <History className="w-4 h-4" /> Log de Auditoria
+        </button>
+        <button 
+          onClick={() => setActiveTab('map')}
+          className={`px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'map' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          <Globe className="w-4 h-4" /> Mapa de Acessos
         </button>
       </div>
 
@@ -175,77 +243,42 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                     </div>
                   </td>
                   
-                  {/* Toggles de Permissão */}
                   <td className="px-4 py-4 text-center">
-                    <button 
-                        onClick={() => togglePermission(user.email, 'isApproved')}
-                        className={`p-2.5 rounded-xl transition-all border ${user.isApproved ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}
-                        title={user.isApproved ? 'Acesso Liberado' : 'Acesso Bloqueado'}
-                    >
-                        {user.isApproved ? <ShieldCheck className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                    <button onClick={() => togglePermission(user.email, 'isApproved')} className={`p-2.5 rounded-xl transition-all border ${user.isApproved ? 'bg-green-50 text-green-700 border-green-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                      {user.isApproved ? <ShieldCheck className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                     </button>
                   </td>
-
                   <td className="px-4 py-4 text-center">
-                    <button 
-                        onClick={() => togglePermission(user.email, 'canAccessAdmin')}
-                        className={`p-2.5 rounded-xl transition-all border ${user.canAccessAdmin ? 'bg-[#190c59] text-white border-[#190c59] shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}
-                        title="Acesso Admin"
-                    >
-                        <UserCheck className="w-4 h-4" />
+                    <button onClick={() => togglePermission(user.email, 'canAccessAdmin')} className={`p-2.5 rounded-xl transition-all border ${user.canAccessAdmin ? 'bg-[#190c59] text-white border-[#190c59] shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
+                      <UserCheck className="w-4 h-4" />
                     </button>
                   </td>
-
                   <td className="px-4 py-4 text-center">
-                    <button 
-                        onClick={() => togglePermission(user.email, 'canAccessCalculator')}
-                        className={`p-2.5 rounded-xl transition-all border ${user.canAccessCalculator ? 'bg-indigo-50 text-indigo-700 border-indigo-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}
-                        title="Acesso Calculadora Planos"
-                    >
-                        <Calculator className="w-4 h-4" />
+                    <button onClick={() => togglePermission(user.email, 'canAccessCalculator')} className={`p-2.5 rounded-xl transition-all border ${user.canAccessCalculator ? 'bg-indigo-50 text-indigo-700 border-indigo-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
+                      <Calculator className="w-4 h-4" />
                     </button>
                   </td>
-
                   <td className="px-4 py-4 text-center">
-                    <button 
-                        onClick={() => togglePermission(user.email, 'canAccessInCompany')}
-                        className={`p-2.5 rounded-xl transition-all border ${user.canAccessInCompany ? 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}
-                        title="Acesso In Company"
-                    >
-                        <Truck className="w-4 h-4" />
+                    <button onClick={() => togglePermission(user.email, 'canAccessInCompany')} className={`p-2.5 rounded-xl transition-all border ${user.canAccessInCompany ? 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
+                      <Truck className="w-4 h-4" />
                     </button>
                   </td>
-
                   <td className="px-4 py-4 text-center">
-                    <button 
-                        onClick={() => togglePermission(user.email, 'canAccessHistory')}
-                        className={`p-2.5 rounded-xl transition-all border ${user.canAccessHistory ? 'bg-blue-50 text-blue-700 border-blue-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}
-                        title="Acesso Histórico"
-                    >
-                        <Clock className="w-4 h-4" />
+                    <button onClick={() => togglePermission(user.email, 'canAccessHistory')} className={`p-2.5 rounded-xl transition-all border ${user.canAccessHistory ? 'bg-blue-50 text-blue-700 border-blue-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
+                      <Clock className="w-4 h-4" />
                     </button>
                   </td>
-
                   <td className="px-4 py-4 text-center">
-                    <button 
-                        onClick={() => togglePermission(user.email, 'canGenerateProposal')}
-                        className={`p-2.5 rounded-xl transition-all border ${user.canGenerateProposal ? 'bg-[#190c59] text-[#ec9d23] border-[#190c59] shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}
-                        title="Gerar Propostas"
-                    >
-                        <FileText className="w-4 h-4" />
+                    <button onClick={() => togglePermission(user.email, 'canGenerateProposal')} className={`p-2.5 rounded-xl transition-all border ${user.canGenerateProposal ? 'bg-[#190c59] text-[#ec9d23] border-[#190c59] shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
+                      <FileText className="w-4 h-4" />
                     </button>
                   </td>
-
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0">
                       {user.role !== 'admin' ? (
                         <>
-                          <button onClick={() => setEditingPassword(user.email)} className="p-2.5 bg-slate-100 text-slate-500 hover:text-reque-navy hover:bg-white border border-transparent hover:border-slate-200 rounded-lg transition-all" title="Trocar Senha">
-                            <Key className="w-4 h-4" />
-                          </button>
-                          <button onClick={() => deleteUser(user.email)} className="p-2.5 bg-slate-100 text-slate-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all" title="Excluir">
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <button onClick={() => setEditingPassword(user.email)} className="p-2.5 bg-slate-100 text-slate-500 hover:text-reque-navy hover:bg-white border border-transparent hover:border-slate-200 rounded-lg transition-all"><Key className="w-4 h-4" /></button>
+                          <button onClick={() => deleteUser(user.email)} className="p-2.5 bg-slate-100 text-slate-500 hover:text-red-600 hover:bg-red-50 border border-transparent hover:border-red-100 rounded-lg transition-all"><Trash2 className="w-4 h-4" /></button>
                         </>
                       ) : (
                         <div className="text-[8px] font-black text-slate-300 italic tracking-[0.2em] bg-slate-50 px-3 py-1 rounded border border-slate-100 uppercase">Master Admin</div>
@@ -257,7 +290,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : activeTab === 'logs' ? (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
              <div>
@@ -276,12 +309,13 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                       <th className="px-6 py-5">Data/Hora</th>
                       <th className="px-6 py-5">Usuário Ativo</th>
                       <th className="px-6 py-5 text-center">Ação</th>
+                      <th className="px-6 py-5">Localização</th>
                       <th className="px-6 py-5">Dispositivo/Agente</th>
                     </tr>
                  </thead>
                  <tbody className="divide-y divide-slate-100">
                    {logs.length === 0 ? (
-                     <tr><td colSpan={4} className="p-16 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">Nenhum log registrado no Supabase.</td></tr>
+                     <tr><td colSpan={5} className="p-16 text-center text-slate-400 text-xs font-bold uppercase tracking-widest">Nenhum log registrado no Supabase.</td></tr>
                    ) : logs.map(log => (
                      <tr key={log.id} className="hover:bg-slate-50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -301,6 +335,18 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                           </span>
                         </td>
                         <td className="px-6 py-4">
+                          {log.city && log.city !== 'Localização desconhecida' ? (
+                            <div className="flex items-center gap-1.5 text-reque-navy font-bold text-[10px] uppercase">
+                              <MapPin className="w-3 h-3 text-reque-orange" />
+                              {log.city}{log.region ? ` - ${log.region}` : ''}
+                            </div>
+                          ) : (
+                            <span className="text-[9px] text-slate-300 font-black italic uppercase">
+                              {log.city || 'Desconhecida'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4">
                            <div className="flex items-center gap-2 text-[9px] text-slate-400 font-bold italic max-w-xs truncate bg-slate-50 p-2 rounded-lg border border-slate-100">
                              <Monitor className="w-3 h-3 shrink-0" />
                              {log.userAgent}
@@ -313,15 +359,35 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
              </div>
           </div>
         </div>
+      ) : (
+        <div className="space-y-4 animate-in fade-in duration-500">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+             <div>
+               <h3 className="text-[10px] font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
+                 <Globe className="w-4 h-4 text-reque-orange" /> Distribuição Geográfica de Acessos
+               </h3>
+               <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Mapa interativo baseado em IPs de login</p>
+             </div>
+          </div>
+          <div 
+            ref={mapContainerRef} 
+            className="w-full h-[600px] bg-slate-100 rounded-3xl border border-slate-200 overflow-hidden shadow-inner z-0"
+          >
+            {logs.filter(l => l.latitude).length === 0 && (
+              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
+                <Globe className="w-12 h-12 opacity-20" />
+                <p className="text-xs font-black uppercase tracking-[0.2em]">Sem dados geográficos para exibir.</p>
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {editingPassword && (
-        <div className="fixed inset-0 z-[100] bg-reque-navy/70 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
-           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-white/20 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-[100] bg-reque-navy/70 backdrop-blur-md flex items-center justify-center p-4">
+           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-white/20">
               <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 bg-reque-orange/10 rounded-2xl border border-reque-orange/20 shadow-sm">
-                  <Key className="w-6 h-6 text-reque-orange" />
-                </div>
+                <div className="p-3 bg-reque-orange/10 rounded-2xl border border-reque-orange/20 shadow-sm"><Key className="w-6 h-6 text-reque-orange" /></div>
                 <div>
                    <h3 className="font-black text-reque-navy uppercase tracking-tight text-lg leading-none">Redefinição</h3>
                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 truncate max-w-[200px]">{editingPassword}</p>
@@ -330,19 +396,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
               <form onSubmit={handleChangePassword} className="space-y-6">
                  <div>
                    <label className="block text-[10px] font-black text-slate-400 mb-2 uppercase tracking-widest ml-1">Senha Nova Cloud</label>
-                   <input 
-                     type="password" 
-                     autoFocus
-                     required
-                     value={newPassword}
-                     onChange={e => setNewPassword(e.target.value)}
-                     className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-reque-navy focus:ring-4 focus:ring-reque-navy/5 text-sm font-bold transition-all"
-                     placeholder="Min. 4 caracteres"
-                   />
+                   <input type="password" autoFocus required value={newPassword} onChange={e => setNewPassword(e.target.value)} className="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold" placeholder="Min. 4 caracteres" />
                  </div>
                  <div className="flex gap-3 pt-2">
                     <button type="button" onClick={() => setEditingPassword(null)} className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-slate-100 rounded-xl hover:bg-slate-200 transition-all">Cancelar</button>
-                    <button type="submit" className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-white bg-[#190c59] rounded-xl hover:bg-reque-blue shadow-xl shadow-reque-navy/20 transition-all">Alterar Agora</button>
+                    <button type="submit" className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-white bg-[#190c59] rounded-xl hover:bg-reque-blue shadow-xl transition-all">Alterar Agora</button>
                  </div>
               </form>
            </div>

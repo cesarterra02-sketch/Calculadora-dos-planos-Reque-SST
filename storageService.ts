@@ -19,13 +19,18 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     riskLevel: data.risk_level || '',
     fidelity: data.fidelity || '',
     isRenewal: data.is_renewal || false,
+    // Fix: Using selectedUnit instead of selected_unit as per ProposalHistoryItem interface
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
     docDeliveryDate: data.doc_delivery_date,
     taxaInCompany: data.taxa_in_company,
     margemAtendimentoValor: data.margem_atendimento_valor,
-    impostoAplicado: data.imposto_aplicado,
+    impostoAplicado: data.imposto_api_aplicado || data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
+    city: data.city,
+    region: data.region,
+    latitude: data.latitude,
+    longitude: data.longitude,
     inCompanyDetails: data.in_company_details
   };
 };
@@ -73,7 +78,7 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     taxa_in_company: item.taxaInCompany,
     margem_atendimento_valor: item.margemAtendimentoValor,
     imposto_aplicado: item.impostoAplicado,
-    comissaoAplicada: item.comissaoAplicada,
+    comissao_aplicada: item.comissaoAplicada,
     num_employees: item.numEmployees,
     external_lives_count: item.externalLivesCount,
     plan: item.plan,
@@ -82,7 +87,12 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     is_renewal: item.isRenewal,
     selected_unit: item.selectedUnit,
     client_delivery_date: item.clientDeliveryDate,
+    // Fix: Changed item.doc_delivery_date to item.docDeliveryDate to match interface
     doc_delivery_date: item.docDeliveryDate,
+    city: item.city,
+    region: item.region,
+    latitude: item.latitude,
+    longitude: item.longitude,
     in_company_details: item.inCompanyDetails
   };
 
@@ -167,7 +177,6 @@ export const StorageService = {
     if (updates.password !== undefined) dbUpdates.password = updates.password;
     if (updates.role !== undefined) dbUpdates.role = updates.role;
     if (updates.isApproved !== undefined) dbUpdates.is_approved = updates.isApproved;
-    // Fix: Use correct camelCase property names from the User interface for comparison
     if (updates.canAccessAdmin !== undefined) dbUpdates.can_access_admin = updates.canAccessAdmin;
     if (updates.canAccessHistory !== undefined) dbUpdates.can_access_history = updates.canAccessHistory;
     if (updates.canAccessInCompany !== undefined) dbUpdates.can_access_incompany = updates.canAccessInCompany;
@@ -193,7 +202,11 @@ export const StorageService = {
         userName: l.user_name || 'Usuário',
         userEmail: l.user_email || '',
         action: l.action,
-        userAgent: l.user_agent || ''
+        userAgent: l.user_agent || '',
+        city: l.city,
+        region: l.region,
+        latitude: l.latitude,
+        longitude: l.longitude
       })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } catch (error: any) {
       console.error('Erro ao buscar logs:', error?.message || error);
@@ -201,17 +214,23 @@ export const StorageService = {
     }
   },
 
-  addLog: async (user: User | {name: string, email: string}, action: string) => {
+  addLog: async (user: User | {name: string, email: string}, action: string, geoData?: {city?: string, region?: string, latitude?: number, longitude?: number}) => {
     try {
       const dbLog = {
         id: crypto.randomUUID(),
         user_name: user.name,
         user_email: user.email,
         action: action,
-        user_agent: navigator.userAgent
+        user_agent: navigator.userAgent,
+        city: geoData?.city,
+        region: geoData?.region,
+        latitude: geoData?.latitude,
+        longitude: geoData?.longitude
       };
       await supabase.from('reque_access_logs').insert([dbLog]);
-    } catch {}
+    } catch (err) {
+      console.error("Erro ao registrar log no banco:", err);
+    }
   },
 
   clearLogs: async () => {

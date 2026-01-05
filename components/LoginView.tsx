@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User as UserIcon, Lock, ArrowRight, Loader2, ShieldCheck, UserCircle, AlertCircle } from 'lucide-react';
 import { User } from '../types';
 import { StorageService } from '../storageService';
+import { supabase } from '../supabaseClient';
 
 interface LoginViewProps {
   onLogin: (user: User) => void;
@@ -17,6 +18,38 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  /**
+   * Captura dados geográficos invocando a Edge Function.
+   * Isso elimina erros de CORS e "Failed to Fetch" presentes no client-side.
+   */
+  const fetchGeoData = async () => {
+    const fallback = {
+      city: 'ACESSO VIA WEB - LOCALIZAÇÃO PROTEGIDA',
+      region: '',
+      latitude: undefined,
+      longitude: undefined
+    };
+
+    try {
+      const { data, error: functionError } = await supabase.functions.invoke('get-location');
+
+      if (functionError || !data) {
+        console.log(`Erro na Edge Function: ${functionError?.message || 'Sem resposta'}`);
+        return fallback;
+      }
+      
+      return {
+        city: data.city || fallback.city,
+        region: data.region || '',
+        latitude: data.latitude,
+        longitude: data.longitude
+      };
+    } catch (e: any) {
+      console.log(`Erro crítico na chamada da Edge Function: ${e.message || String(e)}`);
+      return fallback;
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,9 +70,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         let existingUser = null;
         try {
           existingUser = await StorageService.getUserForLogin(identifier);
-        } catch (e) {
-          // Ignora erro de busca inicial no registro
-        }
+        } catch (e) {}
         
         if (existingUser) {
           setError('Este usuário já está cadastrado no sistema.');
@@ -82,7 +113,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           const isMasterAdmin = identifier === 'cesguitar' || identifier === 'danielreque';
           
           if (user.isApproved || isMasterAdmin) {
-            await StorageService.addLog(user, 'LOGIN');
+            // Captura geolocalização via Servidor (Edge Function) para evitar bloqueios do navegador
+            fetchGeoData().then(geoData => {
+              StorageService.addLog(user, 'LOGIN', geoData);
+              sessionStorage.setItem('reque_current_geo', JSON.stringify(geoData));
+            }).catch(err => {
+              console.log("Falha no processamento de geolocalização:", err);
+              StorageService.addLog(user, 'LOGIN', { city: 'ACESSO VIA WEB - LOCALIZAÇÃO PROTEGIDA' });
+            });
+
             onLogin(user);
           } else {
             setError('Seu cadastro está pendente de aprovação pela administração.');
@@ -93,27 +132,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       }
     } catch (err: any) {
       console.error('Erro detalhado na operação:', err);
-      
-      let technicalMsg = '';
-      if (err && typeof err === 'object') {
-        const msg = err.message || '';
-        const details = err.details ? (typeof err.details === 'object' ? JSON.stringify(err.details) : err.details) : '';
-        const hint = err.hint || '';
-        
-        technicalMsg = [msg, details, hint].filter(Boolean).join(' | ');
-        
-        if (!technicalMsg) {
-          try {
-            technicalMsg = JSON.stringify(err);
-          } catch (e) {
-            technicalMsg = String(err);
-          }
-        }
-      } else {
-        technicalMsg = String(err);
-      }
-
-      setError(`Erro no Servidor: ${technicalMsg}`);
+      setError(`Erro no Servidor: ${err.message || String(err)}`);
     } finally {
       setIsLoading(false);
     }

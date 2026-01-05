@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PricingResult, BillingCycle, PlanType, User } from '../types';
+import { PricingResult, BillingCycle, PlanType, User, FidelityModel } from '../types';
 import { StorageService } from '../storageService';
 import { 
   Calculator, 
@@ -17,12 +17,14 @@ import {
   X,
   CreditCard as CardIcon,
   Sparkles,
-  RefreshCcw
+  RefreshCcw,
+  Receipt
 } from 'lucide-react';
 
 interface SummaryCardProps {
   result: PricingResult;
   plan: PlanType;
+  fidelity: FidelityModel;
   currentUser: User | null;
   onGenerateProposal?: () => void;
   onSaveHistory?: () => void;
@@ -32,6 +34,7 @@ interface SummaryCardProps {
 export const SummaryCard: React.FC<SummaryCardProps> = ({ 
   result, 
   plan,
+  fidelity,
   currentUser,
   onGenerateProposal, 
   onSaveHistory,
@@ -52,6 +55,14 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     setIsSaved(false);
     loadInterestRates();
   }, [result]);
+
+  // Regra de segurança: Se o plano for PRO, o máximo de parcelas é 3.
+  // Se o usuário mudar de um plano Express/Essencial com >3 parcelas para PRO, resetamos para 1.
+  useEffect(() => {
+    if (plan === PlanType.PRO && selectedInstallments > 3) {
+      setSelectedInstallments(1);
+    }
+  }, [plan]);
 
   const loadInterestRates = async () => {
     try {
@@ -116,8 +127,17 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     }
   };
 
-  const showInstallments = plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL;
-  const currentInterestRate = interestRates[selectedInstallments] || 0;
+  const isPro = plan === PlanType.PRO;
+  const isNoFidelity = fidelity === FidelityModel.NO_FIDELITY;
+
+  // Regra 3. SST PRÓ: Parcelamento em 3x boleto para sem fidelidade.
+  // Planos Express e Essencial continuam com o parcelamento padrão (até 12x).
+  const showInstallments = plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL || (isPro && isNoFidelity);
+  
+  // Lista de parcelas permitidas
+  const installmentOptions = isPro ? [1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+  const currentInterestRate = isPro ? 0 : (interestRates[selectedInstallments] || 0);
   
   // Lógica Financeira: Valor + Juros
   const interestAmount = (result.initialPaymentAmount * currentInterestRate) / 100;
@@ -129,6 +149,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     : result.monthlyValue;
 
   const monthlyBase = result.monthlyValue - (result.schedulingCostTotal || 0);
+
+  const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
 
   return (
     <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden sticky top-6">
@@ -145,7 +167,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
           </div>
         </div>
         
-        {currentUser?.role === 'admin' && (
+        {currentUser?.role === 'admin' && !isPro && (
           <button 
             onClick={() => {
               setTempRates({...interestRates});
@@ -177,21 +199,23 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             </div>
 
-            {result.programFeeDiscounted && !result.isRenewal && (
+            {/* Linha de Fidelidade Contratual - Descreve apenas o compromisso de prazo */}
+            {isFidelityActive && (
               <div className="flex justify-between items-start py-3 border-b border-slate-50">
                 <div className="flex gap-3">
                   <div className="mt-0.5"><ShieldCheck className="w-4 h-4 text-reque-navy opacity-60" /></div>
                   <div>
                     <p className="text-xs font-bold text-slate-700">Fidelidade Contratual</p>
-                    <p className="text-[10px] text-slate-400 font-medium">Período de permanência mínima</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Permanência de 24 Meses</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-black text-white bg-reque-navy px-2.5 py-1 rounded-md uppercase tracking-widest">24 Meses</span>
+                  <span className="text-[10px] font-black text-reque-navy bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-tighter border border-indigo-100">ATIVO</span>
                 </div>
               </div>
             )}
 
+            {/* Linha de Revisão e Manutenção / Programas - Detalhamento Financeiro do Serviço */}
             <div className="flex justify-between items-start py-3 border-b border-slate-50">
               <div className="flex gap-3">
                 <div className="mt-0.5">
@@ -203,13 +227,22 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                 </div>
               </div>
               <div className="text-right">
-                {result.programFeeDiscounted ? (
+                {isFidelityActive ? (
                   <div className="flex flex-col items-end">
-                    <span className={`text-[11px] font-black ${result.isRenewal ? 'text-reque-orange bg-orange-50 border-orange-200' : 'text-green-700 bg-green-100 border-green-200'} px-3 py-1 rounded-lg border`}>
-                      {result.isRenewal ? '50% DESCONTO' : 'BONIFICAÇÃO'}
+                    <span className="text-[11px] font-black text-green-700 bg-green-100 border-green-200 px-3 py-1 rounded-lg border">
+                      BONIFICAÇÃO
                     </span>
                     <div className="flex flex-col items-end mt-1">
-                      {result.isRenewal && <span className="text-[11px] font-black text-reque-navy">{formatCurrency(result.programFee)}</span>}
+                      <span className="text-[11px] text-slate-400 line-through font-black">De {formatCurrency(result.originalProgramFee)}</span>
+                    </div>
+                  </div>
+                ) : result.isRenewal ? (
+                  <div className="flex flex-col items-end">
+                    <span className="text-[11px] font-black text-reque-orange bg-orange-50 border-orange-200 px-3 py-1 rounded-lg border">
+                      50% DESCONTO
+                    </span>
+                    <div className="flex flex-col items-end mt-1">
+                      <span className="text-[11px] font-black text-reque-navy">{formatCurrency(result.programFee)}</span>
                       <span className="text-[11px] text-slate-400 line-through font-black">De {formatCurrency(result.originalProgramFee)}</span>
                     </div>
                   </div>
@@ -235,7 +268,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             </div>
 
-            {plan !== PlanType.PRO && (
+            {/* O campo 'Total anual do plano' só é exibido se houver fidelidade (ciclo anual) e o plano não for PRO */}
+            {plan !== PlanType.PRO && isFidelityActive && (
               <div className="flex justify-between items-start py-3 bg-slate-50/50 px-2 rounded-lg">
                 <div className="flex gap-3">
                   <div className="mt-0.5"><CreditCard className="w-4 h-4 text-reque-blue opacity-50" /></div>
@@ -260,15 +294,16 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                 <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] font-bold text-white/60 uppercase flex items-center gap-2">
-                      <CardIcon className="w-3.5 h-3.5 text-[#ec9d23]" /> Simular Parcelamento
+                      {isPro ? <Receipt className="w-3.5 h-3.5 text-[#ec9d23]" /> : <CardIcon className="w-3.5 h-3.5 text-[#ec9d23]" />} 
+                      {isPro ? 'Parcelamento em Boleto' : 'Simular Parcelamento'}
                     </label>
                     <select 
                       value={selectedInstallments}
                       onChange={(e) => setSelectedInstallments(parseInt(e.target.value))}
                       className="bg-white/10 border border-white/20 rounded-lg text-white text-[11px] font-bold py-1 px-2 outline-none"
                     >
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
-                        const rate = interestRates[n] || 0;
+                      {installmentOptions.map(n => {
+                        const rate = isPro ? 0 : (interestRates[n] || 0);
                         return (
                           <option key={n} value={n} className="bg-[#190c59] text-white">
                             {n}x {rate > 0 ? `(+${rate.toFixed(2)}%)` : n > 1 ? '(Sem Juros)' : ''}
@@ -291,7 +326,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                         <p className="text-[9px] text-green-400 font-bold uppercase mt-0.5">Parcelamento Isento</p>
                       ) : null}
                     </div>
-                    {selectedInstallments > 1 && (
+                    {selectedInstallments > 1 && !isPro && (
                       <div className="text-right">
                         <span className="text-[8px] font-black text-white/30 uppercase block mb-0.5">Acréscimo Juros</span>
                         <span className="text-[10px] font-black text-white/60 bg-white/5 px-2 py-1 rounded">

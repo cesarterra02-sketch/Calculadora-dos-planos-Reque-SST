@@ -360,6 +360,7 @@ export const PricingCalculator: React.FC<{
               <SummaryCard 
                 result={calculationResult} 
                 plan={activePlan}
+                fidelity={fidelity}
                 currentUser={currentUser}
                 onSaveHistory={() => {
                   return onSaveHistory({
