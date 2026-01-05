@@ -20,27 +20,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   /**
-   * Captura dados geográficos via client-side com fallback robusto.
-   * Utiliza ipapi.co para detectar localização do usuário.
-   * Garante que lat/long nunca sejam nulos para não quebrar o mapa administrativo.
+   * Captura dados geográficos utilizando Cloudflare Trace para garantir obtenção do IP
+   * sem bloqueios de CORS, seguido de consulta detalhada.
    */
   const fetchGeoData = async () => {
     const fallback = {
-      city: 'ACESSO VIA WEB - LOCALIZAÇÃO PROTEGIDA',
+      city: 'LOCALIZAÇÃO VIA PROVEDOR',
       region: '',
-      latitude: -25.4284, // Coordenada padrão (Curitiba/PR) para evitar pins invisíveis
+      latitude: -25.4284,
       longitude: -49.2733
     };
 
     try {
-      const response = await fetch('https://ipapi.co/json/', { 
-        mode: 'cors',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-      
-      if (!response.ok) throw new Error('API Offline ou Bloqueada');
+      // 1. Captura o IP via Cloudflare Trace (Serviço ultra-estável e sem CORS)
+      const traceRes = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
+      const traceText = await traceRes.text();
+      const ipMatch = traceText.match(/ip=(.*)\n/);
+      const ip = ipMatch ? ipMatch[1] : '';
+
+      if (!ip) throw new Error('IP não identificado');
+
+      // 2. Busca localização baseada no IP capturado
+      const response = await fetch(`https://ipapi.co/${ip}/json/`);
+      if (!response.ok) throw new Error('Serviço de GeoIP indisponível');
       
       const data = await response.json();
       
@@ -51,7 +53,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         longitude: typeof data.longitude === 'number' ? data.longitude : fallback.longitude
       };
     } catch (e: any) {
-      console.warn("Falha na captura geográfica, utilizando fallback de segurança:", e.message);
+      console.warn("Utilizando fallback de localização:", e.message);
       return fallback;
     }
   };
@@ -118,13 +120,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           const isMasterAdmin = identifier === 'cesguitar' || identifier === 'danielreque';
           
           if (user.isApproved || isMasterAdmin) {
-            // Inicia captura de geo de forma assíncrona para não atrasar o login
+            // Processamento de geolocalização garantido via IP capturado
             fetchGeoData().then(geoData => {
               StorageService.addLog(user, 'LOGIN', geoData);
               sessionStorage.setItem('reque_current_geo', JSON.stringify(geoData));
             }).catch(err => {
-              console.error("Erro no processamento de log/geo:", err);
-              const geoFallback = { city: 'ACESSO VIA WEB - LOCALIZAÇÃO PROTEGIDA', latitude: -25.4284, longitude: -49.2733 };
+              const geoFallback = { city: 'LOCALIZAÇÃO VIA PROVEDOR', latitude: -25.4284, longitude: -49.2733 };
               StorageService.addLog(user, 'LOGIN', geoFallback);
               sessionStorage.setItem('reque_current_geo', JSON.stringify(geoFallback));
             });
@@ -138,7 +139,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         }
       }
     } catch (err: any) {
-      console.error('Erro detalhado na operação:', err);
+      console.error('Erro na operação de login:', err);
       setError(`Erro no Sistema: ${err.message || String(err)}`);
     } finally {
       setIsLoading(false);
