@@ -1,7 +1,5 @@
 {
   "name": "SST Pricing Expert",
   "description": "A professional pricing calculator for SST (Health and Safety) subscriptions, simulating corporate spreadsheet logic for plans, employee ranges, and fidelity rules.",
-  "requestFramePermissions": [
-    "geolocation"
-  ]
+  "requestFramePermissions": []
 }

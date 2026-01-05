@@ -7,9 +7,8 @@ import { LoginView } from './components/LoginView';
 import { AdminView } from './components/AdminView';
 import { ProposalHistoryItem, ViewType, User } from './types';
 import { StorageService } from './storageService';
-
-// Importações do Lucide corrigidas
 import * as LucideIcons from 'lucide-react';
+
 const { 
   Calculator: Calc, 
   LogOut: Exit, 
@@ -87,21 +86,13 @@ function App() {
     setCurrentView('calculator');
     setEditingItem(null);
     setHistory([]);
-    sessionStorage.removeItem('reque_current_geo');
   };
 
   const handleSaveHistory = async (item: ProposalHistoryItem) => {
     try {
-      const geoStr = sessionStorage.getItem('reque_current_geo');
-      const geoData = geoStr ? JSON.parse(geoStr) : {};
-      
       const itemWithCreator = { 
         ...item, 
-        createdBy: currentUser?.name || currentUser?.email,
-        city: geoData.city,
-        region: geoData.region,
-        latitude: geoData.latitude,
-        longitude: geoData.longitude
+        createdBy: currentUser?.name || currentUser?.email
       };
       
       const savedItem = await StorageService.addHistoryItem(itemWithCreator);

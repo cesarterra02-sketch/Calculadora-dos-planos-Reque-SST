@@ -86,10 +86,6 @@ export interface ProposalHistoryItem {
   margemAtendimentoValor?: number;
   impostoAplicado?: number;
   comissaoAplicada?: number;
-  city?: string;
-  region?: string;
-  latitude?: number;
-  longitude?: number;
   inCompanyDetails?: {
     profs: ProfessionalInCompany[];
     vehicles: VehicleInCompany[];
@@ -109,10 +105,6 @@ export interface AccessLogEntry {
   userEmail: string;
   userAgent: string;
   action: 'LOGIN' | 'LOGOUT' | 'PASSWORD_CHANGE';
-  city?: string;
-  region?: string;
-  latitude?: number;
-  longitude?: number;
 }
 
 export interface User {

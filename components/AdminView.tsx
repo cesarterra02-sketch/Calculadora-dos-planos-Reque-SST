@@ -1,8 +1,7 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, AccessLogEntry } from '../types';
 import { StorageService } from '../storageService';
-import L from 'leaflet';
 import { 
   Shield, 
   Key, 
@@ -14,16 +13,13 @@ import {
   Loader2, 
   Trash2, 
   Lock, 
-  Unlock, 
   FileText, 
   Clock, 
   Truck,
   ShieldCheck,
   UserCheck,
   Calculator,
-  User as UserIcon,
-  MapPin,
-  Globe
+  User as UserIcon
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -33,76 +29,14 @@ interface AdminViewProps {
 export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
   const [users, setUsers] = useState<Omit<User, 'password'>[]>([]);
   const [logs, setLogs] = useState<AccessLogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'map'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs'>('users');
   const [editingPassword, setEditingPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
-
-  useEffect(() => {
-    if (activeTab === 'map' && logs.length > 0 && mapContainerRef.current) {
-      initMap();
-    }
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, [activeTab, logs]);
-
-  const initMap = () => {
-    if (!mapContainerRef.current) return;
-    
-    // Filtra apenas logs que possuem coordenadas válidas
-    const geoLogs = logs.filter(l => l.latitude && l.longitude);
-    
-    const center: L.LatLngExpression = geoLogs.length > 0 
-      ? [geoLogs[0].latitude!, geoLogs[0].longitude!] 
-      : [-25.4284, -49.2733]; // Fallback Curitiba
-
-    const map = L.map(mapContainerRef.current).setView(center, 4);
-    mapInstanceRef.current = map;
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    geoLogs.forEach(log => {
-      if (log.latitude && log.longitude) {
-        const marker = L.circleMarker([log.latitude, log.longitude], {
-          radius: 8,
-          fillColor: '#ec9d23',
-          color: '#190c59',
-          weight: 1,
-          opacity: 1,
-          fillOpacity: 0.8
-        }).addTo(map);
-
-        const popupContent = `
-          <div style="font-family: sans-serif; padding: 4px;">
-            <b style="color: #190c59; display: block; margin-bottom: 2px;">${log.userName}</b>
-            <span style="font-size: 10px; color: #64748b;">${log.userEmail}</span>
-            <hr style="margin: 8px 0; border: none; border-top: 1px solid #f1f5f9;">
-            <div style="font-size: 11px; font-weight: bold; color: #ec9d23;">${log.city || 'VIA PROVEDOR'}${log.region ? ` - ${log.region}` : ''}</div>
-            <div style="font-size: 9px; color: #94a3b8; margin-top: 4px;">${new Date(log.timestamp).toLocaleString('pt-BR')}</div>
-          </div>
-        `;
-
-        marker.bindPopup(popupContent);
-      }
-    });
-
-    if (geoLogs.length > 0) {
-      const group = L.featureGroup(geoLogs.map(l => L.marker([l.latitude!, l.longitude!])));
-      map.fitBounds(group.getBounds().pad(0.1));
-    }
-  };
 
   const loadData = async () => {
     setIsLoading(true);
@@ -173,7 +107,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
             <Shield className="w-7 h-7 text-reque-orange" />
             Controle de Acesso & Segurança Cloud
           </h2>
-          <p className="text-slate-500 text-sm font-medium">Gestão granular de usuários e auditoria geográfica.</p>
+          <p className="text-slate-500 text-sm font-medium">Gestão granular de usuários e auditoria de acessos.</p>
         </div>
         <button onClick={onBack} className="px-5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm">
           Voltar para Home
@@ -192,12 +126,6 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
           className={`px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'logs' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           <History className="w-4 h-4" /> Log de Auditoria
-        </button>
-        <button 
-          onClick={() => setActiveTab('map')}
-          className={`px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'map' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-        >
-          <Globe className="w-4 h-4" /> Mapa de Acessos
         </button>
       </div>
 
@@ -290,7 +218,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
             </tbody>
           </table>
         </div>
-      ) : activeTab === 'logs' ? (
+      ) : (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
              <div>
@@ -309,7 +237,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                       <th className="px-6 py-5">Data/Hora</th>
                       <th className="px-6 py-5">Usuário Ativo</th>
                       <th className="px-6 py-5 text-center">Ação</th>
-                      <th className="px-6 py-5">Localização Detectada</th>
+                      <th className="px-6 py-5">Status Local</th>
                       <th className="px-6 py-5">Agente de Acesso</th>
                     </tr>
                  </thead>
@@ -335,17 +263,9 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          {log.city ? (
-                            <div className="flex items-center gap-1.5 text-reque-navy font-bold text-[10px] uppercase">
-                              <MapPin className="w-3 h-3 text-reque-orange shrink-0" />
-                              <span className="truncate max-w-[180px]">{log.city}{log.region ? ` - ${log.region}` : ''}</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-1.5 text-slate-300 font-black italic uppercase text-[9px]">
-                              <MapPin className="w-3 h-3 opacity-30" />
-                              LOCALIZAÇÃO VIA PROVEDOR
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1.5 text-slate-300 font-black italic uppercase text-[9px]">
+                            Acesso Web
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                            <div className="flex items-center gap-2 text-[9px] text-slate-400 font-bold italic max-w-xs truncate bg-slate-50 p-2 rounded-lg border border-slate-100">
@@ -358,28 +278,6 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                  </tbody>
                </table>
              </div>
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-4 animate-in fade-in duration-500">
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
-             <div>
-               <h3 className="text-[10px] font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
-                 <Globe className="w-4 h-4 text-reque-orange" /> Distribuição Geográfica de Acessos
-               </h3>
-               <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">Mapa interativo baseado em dados reais de auditoria</p>
-             </div>
-          </div>
-          <div 
-            ref={mapContainerRef} 
-            className="w-full h-[600px] bg-slate-100 rounded-3xl border border-slate-200 overflow-hidden shadow-inner z-0"
-          >
-            {logs.filter(l => l.latitude).length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-3">
-                <Globe className="w-12 h-12 opacity-20" />
-                <p className="text-xs font-black uppercase tracking-[0.2em]">Sem dados geográficos para exibir.</p>
-              </div>
-            )}
           </div>
         </div>
       )}

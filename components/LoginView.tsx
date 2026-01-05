@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { User as UserIcon, Lock, ArrowRight, Loader2, ShieldCheck, UserCircle, AlertCircle } from 'lucide-react';
 import { User } from '../types';
 import { StorageService } from '../storageService';
-import { supabase } from '../supabaseClient';
 
 interface LoginViewProps {
   onLogin: (user: User) => void;
@@ -18,45 +17,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-  /**
-   * Captura dados geográficos utilizando Cloudflare Trace para garantir obtenção do IP
-   * sem bloqueios de CORS, seguido de consulta detalhada.
-   */
-  const fetchGeoData = async () => {
-    const fallback = {
-      city: 'LOCALIZAÇÃO VIA PROVEDOR',
-      region: '',
-      latitude: -25.4284,
-      longitude: -49.2733
-    };
-
-    try {
-      // 1. Captura o IP via Cloudflare Trace (Serviço ultra-estável e sem CORS)
-      const traceRes = await fetch('https://www.cloudflare.com/cdn-cgi/trace');
-      const traceText = await traceRes.text();
-      const ipMatch = traceText.match(/ip=(.*)\n/);
-      const ip = ipMatch ? ipMatch[1] : '';
-
-      if (!ip) throw new Error('IP não identificado');
-
-      // 2. Busca localização baseada no IP capturado
-      const response = await fetch(`https://ipapi.co/${ip}/json/`);
-      if (!response.ok) throw new Error('Serviço de GeoIP indisponível');
-      
-      const data = await response.json();
-      
-      return {
-        city: (data.city || fallback.city).toUpperCase(),
-        region: (data.region_code || data.region || '').toUpperCase(),
-        latitude: typeof data.latitude === 'number' ? data.latitude : fallback.latitude,
-        longitude: typeof data.longitude === 'number' ? data.longitude : fallback.longitude
-      };
-    } catch (e: any) {
-      console.warn("Utilizando fallback de localização:", e.message);
-      return fallback;
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,16 +80,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           const isMasterAdmin = identifier === 'cesguitar' || identifier === 'danielreque';
           
           if (user.isApproved || isMasterAdmin) {
-            // Processamento de geolocalização garantido via IP capturado
-            fetchGeoData().then(geoData => {
-              StorageService.addLog(user, 'LOGIN', geoData);
-              sessionStorage.setItem('reque_current_geo', JSON.stringify(geoData));
-            }).catch(err => {
-              const geoFallback = { city: 'LOCALIZAÇÃO VIA PROVEDOR', latitude: -25.4284, longitude: -49.2733 };
-              StorageService.addLog(user, 'LOGIN', geoFallback);
-              sessionStorage.setItem('reque_current_geo', JSON.stringify(geoFallback));
-            });
-
+            // Log de login sem geolocalização
+            await StorageService.addLog(user, 'LOGIN');
             onLogin(user);
           } else {
             setError('Seu cadastro está pendente de aprovação pela administração.');

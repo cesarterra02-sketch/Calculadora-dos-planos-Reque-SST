@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { ProposalHistoryItem, FidelityModel } from '../types';
-import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User, Search, MapPin } from 'lucide-react';
+import { ProposalHistoryItem } from '../types';
+import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User, Search } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface HistoryViewProps {
@@ -53,7 +53,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
 
   return (
     <div className="space-y-6 relative">
-      {/* Header */}
       <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
         <button 
           onClick={onBack}
@@ -118,7 +117,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                   <th className="px-6 py-4">Tipo</th>
                   <th className="px-6 py-4">Empresa / Contato</th>
                   <th className="px-6 py-4">Criado por</th>
-                  <th className="px-6 py-4">Localização</th>
+                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Valor Total</th>
                   <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
@@ -159,14 +158,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {item.city ? (
-                        <div className="flex items-center gap-1.5 text-reque-navy font-bold text-[10px] uppercase">
-                          <MapPin className="w-3 h-3 text-reque-orange shrink-0" />
-                          <span className="truncate max-w-[150px]">{item.city}{item.region ? ` - ${item.region}` : ''}</span>
-                        </div>
-                      ) : (
-                        <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso via Web - Localização Protegida</span>
-                      )}
+                      <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso Web</span>
                     </td>
                     <td className="px-6 py-4 text-right font-black text-reque-navy">
                       {formatCurrency(item.initialTotal)}
@@ -181,8 +173,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                           <RotateCcw className="w-3 h-3" />
                           Editar
                         </button>
-                        
-                        {/* Botão de Excluir restrito a Administradores */}
                         {isAdmin && (
                           <button 
                             onClick={(e) => { e.stopPropagation(); setItemToDelete({ id: item.id, name: item.companyName }); }}
@@ -202,7 +192,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO CUSTOMIZADO */}
       {itemToDelete && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">

@@ -19,7 +19,6 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     riskLevel: data.risk_level || '',
     fidelity: data.fidelity || '',
     isRenewal: data.is_renewal || false,
-    // Fix: Using selectedUnit instead of selected_unit as per ProposalHistoryItem interface
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
     docDeliveryDate: data.doc_delivery_date,
@@ -27,10 +26,6 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     margemAtendimentoValor: data.margem_atendimento_valor,
     impostoAplicado: data.imposto_api_aplicado || data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
-    city: data.city,
-    region: data.region,
-    latitude: data.latitude,
-    longitude: data.longitude,
     inCompanyDetails: data.in_company_details
   };
 };
@@ -67,7 +62,7 @@ const sanitizeUserForDb = (user: User) => {
 };
 
 const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
-  const dbObj: any = {
+  return {
     id: item.id,
     type: item.type,
     cnpj: item.cnpj,
@@ -87,16 +82,9 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     is_renewal: item.isRenewal,
     selected_unit: item.selectedUnit,
     client_delivery_date: item.clientDeliveryDate,
-    // Fix: Changed item.doc_delivery_date to item.docDeliveryDate to match interface
     doc_delivery_date: item.docDeliveryDate,
-    city: item.city,
-    region: item.region,
-    latitude: item.latitude,
-    longitude: item.longitude,
     in_company_details: item.inCompanyDetails
   };
-
-  return dbObj;
 };
 
 export const StorageService = {
@@ -202,11 +190,7 @@ export const StorageService = {
         userName: l.user_name || 'Usuário',
         userEmail: l.user_email || '',
         action: l.action,
-        userAgent: l.user_agent || '',
-        city: l.city,
-        region: l.region,
-        latitude: l.latitude,
-        longitude: l.longitude
+        userAgent: l.user_agent || ''
       })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
     } catch (error: any) {
       console.error('Erro ao buscar logs:', error?.message || error);
@@ -214,18 +198,14 @@ export const StorageService = {
     }
   },
 
-  addLog: async (user: User | {name: string, email: string}, action: string, geoData?: {city?: string, region?: string, latitude?: number, longitude?: number}) => {
+  addLog: async (user: User | {name: string, email: string}, action: string) => {
     try {
       const dbLog = {
         id: crypto.randomUUID(),
         user_name: user.name,
         user_email: user.email,
         action: action,
-        user_agent: navigator.userAgent,
-        city: geoData?.city,
-        region: geoData?.region,
-        latitude: geoData?.latitude,
-        longitude: geoData?.longitude
+        user_agent: navigator.userAgent
       };
       await supabase.from('reque_access_logs').insert([dbLog]);
     } catch (err) {
