@@ -20,33 +20,38 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   /**
-   * Captura dados geográficos invocando a Edge Function.
-   * Isso elimina erros de CORS e "Failed to Fetch" presentes no client-side.
+   * Captura dados geográficos via client-side com fallback robusto.
+   * Utiliza ipapi.co para detectar localização do usuário.
+   * Garante que lat/long nunca sejam nulos para não quebrar o mapa administrativo.
    */
   const fetchGeoData = async () => {
     const fallback = {
       city: 'ACESSO VIA WEB - LOCALIZAÇÃO PROTEGIDA',
       region: '',
-      latitude: undefined,
-      longitude: undefined
+      latitude: -25.4284, // Coordenada padrão (Curitiba/PR) para evitar pins invisíveis
+      longitude: -49.2733
     };
 
     try {
-      const { data, error: functionError } = await supabase.functions.invoke('get-location');
-
-      if (functionError || !data) {
-        console.log(`Erro na Edge Function: ${functionError?.message || 'Sem resposta'}`);
-        return fallback;
-      }
+      const response = await fetch('https://ipapi.co/json/', { 
+        mode: 'cors',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      
+      if (!response.ok) throw new Error('API Offline ou Bloqueada');
+      
+      const data = await response.json();
       
       return {
-        city: data.city || fallback.city,
-        region: data.region || '',
-        latitude: data.latitude,
-        longitude: data.longitude
+        city: (data.city || fallback.city).toUpperCase(),
+        region: (data.region_code || data.region || '').toUpperCase(),
+        latitude: typeof data.latitude === 'number' ? data.latitude : fallback.latitude,
+        longitude: typeof data.longitude === 'number' ? data.longitude : fallback.longitude
       };
     } catch (e: any) {
-      console.log(`Erro crítico na chamada da Edge Function: ${e.message || String(e)}`);
+      console.warn("Falha na captura geográfica, utilizando fallback de segurança:", e.message);
       return fallback;
     }
   };
@@ -113,13 +118,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
           const isMasterAdmin = identifier === 'cesguitar' || identifier === 'danielreque';
           
           if (user.isApproved || isMasterAdmin) {
-            // Captura geolocalização via Servidor (Edge Function) para evitar bloqueios do navegador
+            // Inicia captura de geo de forma assíncrona para não atrasar o login
             fetchGeoData().then(geoData => {
               StorageService.addLog(user, 'LOGIN', geoData);
               sessionStorage.setItem('reque_current_geo', JSON.stringify(geoData));
             }).catch(err => {
-              console.log("Falha no processamento de geolocalização:", err);
-              StorageService.addLog(user, 'LOGIN', { city: 'ACESSO VIA WEB - LOCALIZAÇÃO PROTEGIDA' });
+              console.error("Erro no processamento de log/geo:", err);
+              const geoFallback = { city: 'ACESSO VIA WEB - LOCALIZAÇÃO PROTEGIDA', latitude: -25.4284, longitude: -49.2733 };
+              StorageService.addLog(user, 'LOGIN', geoFallback);
+              sessionStorage.setItem('reque_current_geo', JSON.stringify(geoFallback));
             });
 
             onLogin(user);
@@ -132,7 +139,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
       }
     } catch (err: any) {
       console.error('Erro detalhado na operação:', err);
-      setError(`Erro no Servidor: ${err.message || String(err)}`);
+      setError(`Erro no Sistema: ${err.message || String(err)}`);
     } finally {
       setIsLoading(false);
     }
