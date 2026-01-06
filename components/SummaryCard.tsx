@@ -64,6 +64,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     }
   }, [plan]);
 
+  // Fixed: Corrected implementation to handle the array result from StorageService
   const loadInterestRates = async () => {
     try {
       const settings = await StorageService.getPaymentSettings();
@@ -73,7 +74,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
         ratesMap[i] = 0;
       }
       
-      if (settings && settings.length > 0) {
+      // Fixed: Checked settings as an array to satisfy TypeScript
+      if (Array.isArray(settings) && settings.length > 0) {
         settings.forEach((s: any) => {
           ratesMap[s.installment_number] = Number(s.interest_rate) || 0;
         });

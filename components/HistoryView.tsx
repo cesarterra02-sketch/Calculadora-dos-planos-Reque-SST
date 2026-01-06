@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { ProposalHistoryItem } from '../types';
-import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User, Search } from 'lucide-react';
+import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User, Search, TrendingUp } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface HistoryViewProps {
@@ -117,7 +117,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                   <th className="px-6 py-4">Tipo</th>
                   <th className="px-6 py-4">Empresa / Contato</th>
                   <th className="px-6 py-4">Criado por</th>
-                  <th className="px-6 py-4">Status</th>
+                  <th className="px-6 py-4">Status / Margem</th>
                   <th className="px-6 py-4 text-right">Valor Total</th>
                   <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
@@ -158,7 +158,23 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso Web Standard</span>
+                      {item.type === 'incompany' && (item.margemAlvoAplicada !== undefined || item.margemAtendimentoValor !== undefined) ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <TrendingUp className="w-3 h-3 text-green-500" />
+                            <span className="text-[9px] font-black text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase tracking-tighter">
+                              MARGEM ALVO: {item.margemAlvoAplicada || '30'}%
+                            </span>
+                          </div>
+                          {item.margemAtendimentoValor !== undefined && (
+                            <span className="text-[8px] font-bold text-slate-400 italic">
+                              Lucro: {formatCurrency(item.margemAtendimentoValor)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso Web Standard</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right font-black text-reque-navy">
                       {formatCurrency(item.initialTotal)}

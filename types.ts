@@ -84,6 +84,7 @@ export interface ProposalHistoryItem {
   docDeliveryDate?: string;
   taxaInCompany?: number;
   margemAtendimentoValor?: number;
+  margemAlvoAplicada?: number; // Novo campo
   impostoAplicado?: number;
   comissaoAplicada?: number;
   inCompanyDetails?: {

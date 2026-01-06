@@ -63,10 +63,9 @@ export const InCompanyCalculator: React.FC<{
   const [isEarlyDeparture, setIsEarlyDeparture] = useState(initialData?.inCompanyDetails?.isEarlyDeparture || false); 
   const [mealsPerDay, setMealsPerDay] = useState<1 | 2>(initialData?.inCompanyDetails?.mealsPerDay as (1|2) || 1); 
   
-  // Parâmetros Financeiros Modificados conforme solicitado
   const [taxRate, setTaxRate] = useState(initialData?.impostoAplicado || 10); 
   const [comissionRate, setComissionRate] = useState(initialData?.comissaoAplicada || 1); 
-  const [targetMargin, setTargetMargin] = useState(30);
+  const [targetMargin, setTargetMargin] = useState(initialData?.margemAlvoAplicada || 30);
   
   const [printCost, setPrintCost] = useState(0);
   const [hotelCost, setHotelCost] = useState(0);
@@ -216,6 +215,7 @@ export const InCompanyCalculator: React.FC<{
         initialTotal: results.finalValue,
         taxaInCompany: results.taxaInCompany,
         margemAtendimentoValor: results.margemAtendimentoTotal,
+        margemAlvoAplicada: Number(targetMargin), // Gravando o percentual de margem
         impostoAplicado: Number(taxRate),
         comissaoAplicada: Number(comissionRate),
         inCompanyDetails: {

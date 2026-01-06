@@ -24,7 +24,8 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     docDeliveryDate: data.doc_delivery_date,
     taxaInCompany: data.taxa_in_company,
     margemAtendimentoValor: data.margem_atendimento_valor,
-    impostoAplicado: data.imposto_api_aplicado || data.imposto_aplicado,
+    margemAlvoAplicada: data.margem_alvo_aplicada, // Mapeado da coluna snake_case
+    impostoAplicado: data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
     inCompanyDetails: data.in_company_details
   };
@@ -72,8 +73,9 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     created_by: item.createdBy,
     taxa_in_company: item.taxaInCompany,
     margem_atendimento_valor: item.margemAtendimentoValor,
+    margem_alvo_aplicada: item.margemAlvoAplicada, // Frontend -> DB (Margem Alvo)
     imposto_aplicado: item.impostoAplicado,
-    comissao_aplicada: item.comissaoAplicada,
+    comissao_aplicada: item.comissaoAplicada, // Frontend -> DB (Comissão)
     num_employees: item.numEmployees,
     external_lives_count: item.externalLivesCount,
     plan: item.plan,
@@ -207,7 +209,6 @@ export const StorageService = {
         action: action,
         user_agent: navigator.userAgent
       };
-      // Gravação direta e estável, sem geolocalização
       await supabase.from('reque_access_logs').insert([dbLog]);
     } catch (err) {
       console.error("Erro crítico ao registrar log no banco:", err);
@@ -218,36 +219,25 @@ export const StorageService = {
     await supabase.from('reque_access_logs').delete().not('id', 'is', null);
   },
 
-  getPaymentSettings: async () => {
+  getPaymentSettings: async (): Promise<any[]> => {
     try {
       const { data, error } = await supabase
         .from('reque_payment_settings')
-        .select('*')
-        .order('installment_number', { ascending: true });
-      
-      if (error) {
-        if (error.code === '42P01') {
-          const localData = localStorage.getItem('reque_local_payment_settings');
-          return localData ? JSON.parse(localData) : [];
-        }
-        throw error;
-      }
+        .select('*');
+      if (error) throw error;
       return data || [];
     } catch (error: any) {
-      const localData = localStorage.getItem('reque_local_payment_settings');
-      return localData ? JSON.parse(localData) : [];
+      console.error('Erro ao buscar configurações de pagamento:', error);
+      return [];
     }
   },
 
-  updatePaymentSettings: async (settings: { installment_number: number, interest_rate: number }[]) => {
+  updatePaymentSettings: async (settings: { installment_number: number; interest_rate: number }[]): Promise<void> => {
     try {
-      localStorage.setItem('reque_local_payment_settings', JSON.stringify(settings));
-      const { error } = await supabase
-        .from('reque_payment_settings')
-        .upsert(settings, { onConflict: 'installment_number' });
+      const { error } = await supabase.from('reque_payment_settings').upsert(settings, { onConflict: 'installment_number' });
       if (error) throw error;
     } catch (error: any) {
-      if (error?.code !== '42P01') throw error;
+      throw new Error(error?.message || 'Erro ao atualizar configurações de pagamento');
     }
   }
 };

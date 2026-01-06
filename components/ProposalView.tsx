@@ -64,6 +64,7 @@ export const ProposalView: React.FC<{
     return `${day}/${month}/${year}`;
   };
 
+  // Fixed: Corrected implementation to handle the array result from StorageService
   useEffect(() => {
     const loadRates = async () => {
       try {
@@ -71,7 +72,8 @@ export const ProposalView: React.FC<{
         const ratesMap: Record<number, number> = {};
         for (let i = 1; i <= 12; i++) ratesMap[i] = 0;
         
-        if (settings && settings.length > 0) {
+        // Fixed: Checked settings as an array to satisfy TypeScript
+        if (Array.isArray(settings) && settings.length > 0) {
           settings.forEach((s: any) => {
             ratesMap[s.installment_number] = Number(s.interest_rate) || 0;
           });
