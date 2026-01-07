@@ -64,7 +64,10 @@ export const ProposalView: React.FC<{
     return `${day}/${month}/${year}`;
   };
 
-  // Fixed: Corrected implementation to handle the array result from StorageService
+  const isCPF = useMemo(() => {
+    return cnpj.replace(/\D/g, '').length === 11;
+  }, [cnpj]);
+
   useEffect(() => {
     const loadRates = async () => {
       try {
@@ -72,14 +75,12 @@ export const ProposalView: React.FC<{
         const ratesMap: Record<number, number> = {};
         for (let i = 1; i <= 12; i++) ratesMap[i] = 0;
         
-        // Fixed: Checked settings as an array to satisfy TypeScript
         if (Array.isArray(settings) && settings.length > 0) {
           settings.forEach((s: any) => {
             ratesMap[s.installment_number] = Number(s.interest_rate) || 0;
           });
         }
         
-        // Isenção fixa 1-3
         for (let i = 1; i <= 3; i++) ratesMap[i] = 0;
         
         setInterestRates(ratesMap);
@@ -106,7 +107,6 @@ export const ProposalView: React.FC<{
 
   const totalPages = 2 + examPages.length;
 
-  // Mostra parcelamento apenas para planos Express e Essencial
   const showInstallments = plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL;
 
   const handleDownloadPDF = async () => {
@@ -160,6 +160,16 @@ export const ProposalView: React.FC<{
       setIsGenerating(false); 
     }
   };
+
+  const planItemsForPdf = useMemo(() => {
+    const originalItems = PLAN_SERVICES[plan];
+    if (isCPF) {
+      return originalItems.map(item => 
+        item === 'Elaboração de PGR' ? 'Elaboração de PGRTR' : item
+      );
+    }
+    return originalItems;
+  }, [plan, isCPF]);
 
   return (
     <div className="bg-slate-300/50 min-h-screen pb-12 print:bg-white print:p-0">
@@ -237,7 +247,7 @@ export const ProposalView: React.FC<{
                         <span className="break-words leading-tight">{contactName}</span>
                      </div>
                      <div className="flex gap-2 items-center">
-                        <span className="text-slate-500 uppercase text-[7.5px] font-black whitespace-nowrap">CNPJ:</span> 
+                        <span className="text-slate-500 uppercase text-[7.5px] font-black whitespace-nowrap">{isCPF ? 'CPF:' : 'CNPJ:'}</span> 
                         <span className="font-bold">{cnpj || 'Não informado'}</span>
                      </div>
                   </div>
@@ -255,7 +265,7 @@ export const ProposalView: React.FC<{
                   <span className="w-2 h-2 rounded-full bg-[#ec9d23]"></span> 1. ESCOPO DE SERVIÇOS
                 </h3>
                 <ul className="space-y-1 text-slate-700 font-bold text-[9px]">
-                  {PLAN_SERVICES[plan].slice(0, 10).map((s, i) => (
+                  {planItemsForPdf.slice(0, 10).map((s, i) => (
                     <li key={i} className="flex items-center gap-2">
                       <span className="text-[#ec9d23] font-black text-md leading-none">•</span> {s}
                     </li>
@@ -316,223 +326,122 @@ export const ProposalView: React.FC<{
                     <tbody className="divide-y divide-slate-300">
                        <tr className="bg-slate-50/50">
                           <td className="p-3 px-6 font-black text-[#190c59] uppercase border-r border-slate-300 text-center text-[11px] leading-none">{result.rangeLabel}</td>
-                          <td className="p-3 px-6 text-slate-600 font-bold italic leading-snug text-[10px]">{result.isRenewal ? 'Revisão e Manutenção Técnica (PGR / PCMSO)' : 'Programas e Laudos (PGR / PCMSO)'}</td>
+                          <td className="p-3 px-6 text-slate-600 font-bold italic leading-snug text-[10px]">{result.isRenewal ? `Revisão e Manutenção Técnica (${isCPF ? 'PGRTR' : 'PGR'} / PCMSO)` : `Programas e Laudos (${isCPF ? 'PGRTR' : 'PGR'} / PCMSO)`}</td>
                           <td className="p-3 px-6 text-center w-[25%] border-r border-slate-300">
                              <div className="flex flex-col items-center">
-                               {result.isRenewal ? (
+                               {result.programFeeDiscounted ? (
                                   <div className="flex flex-col items-center">
                                     <span className="text-[14px] font-[900] text-[#190c59]">{formatCurrency(result.programFee)}</span>
-                                    <span className="text-slate-400 text-[8px] font-black uppercase tracking-tighter">Renovação (-50%)</span>
+                                    <span className="text-[8px] font-black text-slate-400 line-through">De {formatCurrency(result.originalProgramFee)}</span>
                                   </div>
-                               ) : result.programFeeDiscounted ? (
-                                 <div className="flex flex-col items-center">
-                                   <div className="relative inline-block mb-0.5">
-                                     <span className="text-slate-600 font-black text-[12px] leading-tight">{formatCurrency(result.originalProgramFee)}</span>
-                                     <div className="strikethrough-line"></div>
-                                   </div>
-                                   <span className="text-[#ec9d23] text-[12px] font-[900] leading-none uppercase tracking-tighter">BONIFICADO*</span>
-                                 </div>
                                ) : (
-                                 <span className="text-[14px] font-[900] text-[#190c59]">{formatCurrency(result.programFee)}</span>
+                                  <span className="text-[14px] font-[900] text-[#190c59]">{formatCurrency(result.programFee)}</span>
                                )}
                              </div>
                           </td>
-                          <td className="p-3 px-6 text-center w-[18%] text-slate-500 font-[900] italic text-[9px] uppercase tracking-tighter">ÚNICA</td>
-                       </tr>
-                       <tr className="bg-white">
-                          <td className="p-3 px-6 font-black text-[#190c59] uppercase border-r border-slate-300 text-center text-[11px] leading-none">Ref. Mensal</td>
-                          <td className="p-3 px-6 text-slate-600 font-bold italic leading-snug text-[10px]">Revisão Bianual dos riscos, Sistema de Gestão e eSocial<br/><span className="text-[8px] font-black text-[#ec9d23] uppercase tracking-tight">{fidelity === FidelityModel.WITH_FIDELITY ? 'Fidelidade 24 meses' : 'Mensal Livre'}</span></td>
-                          <td className="p-3 px-6 text-center font-[900] text-[#190c59] text-[20px] tracking-tighter border-r border-slate-300 leading-none">{formatCurrency(result.monthlyValue)}</td>
-                          <td className="p-3 px-6 text-center w-[18%] text-slate-500 font-[900] italic text-[9px] uppercase tracking-tighter">REF. MENSAL</td>
+                          <td className="p-3 px-6 text-center w-[25%] bg-[#ec9d23]/5">
+                             <div className="flex flex-col items-center">
+                                <span className="text-[14px] font-[900] text-[#190c59]">{formatCurrency(result.monthlyValue)}</span>
+                                <span className="text-[7px] font-black text-[#ec9d23] uppercase tracking-widest mt-0.5">Assinatura SST</span>
+                             </div>
+                          </td>
                        </tr>
                     </tbody>
                  </table>
               </div>
               
-              <div className="flex justify-between items-center bg-slate-50 border border-slate-200 p-4 rounded-2xl shadow-sm mb-4">
-                 <div className="flex items-center gap-3">
-                   <ShieldCheck className="w-6 h-6 text-[#ec9d23]" />
-                   <div className="space-y-0.5">
-                     <p className="text-[10px] font-black text-[#190c59] uppercase tracking-widest">Valor total da Oferta</p>
-                     <p className="text-[9px] text-slate-500 font-bold uppercase italic tracking-tighter">Ciclo Inicial ({result.billingCycle === BillingCycle.ANNUAL ? '12 Meses' : '1 Mês'})</p>
-                   </div>
+              <div className="grid grid-cols-2 gap-x-5 mb-3">
+                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3 flex flex-col justify-center shadow-inner">
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-2">
+                       <CreditCard className="w-3.5 h-3.5 text-reque-navy opacity-50" /> FORMA DE PAGAMENTO
+                    </span>
+                    <div className="text-[11px] font-[900] text-reque-navy uppercase flex items-center gap-2">
+                       {result.paymentMethod}
+                       <span className="text-[8px] font-black bg-white px-2 py-0.5 rounded-full border border-slate-200 shadow-sm text-slate-500">{result.billingCycle}</span>
+                    </div>
                  </div>
-                 <div className="text-right">
-                    <div className="text-2xl font-[900] text-[#190c59] tracking-tighter leading-none">{formatCurrency(result.initialPaymentAmount)}</div>
-                    <p className="text-[9px] text-[#ec9d23] font-black uppercase tracking-widest mt-1 border-t border-reque-orange/30 pt-0.5 leading-none">
-                      {result.billingCycle === BillingCycle.ANNUAL ? 'Plano Anual Antecipado' : 'Primeira Mensalidade + Programas'}
-                    </p>
+                 <div className="bg-[#190c59] rounded-2xl p-3 flex flex-col justify-center shadow-lg relative overflow-hidden">
+                    <div className="relative z-10 flex justify-between items-center">
+                       <div>
+                         <span className="text-[8px] font-black text-white/40 uppercase tracking-[0.2em] mb-1 block">VALOR INVESTIMENTO INICIAL</span>
+                         <div className="text-[15px] font-[900] text-[#ec9d23] tracking-tighter leading-none">{formatCurrency(result.initialPaymentAmount)}</div>
+                       </div>
+                       <Sparkles className="w-6 h-6 text-white/10" />
+                    </div>
+                    <div className="absolute top-0 right-0 w-24 h-full bg-white/5 skew-x-[-20deg] translate-x-12"></div>
                  </div>
               </div>
 
-              {/* Quadro de Condições de Cartão de Crédito */}
-              {showInstallments && (
-                <div className="break-inside-avoid w-full animate-in fade-in slide-in-from-bottom-2 duration-500">
-                   <h4 className="text-[11px] font-black text-[#190c59] uppercase tracking-[0.15em] mb-2.5 flex items-center gap-2">
-                     <CreditCard className="w-4 h-4 text-[#ec9d23]" /> Condições de Pagamento (Cartão de Crédito)
-                   </h4>
-                   <div className="grid grid-cols-4 gap-x-3 gap-y-2 bg-slate-100/50 p-4 rounded-2xl border border-slate-200 shadow-inner">
-                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
-                       const rate = interestRates[n] || 0;
-                       const totalWithInterest = result.initialPaymentAmount * (1 + rate / 100);
-                       const installmentValue = totalWithInterest / n;
-                       return (
-                         <div key={n} className="flex flex-col items-center justify-center p-2 border-b border-slate-200">
-                            <span className="text-slate-400 font-bold text-[8.5px] uppercase tracking-tighter leading-none mb-1">{n}x Parcelas</span>
-                            <span className="text-[#190c59] font-[900] text-[10.5px] leading-none whitespace-nowrap">
-                              {formatCurrency(installmentValue)} {n > 3 && rate > 0 ? '*' : ''}
-                            </span>
-                         </div>
-                       );
-                     })}
-                   </div>
-                   <div className="flex items-center gap-2 mt-2 ml-1 opacity-60">
-                     <Info className="w-3 h-3 text-slate-400" />
-                     <p className="text-[8.5px] text-slate-500 font-bold uppercase tracking-tight italic leading-tight">
-                       * Parcelas de 4 a 12 com acréscimo de juros bancários. Isenção integral de juros em 1x a 3x.
-                     </p>
+              <div className="bg-orange-50/80 border border-orange-100 rounded-2xl p-3.5 shadow-sm">
+                 <h4 className="text-[9px] font-black text-reque-orange uppercase tracking-widest mb-2 flex items-center gap-2">
+                    <Info className="w-3.5 h-3.5" /> Informações Complementares
+                 </h4>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                       <p className="text-[8.5px] text-slate-700 font-bold flex gap-2">
+                         <span className="text-reque-orange font-black">•</span>
+                         Vigência contratual de 12 ou 24 meses conforme modelo de fidelidade selecionado.
+                       </p>
+                       <p className="text-[8.5px] text-slate-700 font-bold flex gap-2">
+                         <span className="text-reque-orange font-black">•</span>
+                         Início dos serviços técnicos condicionado ao aceite desta proposta e assinatura do contrato.
+                       </p>
+                    </div>
+                    <div className="space-y-1">
+                       <p className="text-[8.5px] text-slate-700 font-bold flex gap-2">
+                         <span className="text-reque-orange font-black">•</span>
+                         Valores para exames ocupacionais conforme tabela anexa de unidades próprias Reque.
+                       </p>
+                    </div>
+                 </div>
+              </div>
+            </section>
+          </A4Page>
+
+          {/* PÁGINA 2: TABELA DE EXAMES */}
+          {examPages.map((exams, pageIdx) => (
+            <A4Page key={pageIdx} pageNumber={2 + pageIdx} totalPages={totalPages} plan={plan.toUpperCase()}>
+              <h3 className="text-[11px] font-black text-[#190c59] uppercase mb-4 tracking-widest flex items-center gap-3 border-b-2 border-slate-200 pb-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#ec9d23]"></span> ANEXO: TABELA DE EXAMES - {selectedUnit.toUpperCase()}
+              </h3>
+              
+              <div className="flex-1 overflow-hidden border border-slate-300 rounded-2xl bg-white shadow-sm">
+                <table className="w-full text-left text-[9px] border-collapse">
+                  <thead>
+                    <tr className="bg-[#190c59] text-white font-black uppercase text-[7px] border-b border-slate-300 tracking-wider">
+                      <th className="py-2.5 px-6 border-r border-white/10 w-[15%]">Categoria</th>
+                      <th className="py-2.5 px-6 border-r border-white/10">Procedimento / Exame</th>
+                      <th className="py-2.5 px-6 border-r border-white/10 w-[15%] text-right">Valor (R$)</th>
+                      <th className="py-2.5 px-6 w-[20%] text-center">Prazo Médio</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {exams.map((exam, idx) => (
+                      <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
+                        <td className="py-1.5 px-6 font-bold text-slate-400 text-[7px] uppercase tracking-tighter border-r border-slate-200">{exam.category}</td>
+                        <td className="py-1.5 px-6 font-bold text-reque-navy uppercase tracking-tighter border-r border-slate-200">{exam.name}</td>
+                        <td className="py-1.5 px-6 text-right font-black text-reque-navy border-r border-slate-200">{formatCurrency(exam.price)}</td>
+                        <td className="py-1.5 px-6 text-center text-[7.5px] font-bold text-slate-500 italic lowercase">{exam.deadline}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              
+              {pageIdx === examPages.length - 1 && (
+                <div className="mt-4 p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex items-start gap-4">
+                   <div className="p-2.5 bg-white rounded-xl border border-indigo-200 shadow-sm"><Info className="w-5 h-5 text-reque-blue" /></div>
+                   <div className="flex-1">
+                      <h4 className="text-[10px] font-black text-reque-navy uppercase tracking-widest mb-1.5">Notas sobre Exames</h4>
+                      <div className="grid grid-cols-2 gap-x-8 text-[8px] text-slate-500 font-bold leading-relaxed uppercase">
+                         <p>• Valores exclusivos para atendimento nas unidades físicas Reque.</p>
+                         <p>• Prazos sujeitos a alteração em casos de exames complementares de alta complexidade.</p>
+                         <p>• Faturamento de exames conforme produtividade mensal realizada.</p>
+                         <p>• Inclusão de exames fora da grade contratual será orçada via solicitação.</p>
+                      </div>
                    </div>
                 </div>
               )}
-            </section>
-          </A4Page>
-
-          {/* PÁGINA 2: CLÁUSULAS TÉCNICAS E CONDIÇÕES */}
-          <A4Page pageNumber={2} totalPages={totalPages} plan={plan.toUpperCase()}>
-            <section className="mb-6 break-inside-avoid w-full">
-              <h3 className="text-[13px] font-black text-[#190c59] uppercase mb-6 tracking-tight flex items-center gap-2 border-b-2 border-slate-200 pb-1">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ec9d23]"></span> 5. CLÁUSULAS TÉCNICAS E CONDIÇÕES
-              </h3>
-              
-              <div className="bg-slate-100 border border-slate-200 rounded-2xl p-6 space-y-6 shadow-sm">
-                <div className="flex gap-5 items-start bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                  <Clock className="w-7 h-7 text-reque-navy shrink-0 mt-0.5" />
-                  <p className="text-slate-800 font-bold text-[11px] leading-relaxed">
-                    <strong className="text-[#190c59] uppercase tracking-tighter">a. Prazo de Entrega:</strong> O prazo técnico para emissão da documentação final é de <strong className="text-[#190c59]">19 dias úteis</strong>, contados a partir do recebimento integral das descrições de cargo em <strong className="bg-[#ec9d23]/20 px-2 rounded text-slate-900 font-black tracking-tight">{clientDateFmt}</strong>.
-                  </p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col gap-3 shadow-sm">
-                    <h4 className="font-black uppercase text-[#190c59] text-[10px] flex items-center gap-2 border-b border-slate-100 pb-2">
-                      <PlusCircle className="w-4 h-4 text-[#ec9d23]" /> Visita Técnica
-                    </h4>
-                    <p className="text-[10px] font-bold leading-relaxed text-slate-600 italic">Quando solicitado pela CONTRATANTE, ou nos casos em que o cargo exigir visita técnica, será cobrado o valor de R$ 100,00 por hora, acrescido de R$ 2,50 por quilômetro rodado.</p>
-                  </div>
-                  <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col gap-3 shadow-sm">
-                    <h4 className="font-black uppercase text-[#190c59] text-[10px] flex items-center gap-2 border-b border-slate-100 pb-2">
-                      <Briefcase className="w-4 h-4 text-[#ec9d23]" /> Inclusão de Cargos/GHE
-                    </h4>
-                    <p className="text-[10px] font-bold leading-relaxed text-slate-600 italic">Ao ultrapassar o número contratado, novos cargos terão custo pontual de R$ 70,00 (PGR) e R$ 50,00 (PCMSO) para atualização.</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-5">
-                  <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col gap-3 shadow-sm">
-                    <h4 className="font-black uppercase text-[#190c59] text-[10px] flex items-center gap-2 border-b border-slate-100 pb-2">
-                      <Users className="w-4 h-4 text-[#ec9d23]" /> Funcionários Adicionais
-                    </h4>
-                    <p className="text-[10px] font-bold leading-relaxed text-slate-600 italic">Ao ultrapassar o limite contratado, a assinatura mensal será reajustada em R$ 2,00 por funcionário adicional. Contagem baseada em ativos todo dia 20.</p>
-                  </div>
-                  <div className="bg-white p-5 rounded-xl border border-slate-200 flex flex-col gap-3 shadow-sm">
-                    <h4 className="font-black uppercase text-[#190c59] text-[10px] flex items-center gap-2 border-b border-slate-100 pb-2">
-                      <Mail className="w-4 h-4 text-[#ec9d23]" /> Remessa de Prontuários
-                    </h4>
-                    <p className="text-[10px] font-bold leading-relaxed text-slate-600 italic">Em agendamentos externos (fora rede própria) que exijam envio físico de documentos, será repassado o custo de correios + impostos de nota.</p>
-                  </div>
-                </div>
-
-                <div className="bg-orange-50 border-l-4 border-[#ec9d23] p-5 text-slate-800 shadow-sm rounded-r-xl border border-orange-100">
-                  <h4 className="font-black uppercase text-[#190c59] text-[10px] mb-2 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-[#ec9d23]" /> CLÁUSULA DE NO SHOW CLÍNICO
-                  </h4>
-                  <p className="text-[10.5px] font-bold leading-relaxed text-slate-700 italic">Ausências sem aviso prévio de 24h em agendas implicarão na cobrança de uma consulta clínica base para cobertura de custos.</p>
-                </div>
-              </div>
-            </section>
-
-            <div className="grid grid-cols-2 gap-8 mb-6 w-full flex-1">
-              <section className="bg-slate-100 p-6 rounded-2xl border border-slate-200 break-inside-avoid shadow-sm flex flex-col">
-                <h3 className="text-[12px] font-black text-[#190c59] uppercase mb-4 tracking-tight flex items-center gap-2 border-b-2 border-slate-200 pb-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ec9d23]"></span> 6. FATURAMENTO E PAGAMENTO
-                </h3>
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex-1">
-                   <p className="font-black text-[#190c59] uppercase text-[9px] mb-2 tracking-widest">MODALIDADE FINANCEIRA</p>
-                   <p className="text-slate-700 font-bold text-[11px] leading-relaxed">
-                     Ciclo de Cobrança: <strong className="text-reque-navy">{result.billingCycle}</strong>.<br/>
-                     Meio de Pagamento Preferencial: <strong className="text-[#1a067c] font-black uppercase tracking-tighter">{result.paymentMethod}</strong>.
-                   </p>
-                   <div className="mt-6 pt-6 border-t border-slate-100 space-y-3">
-                     <p className="text-[9px] text-slate-400 font-black uppercase italic tracking-widest">Observações Financeiras:</p>
-                     <p className="text-[10px] text-slate-500 font-bold italic leading-snug">Nota Fiscal emitida eletronicamente após a confirmação do pagamento inicial ou conforme ciclo mensal estabelecido.</p>
-                     {result.isRenewal && (
-                       <p className="text-[9.5px] text-reque-navy font-[900] uppercase mt-2 border-t border-slate-100 pt-2 flex items-center gap-1.5">
-                         <RefreshCcw className="w-3.5 h-3.5 text-reque-orange" /> Condição de Renovação: Aplicado desconto de 50% conforme item 5.3 da Política Comercial.
-                       </p>
-                     )}
-                   </div>
-                </div>
-              </section>
-
-              <section className="bg-slate-100 p-6 rounded-2xl border border-slate-200 break-inside-avoid shadow-sm flex flex-col">
-                <h3 className="text-[12px] font-black text-[#190c59] uppercase mb-4 tracking-tight flex items-center gap-2 border-b-2 border-slate-200 pb-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#ec9d23]"></span> 7. VIGÊNCIA E RESCISÃO
-                </h3>
-                <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-4 shadow-sm flex-1">
-                   <p className="text-slate-800 font-bold text-[11px] leading-relaxed">
-                     <strong className="text-[#190c59] uppercase tracking-tighter">Período de Vigência:</strong> {fidelity === FidelityModel.WITH_FIDELITY ? '24 meses consecutivos a partir da assinatura.' : 'Vigência por tempo indeterminado.'}
-                   </p>
-                   {fidelity === FidelityModel.WITH_FIDELITY && (
-                     <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
-                        <p className="text-[10px] font-bold leading-relaxed text-blue-700 italic">
-                          A rescisão antecipada no modelo fidelidade aciona a cobrança proporcional do bônus de isenção técnica concedido na entrada.
-                        </p>
-                     </div>
-                   )}
-                </div>
-              </section>
-            </div>
-          </A4Page>
-
-          {/* PÁGINAS ADICIONAIS: TABELA DE EXAMES */}
-          {examPages.map((examBatch, pageIdx) => (
-            <A4Page key={pageIdx} pageNumber={3 + pageIdx} totalPages={totalPages} plan={plan.toUpperCase()}>
-              <section className="flex flex-col h-full w-full">
-                <h3 className="text-[10px] font-black text-[#190c59] uppercase mb-3 tracking-widest flex items-center gap-2 border-b-2 border-slate-200 pb-1 shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#ec9d23]"></span> 8. TABELA DE EXAMES - {selectedUnit.toUpperCase()}
-                </h3>
-                
-                <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm flex-1">
-                  <table className="w-full text-left text-[8.5px] table-fixed">
-                    <thead className="bg-slate-100 border-b border-slate-200 text-slate-500 font-black uppercase tracking-wider sticky top-0">
-                      <tr>
-                        <th className="py-2.5 px-4 w-[15%]">Categoria</th>
-                        <th className="py-2.5 px-4 w-[45%]">Nome do Exame</th>
-                        <th className="py-2.5 px-4 w-[20%] text-right">Valor Unitário</th>
-                        <th className="py-2.5 px-4 w-[20%] text-center">Prazo Médio</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {examBatch.map((exam, idx) => (
-                        <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
-                          <td className="py-1.5 px-4 font-black text-slate-400 text-[7px] uppercase tracking-tighter truncate">{exam.category}</td>
-                          <td className="py-1.5 px-4 font-bold text-reque-navy truncate uppercase text-[8px]">{exam.name}</td>
-                          <td className="py-1.5 px-4 text-right font-black text-reque-blue">{formatCurrency(exam.price)}</td>
-                          <td className="py-1.5 px-4 text-center text-slate-400 font-medium italic">{exam.deadline}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                
-                {pageIdx === examPages.length - 1 && (
-                  <div className="mt-4 p-4 bg-blue-50/50 border border-blue-100 rounded-xl shrink-0">
-                    <p className="text-[9px] text-blue-800 font-bold italic leading-relaxed">
-                      * Valores de exames podem sofrer reajustes conforme negociação com a rede credenciada ou índices inflacionários anuais. A tabela acima reflete os valores vigentes para a unidade selecionada no momento da emissão desta proposta.
-                    </p>
-                  </div>
-                )}
-              </section>
             </A4Page>
           ))}
         </div>

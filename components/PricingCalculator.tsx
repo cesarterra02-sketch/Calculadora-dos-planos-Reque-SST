@@ -23,14 +23,41 @@ import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
 import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus } from 'lucide-react';
 
-const formatCNPJ = (value: string) => {
-  return value
-    .replace(/\D/g, '')
-    .replace(/^(\d{2})(\d)/, '$1.$2')
-    .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1/$2')
-    .replace(/(\d{4})(\d)/, '$1-$2')
-    .slice(0, 18);
+const formatDocument = (value: string) => {
+  const cleanValue = value.replace(/\D/g, '');
+  
+  if (cleanValue.length <= 11) {
+    // CPF Format: 000.000.000-00
+    return cleanValue
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .slice(0, 14);
+  } else {
+    // CNPJ Format: 00.000.000/0000-00
+    return cleanValue
+      .replace(/^(\d{2})(\d)/, '$1.$2')
+      .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+      .replace(/\.(\d{3})(\d)/, '.$1/$2')
+      .replace(/(\d{4})(\d)/, '$1-$2')
+      .slice(0, 18);
+  }
+};
+
+const validateCPF = (cpf: string): boolean => {
+  cpf = cpf.replace(/[^\d]+/g, '');
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+  let add = 0;
+  for (let i = 0; i < 9; i++) add += parseInt(cpf.charAt(i)) * (10 - i);
+  let rev = 11 - (add % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  if (rev !== parseInt(cpf.charAt(9))) return false;
+  add = 0;
+  for (let i = 0; i < 10; i++) add += parseInt(cpf.charAt(i)) * (11 - i);
+  rev = 11 - (add % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  if (rev !== parseInt(cpf.charAt(10))) return false;
+  return true;
 };
 
 const validateCNPJ = (cnpj: string): boolean => {
@@ -59,6 +86,13 @@ const validateCNPJ = (cnpj: string): boolean => {
   return resultado == parseInt(digitos.charAt(1));
 };
 
+const validateDocument = (doc: string): boolean => {
+  const clean = doc.replace(/\D/g, '');
+  if (clean.length === 11) return validateCPF(clean);
+  if (clean.length === 14) return validateCNPJ(clean);
+  return false;
+};
+
 export const PricingCalculator: React.FC<{
   currentUser: User | null;
   onSaveHistory: (item: ProposalHistoryItem) => Promise<any>;
@@ -67,8 +101,8 @@ export const PricingCalculator: React.FC<{
 }> = ({ currentUser, onSaveHistory, initialData, canGenerateProposal = true }) => {
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
-  const [cnpj, setCnpj] = useState('');
-  const [isCnpjValid, setIsCnpjValid] = useState<boolean | null>(null);
+  const [cnpj, setCnpj] = useState(''); // Usado para CPF ou CNPJ mantendo compatibilidade com schema
+  const [isDocumentValid, setIsDocumentValid] = useState<boolean | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<RequeUnit>(RequeUnit.PONTA_GROSSA);
   const [numEmployees, setNumEmployees] = useState(1);
   const [externalLivesCount, setExternalLivesCount] = useState(0);
@@ -83,7 +117,8 @@ export const PricingCalculator: React.FC<{
     if (initialData) {
       setCompanyName(initialData.companyName || '');
       setContactName(initialData.contactName || '');
-      setCnpj(initialData.cnpj || '');
+      const formattedDoc = formatDocument(initialData.cnpj || '');
+      setCnpj(formattedDoc);
       setNumEmployees(initialData.numEmployees || 1);
       setExternalLivesCount(initialData.externalLivesCount || 0);
       setFidelity(initialData.fidelity || FidelityModel.WITH_FIDELITY);
@@ -92,8 +127,7 @@ export const PricingCalculator: React.FC<{
       setRiskLevel(initialData.riskLevel || RiskLevel.RISK_1);
       setClientDeliveryDate(initialData.clientDeliveryDate || '');
       setDocDeliveryDate(initialData.docDeliveryDate || '');
-      const numericOnly = (initialData.cnpj || '').replace(/\D/g, '');
-      if (numericOnly.length === 14) setIsCnpjValid(validateCNPJ(numericOnly));
+      setIsDocumentValid(validateDocument(formattedDoc));
     }
   }, [initialData]);
 
@@ -102,6 +136,20 @@ export const PricingCalculator: React.FC<{
     if (numEmployees <= 20) return PlanType.ESSENCIAL;
     return PlanType.PRO;
   }, [numEmployees, riskLevel]);
+
+  const isCPF = useMemo(() => {
+    return cnpj.replace(/\D/g, '').length === 11;
+  }, [cnpj]);
+
+  const planItems = useMemo(() => {
+    const originalItems = PLAN_SERVICES[activePlan];
+    if (isCPF) {
+      return originalItems.map(item => 
+        item === 'Elaboração de PGR' ? 'Elaboração de PGRTR' : item
+      );
+    }
+    return originalItems;
+  }, [activePlan, isCPF]);
 
   const calculationResult: PricingResult | null = useMemo(() => {
     const range = EMPLOYEE_RANGES.find(r => numEmployees >= r.min && numEmployees <= r.max);
@@ -139,6 +187,7 @@ export const PricingCalculator: React.FC<{
       programFee,
       isRenewal,
       originalProgramFee: programFeeBase,
+      programFeeBase: programFeeBase,
       programFeeDiscounted: isFidelity || isRenewal,
       riskLevel,
       clientDeliveryDate,
@@ -150,10 +199,10 @@ export const PricingCalculator: React.FC<{
       externalLivesCount,
       schedulingCostTotal,
       commercialSummary: isFidelity 
-        ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (PGR/PCMSO).${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}` 
-        : `${isRenewal ? 'Renovação de plano com 50% de desconto na revisão técnica. ' : 'Plano sem fidelidade. '}Cobrança integral da taxa de elaboração dos programas.${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}`
+        ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (${isCPF ? 'PGRTR' : 'PGR'}/PCMSO).${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}` 
+        : `${isRenewal ? `Renovação de plano com 50% de desconto na revisão técnica. ` : `Plano sem fidelidade. `}Cobrança integral da taxa de elaboração dos programas.${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}`
     };
-  }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate, isRenewal]);
+  }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate, isRenewal, isCPF]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -208,17 +257,16 @@ export const PricingCalculator: React.FC<{
                   <div className="relative">
                     <Hash className="absolute left-3 top-3 w-4 h-4 text-slate-300" />
                     <input type="text" value={cnpj} onChange={e => {
-                      const fmt = formatCNPJ(e.target.value);
+                      const fmt = formatDocument(e.target.value);
                       setCnpj(fmt);
-                      const clean = fmt.replace(/\D/g,'');
-                      setIsCnpjValid(clean.length === 14 ? validateCNPJ(clean) : null);
-                    }} maxLength={18} className={`w-full pl-10 pr-3 py-2.5 border rounded-xl text-xs font-bold outline-none transition-all ${isCnpjValid === false ? 'border-red-500 bg-red-50 text-red-900 ring-1 ring-red-500' : 'border-slate-200 focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5'}`} placeholder="00.000.000/0000-00" />
-                    {isCnpjValid === true && <CheckCircle className="absolute right-3 top-3 w-4 h-4 text-green-500" />}
-                    {isCnpjValid === false && <AlertCircle className="absolute right-3 top-3 w-4 h-4 text-red-500" />}
+                      setIsDocumentValid(validateDocument(fmt));
+                    }} className={`w-full pl-10 pr-3 py-2.5 border rounded-xl text-xs font-bold outline-none transition-all ${isDocumentValid === false ? 'border-red-500 bg-red-50 text-red-900 ring-1 ring-red-500' : 'border-slate-200 focus:border-reque-blue focus:ring-4 focus:ring-reque-blue/5'}`} placeholder="CPF OU CNPJ" />
+                    {isDocumentValid === true && <CheckCircle className="absolute right-3 top-3 w-4 h-4 text-green-500" />}
+                    {isDocumentValid === false && <AlertCircle className="absolute right-3 top-3 w-4 h-4 text-red-500" />}
                   </div>
-                  {isCnpjValid === false && (
+                  {isDocumentValid === false && (
                     <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 flex items-center gap-1 uppercase tracking-tighter">
-                      CNPJ Inválido ou Incompleto
+                      CPF/CNPJ Inválido ou Incompleto
                     </p>
                   )}
                 </div>
@@ -345,9 +393,9 @@ export const PricingCalculator: React.FC<{
                  <span className="text-[10px] font-black text-reque-navy bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{activePlan}</span>
                </div>
                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                 {PLAN_SERVICES[activePlan].map((s, i) => (
-                   <div key={i} className="flex items-center gap-1.5 p-2 bg-slate-50/50 rounded-lg border border-slate-100/50 text-[9px] font-bold text-slate-500 uppercase leading-tight hover:bg-slate-50 transition-colors">
-                     <CheckCircle className="w-2.5 h-2.5 text-green-500 shrink-0" />
+                 {planItems.map((s, i) => (
+                   <div key={i} className={`flex items-center gap-1.5 p-2 rounded-lg border text-[9px] font-bold uppercase leading-tight transition-colors ${s === 'Elaboração de PGRTR' ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-slate-50/50 border-slate-100/50 text-slate-500 hover:bg-slate-50'}`}>
+                     <CheckCircle className={`w-2.5 h-2.5 shrink-0 ${s === 'Elaboração de PGRTR' ? 'text-orange-600' : 'text-green-500'}`} />
                      {s}
                    </div>
                  ))}
@@ -384,8 +432,8 @@ export const PricingCalculator: React.FC<{
                   });
                 }}
                 onGenerateProposal={canGenerateProposal ? () => {
-                  if (!isCnpjValid) {
-                    alert("O CNPJ informado é inválido.");
+                  if (!isDocumentValid) {
+                    alert("O CPF/CNPJ informado é inválido.");
                     return;
                   }
                   if (!companyName || !contactName) {
@@ -394,7 +442,7 @@ export const PricingCalculator: React.FC<{
                   }
                   setShowProposal(true);
                 } : undefined}
-                isGenerateDisabled={!isCnpjValid || !companyName || !contactName || !canGenerateProposal}
+                isGenerateDisabled={!isDocumentValid || !companyName || !contactName || !canGenerateProposal}
               />
             )}
           </div>
