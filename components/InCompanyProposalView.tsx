@@ -402,7 +402,7 @@ export const InCompanyProposalView: React.FC<{
                 </div>
                 <div className="flex gap-3 items-start">
                   <span className="text-[#ec9d23] font-black mt-0.5">•</span>
-                  <p className="text-slate-700 font-bold text-[9px] leading-relaxed">Os resultados dos exames laboratoriais e complementares serão disponibilizados por meio do sistema de gestão digital (SOC) após a conclusão e análise dos respectivos laudos, sendo o ASO liberado somente após a consolidação dessas informações e avaliação médica ocupacional.</p>
+                  <p className="text-slate-700 font-bold text-[9px] leading-relaxed">O Atestado de Saúde Ocupacional (ASO) será disponibilizado por meio do sistema de gestão digital (SOC) após a conclusão e análise dos exames laboratoriais e complementares, bem como após a avaliação médica ocupacional, não sendo disponibilizados os resultados individuais dos exames.</p>
                 </div>
               </div>
             </section>
