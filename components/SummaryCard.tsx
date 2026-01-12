@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { PricingResult, BillingCycle, PlanType, User, FidelityModel } from '../types';
 import { StorageService } from '../storageService';
@@ -18,7 +17,8 @@ import {
   CreditCard as CardIcon,
   Sparkles,
   RefreshCcw,
-  Receipt
+  Receipt,
+  Tag
 } from 'lucide-react';
 
 interface SummaryCardProps {
@@ -26,6 +26,8 @@ interface SummaryCardProps {
   plan: PlanType;
   fidelity: FidelityModel;
   currentUser: User | null;
+  selectedInstallments: number;
+  onInstallmentsChange: (n: number) => void;
   onGenerateProposal?: () => void;
   onSaveHistory?: () => void;
   isGenerateDisabled?: boolean;
@@ -36,17 +38,19 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   plan,
   fidelity,
   currentUser,
+  selectedInstallments,
+  onInstallmentsChange,
   onGenerateProposal, 
   onSaveHistory,
   isGenerateDisabled = false
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [selectedInstallments, setSelectedInstallments] = useState(1);
   const [interestRates, setInterestRates] = useState<Record<number, number>>({});
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isUpdatingRates, setIsUpdatingRates] = useState(false);
   const [tempRates, setTempRates] = useState<Record<number, number>>({});
+  const [specialDiscount, setSpecialDiscount] = useState<number>(0);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
@@ -56,15 +60,12 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     loadInterestRates();
   }, [result]);
 
-  // Regra de segurança: Se o plano for PRO, o máximo de parcelas é 3.
-  // Se o usuário mudar de um plano Express/Essencial com >3 parcelas para PRO, resetamos para 1.
   useEffect(() => {
     if (plan === PlanType.PRO && selectedInstallments > 3) {
-      setSelectedInstallments(1);
+      onInstallmentsChange(1);
     }
   }, [plan]);
 
-  // Fixed: Corrected implementation to handle the array result from StorageService
   const loadInterestRates = async () => {
     try {
       const settings = await StorageService.getPaymentSettings();
@@ -74,14 +75,12 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
         ratesMap[i] = 0;
       }
       
-      // Fixed: Checked settings as an array to satisfy TypeScript
       if (Array.isArray(settings) && settings.length > 0) {
         settings.forEach((s: any) => {
           ratesMap[s.installment_number] = Number(s.interest_rate) || 0;
         });
       }
       
-      // Isenção fixa 1-3
       for (let i = 1; i <= 3; i++) {
         ratesMap[i] = 0;
       }
@@ -105,7 +104,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
       
       await StorageService.updatePaymentSettings(payload);
       
-      // Atualiza o estado da UI imediatamente
       setInterestRates({...tempRates});
       setIsAdminPanelOpen(false);
     } catch (e: any) {
@@ -131,19 +129,16 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
 
   const isPro = plan === PlanType.PRO;
   const isNoFidelity = fidelity === FidelityModel.NO_FIDELITY;
+  const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
 
-  // Regra 3. SST PRÓ: Parcelamento em 3x boleto para sem fidelidade.
-  // Planos Express e Essencial continuam com o parcelamento padrão (até 12x).
   const showInstallments = plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL || (isPro && isNoFidelity);
-  
-  // Lista de parcelas permitidas
   const installmentOptions = isPro ? [1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
   const currentInterestRate = isPro ? 0 : (interestRates[selectedInstallments] || 0);
   
-  // Lógica Financeira: Valor + Juros
-  const interestAmount = (result.initialPaymentAmount * currentInterestRate) / 100;
-  const finalTotalWithInterest = result.initialPaymentAmount + interestAmount;
+  // Cálculo base subtraindo o desconto especial
+  const baseTotal = Math.max(0, result.initialPaymentAmount - specialDiscount);
+  const interestAmount = (baseTotal * currentInterestRate) / 100;
+  const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
 
   const assinaturaNoCiclo = result.billingCycle === BillingCycle.ANNUAL 
@@ -151,8 +146,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
     : result.monthlyValue;
 
   const monthlyBase = result.monthlyValue - (result.schedulingCostTotal || 0);
-
-  const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
 
   return (
     <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden sticky top-6">
@@ -187,7 +180,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
           <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Composição de Valores</h3>
           
           <div className="space-y-3">
-            {/* Item do Plano Selecionado */}
             <div className="flex justify-between items-start py-3 border-b border-slate-50">
               <div className="flex gap-3">
                 <div className="mt-0.5"><Sparkles className="w-4 h-4 text-reque-orange opacity-70" /></div>
@@ -201,7 +193,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             </div>
 
-            {/* Linha de Fidelidade Contratual - Descreve apenas o compromisso de prazo */}
             {isFidelityActive && (
               <div className="flex justify-between items-start py-3 border-b border-slate-50">
                 <div className="flex gap-3">
@@ -217,7 +208,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             )}
 
-            {/* Linha de Revisão e Manutenção / Programas - Detalhamento Financeiro do Serviço */}
             <div className="flex justify-between items-start py-3 border-b border-slate-50">
               <div className="flex gap-3">
                 <div className="mt-0.5">
@@ -270,14 +260,28 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             </div>
 
-            {/* O campo 'Total anual do plano' só é exibido se houver fidelidade (ciclo anual) e o plano não for PRO */}
-            {plan !== PlanType.PRO && isFidelityActive && (
-              <div className="flex justify-between items-start py-3 bg-slate-50/50 px-2 rounded-lg">
-                <div className="flex gap-3">
-                  <div className="mt-0.5"><CreditCard className="w-4 h-4 text-reque-blue opacity-50" /></div>
-                  <div><p className="text-xs font-bold text-slate-700">Total anual do plano</p></div>
+            {/* Campo de Desconto Especial (Aparece apenas em renovação) */}
+            {result.isRenewal && (
+              <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 mt-2 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Tag className="w-3.5 h-3.5 text-reque-orange" />
+                  <label className="text-[10px] font-black text-reque-navy uppercase tracking-widest">Desconto Especial Proposta (R$)</label>
                 </div>
-                <span className="text-sm font-bold text-[#190c59]">{formatCurrency(assinaturaNoCiclo)}</span>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-xs">R$</span>
+                  <input 
+                    type="number" 
+                    value={specialDiscount || ''} 
+                    onChange={(e) => setSpecialDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                    className="w-full pl-9 pr-4 py-2 bg-white border border-orange-200 rounded-lg text-xs font-black text-reque-navy outline-none focus:border-reque-orange transition-all"
+                    placeholder="0,00"
+                  />
+                </div>
+                {specialDiscount > 0 && (
+                  <p className="text-[9px] text-orange-600 font-bold mt-1.5 uppercase italic tracking-tighter">
+                    * Valor será abatido do montante total de entrada.
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -301,7 +305,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                     </label>
                     <select 
                       value={selectedInstallments}
-                      onChange={(e) => setSelectedInstallments(parseInt(e.target.value))}
+                      onChange={(e) => onInstallmentsChange(parseInt(e.target.value))}
                       className="bg-white/10 border border-white/20 rounded-lg text-white text-[11px] font-bold py-1 px-2 outline-none"
                     >
                       {installmentOptions.map(n => {
@@ -322,7 +326,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                       </p>
                       {currentInterestRate > 0 ? (
                         <p className="text-[9px] text-[#ec9d23] font-black uppercase mt-0.5 animate-pulse">
-                          Taxa de {currentInterestRate.toFixed(2)}% | Valor Principal: {formatCurrency(result.initialPaymentAmount)}
+                          Taxa de {currentInterestRate.toFixed(2)}% | Valor Base: {formatCurrency(baseTotal)}
                         </p>
                       ) : selectedInstallments > 1 ? (
                         <p className="text-[9px] text-green-400 font-bold uppercase mt-0.5">Parcelamento Isento</p>
@@ -385,7 +389,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                 <Info className="w-4 h-4 text-reque-blue shrink-0 mt-0.5" />
                 <p className="text-[10px] text-slate-500 font-bold uppercase">
                   Parcelas 1 a 3 são isentas (0%). <br/>
-                  Configurações abaixo são salvas localmente caso a tabela do Supabase não exista.
                 </p>
               </div>
 

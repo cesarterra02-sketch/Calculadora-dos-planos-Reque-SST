@@ -13,6 +13,8 @@ const {
   Calculator: Calc, 
   LogOut: Exit, 
   ChevronRight: Arrow, 
+  ChevronDown: Down,
+  ChevronUp: Up,
   Clock: History, 
   UserCheck: UCheck, 
   PanelLeftClose: PClose, 
@@ -31,6 +33,7 @@ function App() {
   const [history, setHistory] = useState<ProposalHistoryItem[]>([]);
   const [editingItem, setEditingItem] = useState<ProposalHistoryItem | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isCalcExpanded, setIsCalcExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isDbConnected, setIsDbConnected] = useState<boolean | null>(null);
 
@@ -121,18 +124,6 @@ function App() {
 
   const navItems = [
     {
-      id: 'calculator',
-      label: 'CALCULADORA PLANOS SST',
-      icon: <Calc className="w-5 h-5" />,
-      allowed: currentUser?.role === 'admin' || currentUser?.canAccessCalculator
-    },
-    {
-      id: 'incompany',
-      label: 'CALCULADORA IN COMPANY',
-      icon: <Van className="w-5 h-5" />,
-      allowed: currentUser?.role === 'admin' || currentUser?.canAccessInCompany
-    },
-    {
       id: 'history',
       label: 'HISTORICO DA PROPOSTA',
       icon: <History className="w-5 h-5" />,
@@ -146,7 +137,23 @@ function App() {
     }
   ];
 
+  const calcSubItems = [
+    {
+      id: 'calculator',
+      label: 'PLANOS SST',
+      icon: <Calc className="w-4 h-4" />,
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessCalculator
+    },
+    {
+      id: 'incompany',
+      label: 'IN COMPANY',
+      icon: <Van className="w-4 h-4" />,
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessInCompany
+    }
+  ].filter(i => i.allowed);
+
   const allowedItems = navItems.filter(i => i.allowed);
+  const hasCalculatorAccess = calcSubItems.length > 0;
 
   const renderContent = () => {
     if (isLoading) {
@@ -158,7 +165,7 @@ function App() {
       );
     }
 
-    if (allowedItems.length === 0) {
+    if (allowedItems.length === 0 && !hasCalculatorAccess) {
       return (
         <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400 max-w-lg mx-auto text-center">
           <Warn className="w-16 h-16 text-reque-orange mb-6" />
@@ -177,9 +184,10 @@ function App() {
       );
     }
 
-    const canAccessCurrent = navItems.find(i => i.id === currentView)?.allowed;
-    if (!canAccessCurrent) {
-      setCurrentView(allowedItems[0].id as ViewType);
+    const isCurrentViewAllowed = [...navItems, ...calcSubItems].find(i => i.id === currentView)?.allowed;
+    if (!isCurrentViewAllowed) {
+      const fallback = hasCalculatorAccess ? calcSubItems[0].id : allowedItems[0]?.id;
+      if (fallback) setCurrentView(fallback as ViewType);
       return null;
     }
 
@@ -191,11 +199,17 @@ function App() {
             onEdit={handleEditHistory} 
             onDelete={handleDeleteHistory}
             isAdmin={currentUser?.role === 'admin'}
-            onBack={() => setCurrentView(allowedItems[0].id as ViewType)} 
+            onBack={() => {
+              const backView = hasCalculatorAccess ? calcSubItems[0].id : allowedItems[0].id;
+              setCurrentView(backView as ViewType);
+            }} 
           />
         );
       case 'admin':
-        return <AdminView onBack={() => setCurrentView(allowedItems[0].id as ViewType)} />;
+        return <AdminView onBack={() => {
+          const backView = hasCalculatorAccess ? calcSubItems[0].id : allowedItems[0].id;
+          setCurrentView(backView as ViewType);
+        }} />;
       case 'incompany':
         return <InCompanyCalculator currentUser={currentUser} onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'incompany' ? editingItem : null} />;
       case 'calculator':
@@ -220,6 +234,8 @@ function App() {
     }
   };
 
+  const isCalcActive = currentView === 'calculator' || currentView === 'incompany';
+
   return (
     <div className="min-h-screen bg-[#f8f9fc] flex font-sans">
       <aside 
@@ -227,9 +243,9 @@ function App() {
           isSidebarCollapsed ? 'w-20' : 'w-72'
         }`}
       >
-        <div className="p-8 flex items-center justify-between overflow-hidden">
+        <div className="p-8 flex items-center justify-between overflow-hidden text-center">
           {!isSidebarCollapsed && (
-            <div className="flex flex-col leading-none animate-in fade-in duration-300">
+            <div className="flex flex-col leading-none animate-in fade-in duration-300 w-full">
               <span className="font-black text-3xl tracking-tighter text-white">Reque</span>
               <span className="text-[10px] font-bold tracking-widest text-reque-orange uppercase mt-1 whitespace-nowrap">
                 ESTRATÉGIA EM SST
@@ -250,13 +266,78 @@ function App() {
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2">
+        <nav className="flex-1 px-4 space-y-1">
+          {/* Calculadora Group */}
+          {hasCalculatorAccess && (
+            <div className="space-y-1">
+              <button
+                onClick={() => {
+                  if (isSidebarCollapsed) {
+                    setIsSidebarCollapsed(false);
+                    setIsCalcExpanded(true);
+                  } else {
+                    setIsCalcExpanded(!isCalcExpanded);
+                  }
+                }}
+                className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all group overflow-hidden ${
+                  isCalcActive && !isCalcExpanded
+                    ? 'bg-reque-orange text-reque-navy shadow-lg shadow-reque-orange/20' 
+                    : 'text-white/60 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'mx-auto' : ''}`}>
+                  <span className={`${isCalcActive ? 'text-white' : 'text-reque-orange'} transition-colors shrink-0`}>
+                    <Calc className="w-5 h-5" />
+                  </span>
+                  {!isSidebarCollapsed && (
+                    <span className="text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
+                      CALCULADORA
+                    </span>
+                  )}
+                </div>
+                {!isSidebarCollapsed && (
+                  <div className="ml-auto">
+                    {isCalcExpanded ? <Up className="w-3.5 h-3.5 opacity-50" /> : <Down className="w-3.5 h-3.5 opacity-50" />}
+                  </div>
+                )}
+              </button>
+
+              {isCalcExpanded && !isSidebarCollapsed && (
+                <div className="pl-4 space-y-1 animate-in slide-in-from-top-2 duration-200">
+                  {calcSubItems.map((sub) => (
+                    <button
+                      key={sub.id}
+                      onClick={() => {
+                        setEditingItem(null);
+                        setCurrentView(sub.id as ViewType);
+                      }}
+                      className={`w-full flex items-center px-4 py-2.5 rounded-lg transition-all group overflow-hidden ${
+                        currentView === sub.id 
+                          ? 'bg-white/10 text-reque-orange' 
+                          : 'text-white/40 hover:text-white/80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="shrink-0">{sub.icon}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                          {sub.label}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Other Items */}
           {allowedItems.map((item) => (
             <button
               key={item.id}
               onClick={() => {
                 setEditingItem(null);
                 setCurrentView(item.id as ViewType);
+                if (!isSidebarCollapsed) setIsCalcExpanded(false);
               }}
               className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all group overflow-hidden ${
                 currentView === item.id 
@@ -269,7 +350,7 @@ function App() {
                   {item.icon}
                 </span>
                 {!isSidebarCollapsed && (
-                  <span className="text-[11px] font-black uppercase tracking-wider whitespace-nowrap animate-in fade-in slide-in-from-left-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
                     {item.label}
                   </span>
                 )}
@@ -321,7 +402,7 @@ function App() {
              <div className="text-right">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Painel Atual</p>
                 <p className="text-sm font-black text-reque-navy uppercase">
-                  {currentView === 'calculator' ? 'Precificação' : currentView === 'incompany' ? 'In Company' : currentView === 'history' ? 'Histórico' : 'Administração'}
+                  {currentView === 'calculator' ? 'Plano SST' : currentView === 'incompany' ? 'In Company' : currentView === 'history' ? 'Histórico' : 'Administração'}
                 </p>
              </div>
           </div>

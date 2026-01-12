@@ -112,6 +112,7 @@ export const PricingCalculator: React.FC<{
   const [clientDeliveryDate, setClientDeliveryDate] = useState('');
   const [docDeliveryDate, setDocDeliveryDate] = useState('');
   const [showProposal, setShowProposal] = useState(false);
+  const [selectedInstallments, setSelectedInstallments] = useState(1);
 
   useEffect(() => {
     if (initialData) {
@@ -218,6 +219,7 @@ export const PricingCalculator: React.FC<{
             cnpj={cnpj}
             selectedUnit={selectedUnit}
             onBack={() => setShowProposal(false)}
+            selectedInstallments={selectedInstallments}
           />
         </div>
       ) : (
@@ -410,6 +412,8 @@ export const PricingCalculator: React.FC<{
                 plan={activePlan}
                 fidelity={fidelity}
                 currentUser={currentUser}
+                selectedInstallments={selectedInstallments}
+                onInstallmentsChange={setSelectedInstallments}
                 onSaveHistory={() => {
                   return onSaveHistory({
                     id: crypto.randomUUID(),
