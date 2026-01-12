@@ -326,10 +326,10 @@ export const InCompanyProposalView: React.FC<{
               <div className="bg-orange-100/30 border-l-4 border-[#ec9d23] p-4 text-slate-800 shadow-sm rounded-r-lg border border-orange-200 break-inside-avoid">
                 <h4 className="font-black uppercase text-[#190c59] text-[9.5px] mb-1.5 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-[#ec9d23]" />
-                  CLÁUSULA DE DISPONIBILIDADE E NO SHOW:
+                  CLÁUSULA DE DISPONIBILIDADE E MANUTENÇÃO DOS VALORES CONTRATADOS
                 </h4>
                 <p className="text-[8.5px] font-bold leading-relaxed text-slate-700 italic">
-                  A reserva de horário para atendimentos técnicos e clínicos é fundamental para a viabilidade operacional. Em caso de ausência sem aviso prévio (No Show), <strong>será aplicada a cobrança equivalente ao valor de uma consulta clínica de referência</strong> para cobertura da disponibilidade técnica e logística.
+                  A reserva de agenda, recursos técnicos, profissionais e estrutura clínica é realizada com base no quantitativo de colaboradores informado no momento da contratação. Os valores constantes nesta proposta permanecerão inalterados, independentemente da ausência total ou parcial de colaboradores para a realização dos exames ocupacionais nas datas agendadas, não sendo aplicável qualquer abatimento, desconto ou compensação financeira em razão de faltas, remarcações ou não comparecimento dos funcionários.
                 </p>
               </div>
             </section>
@@ -348,7 +348,7 @@ export const InCompanyProposalView: React.FC<{
                       <Check className="w-3 h-3 text-[#ec9d23]" /> EXAMES E OPERACIONAL
                     </p>
                     <p className="text-slate-800 font-bold text-[9px] leading-relaxed ml-5">
-                      Os valores serão faturados mensalmente via <strong>Boleto Bancário</strong> com vencimento para o dia 10 do mês subsequente à prestação dos serviços.
+                      Os valores referentes aos exames ocupacionais serão faturados mensalmente via Boleto Bancário, com vencimento para o dia 10 do mês subsequente à prestação dos serviços, sendo a emissão da cobrança realizada pela empresa REQUEMED CLÍNICA DE MEDICINA DO TRABALHO LTDA, inscrita no CNPJ nº 18.545.280/0001-89.
                     </p>
                  </div>
                  <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 shadow-sm">
@@ -357,6 +357,30 @@ export const InCompanyProposalView: React.FC<{
                     </p>
                     <p className="text-slate-800 font-bold text-[9px] leading-relaxed ml-5">
                       A taxa fixa de logística e deslocamento (In Company) poderá ser processada de forma independente conforme negociação prévia para viabilização imediata da unidade móvel.
+                    </p>
+                 </div>
+                 <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <p className="font-black text-[#190c59] uppercase text-[9px] mb-2 flex items-center gap-2">
+                      <Check className="w-3 h-3 text-[#ec9d23]" /> HORAS TÉCNICAS ADICIONAIS – ATENDIMENTO IN COMPANY
+                    </p>
+                    <p className="text-slate-800 font-bold text-[9px] leading-relaxed ml-5 italic">
+                      As atividades de atendimento in company serão realizadas conforme a quantidade de horas previamente acordada entre as partes. Caso, por motivo imputável à contratante, haja necessidade de extrapolação desse período (tais como indisponibilidade de colaboradores, atrasos, reorganização de agenda interna, interrupções operacionais ou qualquer outro fator que impacte o tempo originalmente previsto), as horas excedentes serão consideradas horas técnicas adicionais e serão cobradas à parte, conforme valores vigentes praticados pela contratada.
+                    </p>
+                 </div>
+                 <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <p className="font-black text-[#190c59] uppercase text-[9px] mb-2 flex items-center gap-2">
+                      <Check className="w-3 h-3 text-[#ec9d23]" />  FATURAMENTO DA TAXA IN COMPANY
+                    </p>
+                    <p className="text-slate-800 font-bold text-[9px] leading-relaxed ml-5">
+                      Os valores referentes à taxa de atendimento in company serão faturados via Boleto Bancário pela empresa M R & CIA LTDA – ME, inscrita no CNPJ nº 47.606.577/0001-05, observando-se as condições comerciais estabelecidas na presente proposta/contrato.
+                    </p>
+                 </div>
+                 <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 shadow-sm">
+                    <p className="font-black text-[#190c59] uppercase text-[9px] mb-2 flex items-center gap-2">
+                      <Check className="w-3 h-3 text-[#ec9d23]" /> EXAMES ADICIONAIS E AJUSTE DE QUANTITATIVO
+                    </p>
+                    <p className="text-slate-800 font-bold text-[9px] leading-relaxed ml-5">
+                      Na hipótese de inclusão de exames pontuais não previstos originalmente na proposta, ou de acréscimo no quantitativo de colaboradores que ultrapasse a quantidade previamente estabelecida, tais exames adicionais serão cobrados separadamente, integrando o ciclo regular de faturamento, conforme a tabela padrão de exames da Reque vigente à época da realização, sendo lançados juntamente com os demais exames executados no período, sem necessidade de aditivo contratual prévio.
                     </p>
                  </div>
               </div>
@@ -370,7 +394,7 @@ export const InCompanyProposalView: React.FC<{
               <div className="bg-slate-100 border border-slate-200 rounded-xl p-5 space-y-3 shadow-sm">
                 <div className="flex gap-3 items-start">
                   <span className="text-[#ec9d23] font-black mt-0.5">•</span>
-                  <p className="text-slate-700 font-bold text-[9px] leading-relaxed">Necessária disponibilidade de ponto de energia e área de estacionamento nivelada para a unidade móvel.</p>
+                  <p className="text-slate-700 font-bold text-[9px] leading-relaxed">É necessária a disponibilização de ponto de energia elétrica em 220V, em perfeitas condições de funcionamento, bem como área de estacionamento adequada, plana e nivelada, com espaço suficiente para a instalação e operação segura da unidade móvel, garantindo a viabilidade técnica e operacional dos atendimentos.</p>
                 </div>
                 <div className="flex gap-3 items-start">
                   <span className="text-[#ec9d23] font-black mt-0.5">•</span>
