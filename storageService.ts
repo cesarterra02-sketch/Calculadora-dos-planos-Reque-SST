@@ -19,12 +19,13 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     riskLevel: data.risk_level || '',
     fidelity: data.fidelity || '',
     isRenewal: data.is_renewal || false,
+    specialDiscount: data.special_discount || 0,
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
     docDeliveryDate: data.doc_delivery_date,
     taxaInCompany: data.taxa_in_company,
     margemAtendimentoValor: data.margem_atendimento_valor,
-    margemAlvoAplicada: data.margem_alvo_aplicada, // Mapeado da coluna snake_case
+    margemAlvoAplicada: data.margem_alvo_aplicada,
     impostoAplicado: data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
     inCompanyDetails: data.in_company_details
@@ -63,30 +64,36 @@ const sanitizeUserForDb = (user: User) => {
 };
 
 const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
-  return {
+  // Log de auditoria solicitado
+  console.log("DEBUG SALVAMENTO:", item.specialDiscount);
+
+  const dbData: any = {
     id: item.id,
     type: item.type,
     cnpj: item.cnpj,
     company_name: item.companyName, 
     contact_name: item.contactName,
-    initial_total: item.initialTotal,
+    initial_total: Number(item.initialTotal) || 0,
     created_by: item.createdBy,
     taxa_in_company: item.taxaInCompany,
     margem_atendimento_valor: item.margemAtendimentoValor,
-    margem_alvo_aplicada: item.margemAlvoAplicada, // Frontend -> DB (Margem Alvo)
+    // margemAlvoAplicada removida para evitar erro de schema cache se a coluna não existir fisicamente no DB
     imposto_aplicado: item.impostoAplicado,
-    comissao_aplicada: item.comissaoAplicada, // Frontend -> DB (Comissão)
+    comissao_aplicada: item.comissaoAplicada,
     num_employees: item.numEmployees,
     external_lives_count: item.externalLivesCount,
     plan: item.plan,
     risk_level: item.riskLevel,
     fidelity: item.fidelity,
-    is_renewal: item.isRenewal,
+    is_renewal: Boolean(item.isRenewal),
+    special_discount: Number(item.specialDiscount) || 0,
     selected_unit: item.selectedUnit,
     client_delivery_date: item.clientDeliveryDate,
     doc_delivery_date: item.docDeliveryDate,
     in_company_details: item.inCompanyDetails
   };
+  
+  return dbData;
 };
 
 export const StorageService = {

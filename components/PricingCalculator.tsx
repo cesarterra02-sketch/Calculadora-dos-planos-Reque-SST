@@ -27,14 +27,12 @@ const formatDocument = (value: string) => {
   const cleanValue = value.replace(/\D/g, '');
   
   if (cleanValue.length <= 11) {
-    // CPF Format: 000.000.000-00
     return cleanValue
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d{1,2})/, '$1-$2')
       .slice(0, 14);
   } else {
-    // CNPJ Format: 00.000.000/0000-00
     return cleanValue
       .replace(/^(\d{2})(\d)/, '$1.$2')
       .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
@@ -101,7 +99,7 @@ export const PricingCalculator: React.FC<{
 }> = ({ currentUser, onSaveHistory, initialData, canGenerateProposal = true }) => {
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
-  const [cnpj, setCnpj] = useState(''); // Usado para CPF ou CNPJ mantendo compatibilidade com schema
+  const [cnpj, setCnpj] = useState(''); 
   const [isDocumentValid, setIsDocumentValid] = useState<boolean | null>(null);
   const [selectedUnit, setSelectedUnit] = useState<RequeUnit>(RequeUnit.PONTA_GROSSA);
   const [numEmployees, setNumEmployees] = useState(1);
@@ -109,6 +107,7 @@ export const PricingCalculator: React.FC<{
   const [riskLevel, setRiskLevel] = useState<RiskLevel>(RiskLevel.RISK_1);
   const [fidelity, setFidelity] = useState<FidelityModel>(FidelityModel.WITH_FIDELITY);
   const [isRenewal, setIsRenewal] = useState(false);
+  const [specialDiscount, setSpecialDiscount] = useState<number>(0);
   const [clientDeliveryDate, setClientDeliveryDate] = useState('');
   const [docDeliveryDate, setDocDeliveryDate] = useState('');
   const [showProposal, setShowProposal] = useState(false);
@@ -124,6 +123,7 @@ export const PricingCalculator: React.FC<{
       setExternalLivesCount(initialData.externalLivesCount || 0);
       setFidelity(initialData.fidelity || FidelityModel.WITH_FIDELITY);
       setIsRenewal(initialData.isRenewal || false);
+      setSpecialDiscount(initialData.specialDiscount || 0);
       setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
       setRiskLevel(initialData.riskLevel || RiskLevel.RISK_1);
       setClientDeliveryDate(initialData.clientDeliveryDate || '');
@@ -164,8 +164,6 @@ export const PricingCalculator: React.FC<{
     const monthlyValue = monthlyBase + schedulingCostTotal;
 
     const isFidelity = fidelity === FidelityModel.WITH_FIDELITY;
-    
-    // Regra de Renovação: 50% de desconto na taxa de programas
     const baseFee = isFidelity ? 0 : programFeeBase;
     const programFee = isRenewal && !isFidelity ? baseFee * 0.5 : baseFee;
 
@@ -187,8 +185,8 @@ export const PricingCalculator: React.FC<{
       paymentMethod,
       programFee,
       isRenewal,
+      specialDiscount,
       originalProgramFee: programFeeBase,
-      programFeeBase: programFeeBase,
       programFeeDiscounted: isFidelity || isRenewal,
       riskLevel,
       clientDeliveryDate,
@@ -199,11 +197,13 @@ export const PricingCalculator: React.FC<{
       isCustomQuote: monthlyBase === 0,
       externalLivesCount,
       schedulingCostTotal,
+      isRenovação: isRenewal,
+      totalWithDiscount: Math.max(0, (initialAssinatura + programFee) - specialDiscount),
       commercialSummary: isFidelity 
         ? `Plano com Fidelidade 24 meses. Isenção integral do valor de elaboração dos programas (${isCPF ? 'PGRTR' : 'PGR'}/PCMSO).${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}` 
         : `${isRenewal ? `Renovação de plano com 50% de desconto na revisão técnica. ` : `Plano sem fidelidade. `}Cobrança integral da taxa de elaboração dos programas.${externalLivesCount > 0 ? ` Inclui gestão de agendamento para ${externalLivesCount} vidas externas.` : ''}`
     };
-  }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate, isRenewal, isCPF]);
+  }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate, isRenewal, specialDiscount, isCPF]);
 
   return (
     <div className="flex flex-col lg:flex-row gap-6 items-start">
@@ -220,6 +220,7 @@ export const PricingCalculator: React.FC<{
             selectedUnit={selectedUnit}
             onBack={() => setShowProposal(false)}
             selectedInstallments={selectedInstallments}
+            specialDiscount={specialDiscount}
           />
         </div>
       ) : (
@@ -231,10 +232,9 @@ export const PricingCalculator: React.FC<{
                   <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
                 </h3>
                 
-                {/* Seletor de Tipo de Cliente (Renovação) */}
                 <div className="flex gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
                   <button 
-                    onClick={() => setIsRenewal(false)}
+                    onClick={() => { setIsRenewal(false); setSpecialDiscount(0); }}
                     className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg font-black text-[9px] uppercase transition-all ${!isRenewal ? 'bg-white text-reque-navy shadow-sm ring-1 ring-slate-200' : 'text-slate-400'}`}
                   >
                     <UserPlus className="w-3 h-3" /> Cliente Novo
@@ -414,6 +414,8 @@ export const PricingCalculator: React.FC<{
                 currentUser={currentUser}
                 selectedInstallments={selectedInstallments}
                 onInstallmentsChange={setSelectedInstallments}
+                specialDiscount={specialDiscount}
+                setSpecialDiscount={setSpecialDiscount}
                 onSaveHistory={() => {
                   return onSaveHistory({
                     id: crypto.randomUUID(),
@@ -428,8 +430,9 @@ export const PricingCalculator: React.FC<{
                     externalLivesCount,
                     riskLevel,
                     isRenewal,
+                    specialDiscount, // Persistindo o valor do desconto especial
                     monthlyValue: calculationResult.monthlyValue,
-                    initialTotal: calculationResult.initialPaymentAmount,
+                    initialTotal: calculationResult.initialPaymentAmount - specialDiscount,
                     fidelity,
                     clientDeliveryDate,
                     docDeliveryDate

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { PricingResult, BillingCycle, PlanType, User, FidelityModel } from '../types';
 import { StorageService } from '../storageService';
@@ -31,6 +32,9 @@ interface SummaryCardProps {
   onGenerateProposal?: () => void;
   onSaveHistory?: () => void;
   isGenerateDisabled?: boolean;
+  // Fix: Add specialDiscount and setSpecialDiscount to props interface
+  specialDiscount: number;
+  setSpecialDiscount: (value: number) => void;
 }
 
 export const SummaryCard: React.FC<SummaryCardProps> = ({ 
@@ -42,7 +46,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onInstallmentsChange,
   onGenerateProposal, 
   onSaveHistory,
-  isGenerateDisabled = false
+  isGenerateDisabled = false,
+  // Fix: Deconstruct new props
+  specialDiscount,
+  setSpecialDiscount
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -50,7 +57,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const [isUpdatingRates, setIsUpdatingRates] = useState(false);
   const [tempRates, setTempRates] = useState<Record<number, number>>({});
-  const [specialDiscount, setSpecialDiscount] = useState<number>(0);
 
   const formatCurrency = (val: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);

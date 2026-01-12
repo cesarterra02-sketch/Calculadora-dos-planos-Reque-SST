@@ -70,10 +70,13 @@ export const ProposalView: React.FC<{
   onBack: () => void;
   selectedInstallments: number;
   specialDiscount?: number;
-}> = ({ result, plan, fidelity, employees, companyName, contactName, cnpj, selectedUnit, onBack, selectedInstallments, specialDiscount = 0 }) => {
+}> = ({ result, plan, fidelity, employees, companyName, contactName, cnpj, selectedUnit, onBack, selectedInstallments, specialDiscount }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [interestRates, setInterestRates] = useState<Record<number, number>>({});
   const contentRef = useRef<HTMLDivElement>(null);
+  
+  // Segurança: Garante valor numérico para o desconto
+  const discountValue = Number(specialDiscount || result?.specialDiscount || 0);
   
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   
@@ -105,7 +108,6 @@ export const ProposalView: React.FC<{
   const currentDate = new Date().toLocaleDateString('pt-BR');
   const validadeDate = "10 dias";
 
-  // AUMENTADO O NÚMERO DE EXAMES POR PÁGINA E DIMINUÍDO O ESPAÇAMENTO PARA CABER TUDO
   const EXAMS_PER_PAGE = 45; 
   const allExams = UNIT_EXAM_TABLES[selectedUnit] || [];
   const examPages = useMemo(() => {
@@ -152,7 +154,7 @@ export const ProposalView: React.FC<{
   };
 
   const currentInterestRate = (plan === PlanType.PRO && !isFidelityActive) ? 0 : (interestRates[selectedInstallments] || 0);
-  const baseTotal = Math.max(0, result.initialPaymentAmount - specialDiscount);
+  const baseTotal = Math.max(0, (result?.initialPaymentAmount || 0) - discountValue);
   const interestAmount = (baseTotal * currentInterestRate) / 100;
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
@@ -274,9 +276,9 @@ export const ProposalView: React.FC<{
                  </thead>
                  <tbody className="text-[10px]">
                    <tr className="bg-white border-b border-slate-200">
-                     <td className="py-4 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">{result.rangeLabel}</td>
+                     <td className="py-4 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">{result?.rangeLabel}</td>
                      <td className="py-4 px-4 text-left font-bold text-slate-500 italic">
-                        {result.isRenewal ? 'Revisão e Manutenção Técnica' : (
+                        {result?.isRenewal ? 'Revisão e Manutenção Técnica' : (
                           <>
                             Elaboração PGR <br/>
                             Elaboração PCMSO
@@ -287,20 +289,32 @@ export const ProposalView: React.FC<{
                      <td className="py-4 px-4 border-l border-slate-100 bg-[#f8f9fa]">
                         {isFidelityActive ? (
                           <div className="flex flex-col items-center">
-                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result.originalProgramFee)}</span>
+                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result?.originalProgramFee || 0)}</span>
                             <span className="text-[14px] font-black text-reque-orange uppercase">BONIFICADO*</span>
                           </div>
-                        ) : result.isRenewal ? (
+                        ) : result?.isRenewal ? (
                            <div className="flex flex-col items-center">
-                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result.originalProgramFee)}</span>
+                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result?.originalProgramFee || 0)}</span>
                             <span className="text-[14px] font-black text-reque-orange uppercase">50% DESCONTO</span>
                           </div>
                         ) : (
-                          <span className="text-[14px] font-black text-reque-navy">{formatCurrency(result.programFee)}</span>
+                          <span className="text-[14px] font-black text-reque-navy">{formatCurrency(result?.programFee || 0)}</span>
                         )}
                      </td>
                      <td className="py-4 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
                    </tr>
+                   {discountValue > 0 && (
+                     <tr className="bg-orange-50 border-b border-slate-200">
+                        <td className="py-3 px-4 font-black text-reque-orange border-r border-slate-200 text-[9px] tracking-widest uppercase">CONCESSÃO</td>
+                        <td className="py-3 px-4 text-left font-bold text-reque-orange italic uppercase">
+                           Desconto Especial Proposta SST
+                        </td>
+                        <td className="py-3 px-4 border-l border-slate-100 font-black text-reque-orange">
+                           -{formatCurrency(discountValue)}
+                        </td>
+                        <td className="py-3 px-4 font-black text-reque-orange/40 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
+                     </tr>
+                   )}
                    <tr className="bg-[#fcfdfe]">
                      <td className="py-4 px-4 font-black text-slate-400 uppercase border-r border-slate-200 text-[10px]">REF. MENSAL</td>
                      <td className="py-4 px-4 text-left font-bold text-slate-500 italic leading-snug">
@@ -336,7 +350,7 @@ export const ProposalView: React.FC<{
                    {formatCurrency(finalTotalWithInterest)}
                  </p>
                  <span className="text-[10px] font-black text-reque-orange uppercase tracking-widest">
-                    {result.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE'}
+                    {result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE'}
                  </span>
                </div>
                <div className="absolute right-0 top-0 h-full w-40 bg-[#190c59]/5 skew-x-[-15deg] translate-x-12"></div>
@@ -375,7 +389,7 @@ export const ProposalView: React.FC<{
             <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm shrink-0"><Clock className="w-8 h-8 text-reque-navy" /></div>
             <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
               <strong className="text-reque-navy uppercase tracking-widest block mb-1 text-[10px]">A. PRAZO DE ENTREGA:</strong>
-              O prazo técnico para emissão da documentação final ({isCPF ? 'PGRTR' : 'PGR'}/PCMSO) é de <span className="text-reque-navy font-black">19 dias úteis</span>, contados a partir do recebimento integral das descrições de cargo em <span className="text-reque-navy font-black">{formatDate(result.clientDeliveryDate)}</span>.
+              O prazo técnico para emissão da documentação final ({isCPF ? 'PGRTR' : 'PGR'}/PCMSO) é de <span className="text-reque-navy font-black">19 dias úteis</span>, contados a partir do recebimento integral das descrições de cargo em <span className="text-reque-navy font-black">{formatDate(result?.clientDeliveryDate || '')}</span>.
             </p>
           </div>
 
@@ -432,8 +446,8 @@ export const ProposalView: React.FC<{
                <div className="bg-[#f0f2f5] border border-slate-300 rounded-2xl p-4 space-y-3 shadow-inner">
                  <p className="text-[9px] font-black text-reque-navy uppercase tracking-widest border-b border-slate-300 pb-1.5">MODALIDADE FINANCEIRA</p>
                  <div className="text-[10px] font-bold text-slate-600 space-y-2">
-                   <p>Ciclo de Cobrança: <span className="text-reque-navy">{result.billingCycle}</span></p>
-                   <p>Meio de Pagamento Preferencial: <span className="text-reque-navy font-black">{plan === PlanType.ESSENCIAL ? 'BOLETO BANCÁRIO OU CARTÃO DE CRÉDITO' : result.paymentMethod.toUpperCase()}</span></p>
+                   <p>Ciclo de Cobrança: <span className="text-reque-navy">{result?.billingCycle}</span></p>
+                   <p>Meio de Pagamento Preferencial: <span className="text-reque-navy font-black">{plan === PlanType.ESSENCIAL ? 'BOLETO BANCÁRIO OU CARTÃO DE CRÉDITO' : (result?.paymentMethod || '').toUpperCase()}</span></p>
                    <div className="pt-2 mt-2 border-t border-slate-200">
                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">OBSERVAÇÕES FINANCEIRAS:</p>
                      <p className="text-[8.5px] italic leading-relaxed text-slate-400">Nota Fiscal emitida eletronicamente após a confirmação do pagamento inicial ou conforme ciclo mensal estabelecido.</p>
@@ -459,7 +473,7 @@ export const ProposalView: React.FC<{
           </div>
         </A4Page>
 
-        {/* PÁGINAS DE ANEXOS (EXAMES) - AJUSTADO PARA COMPACTAR E EXIBIR MAIS ITENS */}
+        {/* PÁGINAS DE ANEXOS (EXAMES) */}
         {examPages.map((exams, pageIdx) => (
           <A4Page key={pageIdx} pageNumber={3 + pageIdx} totalPages={totalPages} plan={plan.toUpperCase()}>
             <div className="flex flex-col items-center mb-4">

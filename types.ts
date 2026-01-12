@@ -61,6 +61,9 @@ export interface PricingResult {
   commercialSummary: string;
   externalLivesCount: number;
   schedulingCostTotal: number;
+  specialDiscount?: number;
+  isRenovação: boolean;
+  totalWithDiscount: number;
 }
 
 export interface ProposalHistoryItem {
@@ -80,6 +83,7 @@ export interface ProposalHistoryItem {
   initialTotal: number;
   fidelity?: FidelityModel;
   isRenewal?: boolean;
+  specialDiscount?: number;
   clientDeliveryDate?: string;
   docDeliveryDate?: string;
   taxaInCompany?: number;
