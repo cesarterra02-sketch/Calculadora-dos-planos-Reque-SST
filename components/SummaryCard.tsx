@@ -32,7 +32,6 @@ interface SummaryCardProps {
   onGenerateProposal?: () => void;
   onSaveHistory?: () => void;
   isGenerateDisabled?: boolean;
-  // Fix: Add specialDiscount and setSpecialDiscount to props interface
   specialDiscount: number;
   setSpecialDiscount: (value: number) => void;
 }
@@ -47,7 +46,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onGenerateProposal, 
   onSaveHistory,
   isGenerateDisabled = false,
-  // Fix: Deconstruct new props
   specialDiscount,
   setSpecialDiscount
 }) => {
@@ -141,9 +139,17 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const installmentOptions = isPro ? [1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
   const currentInterestRate = isPro ? 0 : (interestRates[selectedInstallments] || 0);
   
+  // Constante da operadora de cartão
+  const TRANSACTION_FIXED_FEE = 0.49;
+
   // Cálculo base subtraindo o desconto especial
   const baseTotal = Math.max(0, result.initialPaymentAmount - specialDiscount);
-  const interestAmount = (baseTotal * currentInterestRate) / 100;
+  
+  // Nova lógica: (Valor Total * Percentual da Parcela) + 0.49 (taxa fixa aplicada uma única vez no montante)
+  const interestAmount = currentInterestRate > 0 
+    ? ((baseTotal * currentInterestRate) / 100) + TRANSACTION_FIXED_FEE 
+    : 0;
+
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
 
@@ -266,7 +272,6 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               </div>
             </div>
 
-            {/* Campo de Desconto Especial (Aparece apenas em renovação) */}
             {result.isRenewal && (
               <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 mt-2 animate-in fade-in slide-in-from-top-2">
                 <div className="flex items-center gap-2 mb-2">
@@ -332,7 +337,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                       </p>
                       {currentInterestRate > 0 ? (
                         <p className="text-[9px] text-[#ec9d23] font-black uppercase mt-0.5 animate-pulse">
-                          Taxa de {currentInterestRate.toFixed(2)}% | Valor Base: {formatCurrency(baseTotal)}
+                          Taxa de {currentInterestRate.toFixed(2)}% (+ R$ 0,49) | Valor Base: {formatCurrency(baseTotal)}
                         </p>
                       ) : selectedInstallments > 1 ? (
                         <p className="text-[9px] text-green-400 font-bold uppercase mt-0.5">Parcelamento Isento</p>

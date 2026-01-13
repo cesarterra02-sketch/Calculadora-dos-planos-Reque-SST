@@ -75,7 +75,6 @@ export const ProposalView: React.FC<{
   const [interestRates, setInterestRates] = useState<Record<number, number>>({});
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Segurança: Garante valor numérico para o desconto
   const discountValue = Number(specialDiscount || result?.specialDiscount || 0);
   
   const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
@@ -154,8 +153,13 @@ export const ProposalView: React.FC<{
   };
 
   const currentInterestRate = (plan === PlanType.PRO && !isFidelityActive) ? 0 : (interestRates[selectedInstallments] || 0);
+  const TRANSACTION_FIXED_FEE = 0.49;
   const baseTotal = Math.max(0, (result?.initialPaymentAmount || 0) - discountValue);
-  const interestAmount = (baseTotal * currentInterestRate) / 100;
+  
+  const interestAmount = currentInterestRate > 0 
+    ? ((baseTotal * currentInterestRate) / 100) + TRANSACTION_FIXED_FEE 
+    : 0;
+
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
 
@@ -337,7 +341,7 @@ export const ProposalView: React.FC<{
                </table>
             </div>
 
-            <div className="bg-[#f0f2f5] border border-slate-300 rounded-2xl p-4 flex justify-between items-center mb-6 relative overflow-hidden shadow-inner">
+            <div className="bg-[#f0f2f5] border border-slate-200 rounded-2xl p-4 flex justify-between items-center mb-6 relative overflow-hidden shadow-inner">
                <div className="relative z-10 flex items-center gap-4">
                  <div className="p-2.5 bg-white border border-slate-200 rounded-xl shadow-sm"><CheckCircle2 className="w-6 h-6 text-reque-orange" /></div>
                  <div>
@@ -363,7 +367,8 @@ export const ProposalView: React.FC<{
               <div className="grid grid-cols-4 gap-1.5">
                 {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
                   const rate = interestRates[n] || 0;
-                  const installment = (baseTotal * (1 + rate / 100)) / n;
+                  const instInterest = rate > 0 ? ((baseTotal * rate) / 100) + TRANSACTION_FIXED_FEE : 0;
+                  const installment = (baseTotal + instInterest) / n;
                   return (
                     <div key={n} className={`bg-[#f0f2f5]/60 border p-2.5 rounded-xl flex justify-between items-center transition-all ${selectedInstallments === n ? 'border-reque-orange ring-1 ring-reque-orange bg-orange-50' : 'border-slate-200 hover:bg-slate-100'}`}>
                       <span className="text-[9.5px] font-black text-slate-400">{n}x de</span>
@@ -373,7 +378,7 @@ export const ProposalView: React.FC<{
                 })}
               </div>
               <p className="text-[7.5px] text-slate-400 font-bold uppercase tracking-widest mt-3.5 italic border-t border-slate-100 pt-2">
-                * PARCELAS DE 4 A 12 COM ACRÉSCIMO DE JUROS BANCÁRIOS. ISENÇÃO INTEGRAL DE JUROS EM 1X A 3X.
+                * PARCELAS DE 4 A 12 COM ACRÉSCIMO DE JUROS BANCÁRIOS E TAXA FIXA (R$ 0,49). ISENÇÃO EM 1X A 3X.
               </p>
             </div>
           </section>
