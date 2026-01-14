@@ -269,7 +269,7 @@ export const ProposalView: React.FC<{
               <span className="w-2.5 h-2.5 rounded-full bg-[#ec9d23]"></span> 4. INVESTIMENTO E CONDIÇÕES
             </h3>
             
-            <div className="border border-slate-300 rounded-2xl overflow-hidden shadow-sm mb-6">
+            <div className="border border-slate-300 rounded-2xl overflow-hidden shadow-sm mb-3">
                <table className="w-full text-center border-collapse">
                  <thead>
                    <tr className="bg-[#190c59] text-white text-[8.5px] font-black uppercase tracking-widest">
@@ -280,8 +280,8 @@ export const ProposalView: React.FC<{
                  </thead>
                  <tbody className="text-[10px]">
                    <tr className="bg-white border-b border-slate-200">
-                     <td className="py-4 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">{result?.rangeLabel}</td>
-                     <td className="py-4 px-4 text-left font-bold text-slate-500 italic">
+                     <td className="py-3 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">{result?.rangeLabel}</td>
+                     <td className="py-3 px-4 text-left font-bold text-slate-500 italic">
                         {result?.isRenewal ? 'Revisão e Manutenção Técnica' : (
                           <>
                             Elaboração PGR <br/>
@@ -290,7 +290,7 @@ export const ProposalView: React.FC<{
                         )} <br/>
                         <span className="text-[8.5px] not-italic text-slate-400">({isCPF ? 'PGRTR' : 'PGR'} / PCMSO)</span>
                      </td>
-                     <td className="py-4 px-4 border-l border-slate-100 bg-[#f8f9fa]">
+                     <td className="py-3 px-4 border-l border-slate-100 bg-[#f8f9fa]">
                         {isFidelityActive ? (
                           <div className="flex flex-col items-center">
                             <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result?.originalProgramFee || 0)}</span>
@@ -305,27 +305,27 @@ export const ProposalView: React.FC<{
                           <span className="text-[14px] font-black text-reque-navy">{formatCurrency(result?.programFee || 0)}</span>
                         )}
                      </td>
-                     <td className="py-4 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
+                     <td className="py-3 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
                    </tr>
                    {discountValue > 0 && (
                      <tr className="bg-orange-50 border-b border-slate-200">
-                        <td className="py-3 px-4 font-black text-reque-orange border-r border-slate-200 text-[9px] tracking-widest uppercase">CONCESSÃO</td>
-                        <td className="py-3 px-4 text-left font-bold text-reque-orange italic uppercase">
+                        <td className="py-2.5 px-4 font-black text-reque-orange border-r border-slate-200 text-[9px] tracking-widest uppercase">CONCESSÃO</td>
+                        <td className="py-2.5 px-4 text-left font-bold text-reque-orange italic uppercase">
                            Desconto Especial Proposta SST
                         </td>
-                        <td className="py-3 px-4 border-l border-slate-100 font-black text-reque-orange">
+                        <td className="py-2.5 px-4 border-l border-slate-100 font-black text-reque-orange">
                            -{formatCurrency(discountValue)}
                         </td>
-                        <td className="py-3 px-4 font-black text-reque-orange/40 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
+                        <td className="py-2.5 px-4 font-black text-reque-orange/40 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
                      </tr>
                    )}
                    <tr className="bg-[#fcfdfe]">
-                     <td className="py-4 px-4 font-black text-slate-400 uppercase border-r border-slate-200 text-[10px]">REF. MENSAL</td>
-                     <td className="py-4 px-4 text-left font-bold text-slate-500 italic leading-snug">
+                     <td className="py-3 px-4 font-black text-slate-400 uppercase border-r border-slate-200 text-[10px]">REF. MENSAL</td>
+                     <td className="py-3 px-4 text-left font-bold text-slate-500 italic leading-snug">
                         Revisão Bianual dos riscos, Sistema de Gestão e eSocial <br/>
                         {isFidelityActive && <span className="text-[8px] not-italic text-reque-orange font-black uppercase tracking-widest">FIDELIDADE 24 MESES</span>}
                      </td>
-                     <td className="py-4 px-4 border-l border-slate-100">
+                     <td className="py-3 px-4 border-l border-slate-100">
                         <div className="flex flex-col items-center">
                            <span className="text-[11px] font-[900] text-reque-navy uppercase leading-none">
                               {selectedInstallments}x de
@@ -335,33 +335,33 @@ export const ProposalView: React.FC<{
                            </span>
                         </div>
                      </td>
-                     <td className="py-4 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">REF. MENSAL</td>
+                     <td className="py-3 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">REF. MENSAL</td>
                    </tr>
                  </tbody>
                </table>
             </div>
 
-            <div className="bg-[#f0f2f5] border border-slate-200 rounded-2xl p-4 flex justify-between items-center mb-6 relative overflow-hidden shadow-inner">
+            <div className="bg-[#f0f2f5] border border-slate-200 rounded-2xl p-3 flex justify-between items-center mb-3 relative overflow-hidden shadow-inner">
                <div className="relative z-10 flex items-center gap-4">
-                 <div className="p-2.5 bg-white border border-slate-200 rounded-xl shadow-sm"><CheckCircle2 className="w-6 h-6 text-reque-orange" /></div>
+                 <div className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm"><CheckCircle2 className="w-5 h-5 text-reque-orange" /></div>
                  <div>
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">VALOR TOTAL DA OFERTA</span>
                     <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">INCLUI PROGRAMAS + CICLO INICIAL</p>
                  </div>
                </div>
                <div className="text-right relative z-10">
-                 <p className="text-[20px] font-[900] text-reque-navy leading-none">
+                 <p className="text-[18px] font-[900] text-reque-navy leading-none">
                    {formatCurrency(finalTotalWithInterest)}
                  </p>
-                 <span className="text-[10px] font-black text-reque-orange uppercase tracking-widest">
+                 <span className="text-[9px] font-black text-reque-orange uppercase tracking-widest">
                     {result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE'}
                  </span>
                </div>
                <div className="absolute right-0 top-0 h-full w-40 bg-[#190c59]/5 skew-x-[-15deg] translate-x-12"></div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
-              <h4 className="text-[9px] font-black text-reque-navy uppercase mb-3 flex items-center gap-2">
+            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+              <h4 className="text-[9px] font-black text-reque-navy uppercase mb-2 flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-reque-orange" /> OPÇÕES DE PARCELAMENTO (CARTÃO DE CRÉDITO)
               </h4>
               <div className="grid grid-cols-4 gap-1.5">
@@ -370,14 +370,14 @@ export const ProposalView: React.FC<{
                   const instInterest = rate > 0 ? ((baseTotal * rate) / 100) + TRANSACTION_FIXED_FEE : 0;
                   const installment = (baseTotal + instInterest) / n;
                   return (
-                    <div key={n} className={`bg-[#f0f2f5]/60 border p-2.5 rounded-xl flex justify-between items-center transition-all ${selectedInstallments === n ? 'border-reque-orange ring-1 ring-reque-orange bg-orange-50' : 'border-slate-200 hover:bg-slate-100'}`}>
-                      <span className="text-[9.5px] font-black text-slate-400">{n}x de</span>
-                      <span className={`text-[10.5px] font-black ${selectedInstallments === n ? 'text-reque-orange' : 'text-reque-navy'}`}>{formatCurrency(installment)} {rate > 0 && '*'}</span>
+                    <div key={n} className={`bg-[#f0f2f5]/60 border p-2 rounded-xl flex justify-between items-center transition-all ${selectedInstallments === n ? 'border-reque-orange ring-1 ring-reque-orange bg-orange-50' : 'border-slate-200 hover:bg-slate-100'}`}>
+                      <span className="text-[9px] font-black text-slate-400">{n}x de</span>
+                      <span className={`text-[10px] font-black ${selectedInstallments === n ? 'text-reque-orange' : 'text-reque-navy'}`}>{formatCurrency(installment)} {rate > 0 && '*'}</span>
                     </div>
                   );
                 })}
               </div>
-              <p className="text-[7.5px] text-slate-400 font-bold uppercase tracking-widest mt-3.5 italic border-t border-slate-100 pt-2">
+              <p className="text-[7.5px] text-slate-400 font-bold uppercase tracking-widest mt-2 italic border-t border-slate-100 pt-1">
                 * PARCELAS DE 4 A 12 COM ACRÉSCIMO DE JUROS BANCÁRIOS E TAXA FIXA (R$ 0,49). ISENÇÃO EM 1X A 3X.
               </p>
             </div>
