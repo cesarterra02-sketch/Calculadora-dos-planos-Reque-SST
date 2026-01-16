@@ -303,7 +303,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               <span className="text-[10px] font-black text-[#ec9d23] uppercase tracking-[0.25em]">Valor total da Oferta</span>
               <div className="flex items-baseline gap-1 mt-1 text-white">
                  <span className="text-3xl font-black tracking-tighter">
-                    {result.isCustomQuote ? 'Sob Consulta' : formatCurrency(finalTotalWithInterest)}
+                    {result.isCustomQuote ? 'Sob Consulta' : isNoFidelity ? `${formatCurrency(monthlyBase)}/mês` : formatCurrency(finalTotalWithInterest)}
                  </span>
               </div>
               

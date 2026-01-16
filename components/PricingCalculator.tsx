@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
   PlanType, 
@@ -21,7 +20,7 @@ import {
 } from '../constants';
 import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
-import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus } from 'lucide-react';
+import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus, X } from 'lucide-react';
 
 const formatDocument = (value: string) => {
   const cleanValue = value.replace(/\D/g, '');
@@ -112,6 +111,8 @@ export const PricingCalculator: React.FC<{
   const [docDeliveryDate, setDocDeliveryDate] = useState('');
   const [showProposal, setShowProposal] = useState(false);
   const [selectedInstallments, setSelectedInstallments] = useState(1);
+  const [isSimulationSaved, setIsSimulationSaved] = useState(false);
+  const [showSaveAlert, setShowSaveAlert] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -129,8 +130,42 @@ export const PricingCalculator: React.FC<{
       setClientDeliveryDate(initialData.clientDeliveryDate || '');
       setDocDeliveryDate(initialData.docDeliveryDate || '');
       setIsDocumentValid(validateDocument(formattedDoc));
+      setIsSimulationSaved(true);
     }
   }, [initialData]);
+
+  // Regra de Validação: Monitoramento de alterações para controle de salvamento
+  useEffect(() => {
+    if (initialData) {
+      // Verifica se houve qualquer alteração em relação aos dados originais do histórico
+      const hasChanges = 
+        companyName !== (initialData.companyName || '') ||
+        contactName !== (initialData.contactName || '') ||
+        cnpj.replace(/\D/g, '') !== (initialData.cnpj || '').replace(/\D/g, '') ||
+        numEmployees !== (initialData.numEmployees || 1) ||
+        externalLivesCount !== (initialData.externalLivesCount || 0) ||
+        riskLevel !== (initialData.riskLevel || RiskLevel.RISK_1) ||
+        fidelity !== (initialData.fidelity || FidelityModel.WITH_FIDELITY) ||
+        isRenewal !== (initialData.isRenewal || false) ||
+        specialDiscount !== (initialData.specialDiscount || 0) ||
+        selectedUnit !== (initialData.selectedUnit || RequeUnit.PONTA_GROSSA) ||
+        clientDeliveryDate !== (initialData.clientDeliveryDate || '') ||
+        docDeliveryDate !== (initialData.docDeliveryDate || '');
+
+      // Se não há mudanças, o status de salvo é preservado (permitindo gerar proposta)
+      // Se houve mudança, exige um novo salvamento
+      setIsSimulationSaved(!hasChanges);
+    } else {
+      // Para novas simulações, qualquer preenchimento marca como não salvo
+      if (companyName || contactName || cnpj) {
+        setIsSimulationSaved(false);
+      }
+    }
+  }, [
+    companyName, contactName, cnpj, numEmployees, externalLivesCount, 
+    riskLevel, fidelity, isRenewal, specialDiscount, selectedUnit, 
+    clientDeliveryDate, docDeliveryDate, initialData
+  ]);
 
   const activePlan = useMemo(() => {
     if (riskLevel === RiskLevel.RISK_1) return PlanType.EXPRESS;
@@ -206,7 +241,7 @@ export const PricingCalculator: React.FC<{
   }, [numEmployees, externalLivesCount, riskLevel, fidelity, activePlan, clientDeliveryDate, docDeliveryDate, isRenewal, specialDiscount, isCPF]);
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 items-start">
+    <div className="flex flex-col lg:flex-row gap-6 items-start relative">
       {showProposal && calculationResult ? (
         <div className="fixed inset-0 z-50 overflow-auto bg-slate-100">
            <ProposalView 
@@ -416,9 +451,9 @@ export const PricingCalculator: React.FC<{
                 onInstallmentsChange={setSelectedInstallments}
                 specialDiscount={specialDiscount}
                 setSpecialDiscount={setSpecialDiscount}
-                onSaveHistory={() => {
-                  return onSaveHistory({
-                    id: crypto.randomUUID(),
+                onSaveHistory={async () => {
+                  const res = await onSaveHistory({
+                    id: initialData?.id || crypto.randomUUID(),
                     type: 'standard',
                     createdAt: new Date().toISOString(),
                     companyName,
@@ -430,15 +465,22 @@ export const PricingCalculator: React.FC<{
                     externalLivesCount,
                     riskLevel,
                     isRenewal,
-                    specialDiscount, // Persistindo o valor do desconto especial
+                    specialDiscount,
                     monthlyValue: calculationResult.monthlyValue,
                     initialTotal: calculationResult.initialPaymentAmount - specialDiscount,
                     fidelity,
                     clientDeliveryDate,
                     docDeliveryDate
                   });
+                  setIsSimulationSaved(true);
+                  return res;
                 }}
                 onGenerateProposal={canGenerateProposal ? () => {
+                  // Regra: Só gera se estiver salvo (initialData presente e sem mudanças ou após save explícito)
+                  if (!isSimulationSaved) {
+                    setShowSaveAlert(true);
+                    return;
+                  }
                   if (!isDocumentValid) {
                     alert("O CPF/CNPJ informado é inválido.");
                     return;
@@ -454,6 +496,40 @@ export const PricingCalculator: React.FC<{
             )}
           </div>
         </>
+      )}
+
+      {/* MODAL DE ALERTA DE SALVAMENTO OBRIGATÓRIO */}
+      {showSaveAlert && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl border-4 border-reque-orange overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-reque-orange p-6 flex flex-col items-center text-white text-center">
+              <div className="p-4 bg-white/20 rounded-full mb-4">
+                <AlertCircle className="w-12 h-12 text-white" />
+              </div>
+              <h3 className="text-2xl font-black uppercase tracking-tight">ATENÇÃO</h3>
+            </div>
+            
+            <div className="p-8 text-center space-y-6">
+              <p className="text-sm font-bold text-slate-600 leading-relaxed italic">
+                "A geração da proposta somente será permitida após o salvamento da simulação. Certifique-se de concluir e salvar a simulação antes de prosseguir."
+              </p>
+              
+              <button 
+                onClick={() => setShowSaveAlert(false)}
+                className="w-full py-4 bg-reque-navy text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-xl hover:bg-reque-blue transition-all flex items-center justify-center gap-2"
+              >
+                ENTENDI E VOU SALVAR
+              </button>
+            </div>
+            
+            <button 
+              onClick={() => setShowSaveAlert(false)}
+              className="absolute top-4 right-4 p-2 text-white/60 hover:text-white transition-colors"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

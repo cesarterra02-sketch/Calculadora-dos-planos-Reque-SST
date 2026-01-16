@@ -87,6 +87,7 @@ export const ProposalView: React.FC<{
 
   const isCPF = useMemo(() => cnpj.replace(/\D/g, '').length === 11, [cnpj]);
   const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
+  const isNoFidelity = fidelity === FidelityModel.NO_FIDELITY;
 
   useEffect(() => {
     const loadRates = async () => {
@@ -162,6 +163,9 @@ export const ProposalView: React.FC<{
 
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
+
+  // Valor da assinatura base mensal para exibir quando "Sem Fidelidade" no Quadro 4
+  const monthlyBase = (result?.monthlyValue || 0) - (result?.schedulingCostTotal || 0);
 
   return (
     <div className="bg-slate-200/50 min-h-screen pb-12 print:bg-white print:p-0">
@@ -248,16 +252,16 @@ export const ProposalView: React.FC<{
             </div>
           </div>
 
-          {/* 3. FUNCIONALIDADES DO SISTEMA SOC */}
-          <section className="mb-8">
+          {/* 3. FUNCIONALIDADES DO SISTEMA SOC INCLUSAS NO PLANO */}
+          <section className="mb-3">
              <h3 className="text-[10px] font-black text-reque-navy uppercase mb-2 flex items-center gap-2">
                <span className="w-2 h-2 rounded-full bg-[#ec9d23]"></span> 3. FUNCIONALIDADES DO SISTEMA SOC INCLUSAS NO PLANO
              </h3>
-             <div className="grid grid-cols-3 gap-x-6 gap-y-1.5 p-4 bg-[#f0f2f5] rounded-2xl border border-slate-200 shadow-inner">
+             <div className="grid grid-cols-3 gap-x-2 gap-y-2 p-4 bg-[#f0f2f5] rounded-2xl border border-slate-200 shadow-inner">
                {SYSTEM_FEATURES.slice(0, 12).map((f, i) => (
-                 <div key={i} className="flex items-center gap-2.5 text-[8.5px] font-bold text-slate-600">
-                   <CheckSquare className="w-3.5 h-3.5 text-reque-orange shrink-0" />
-                   <span className="truncate">{f}</span>
+                 <div key={i} className="flex items-center gap-1.5 text-[8.5px] font-bold text-slate-600">
+                   <CheckSquare className="w-3 h-3 text-reque-orange shrink-0" />
+                   <span className="leading-none whitespace-nowrap">{f}</span>
                  </div>
                ))}
              </div>
@@ -269,28 +273,28 @@ export const ProposalView: React.FC<{
               <span className="w-2.5 h-2.5 rounded-full bg-[#ec9d23]"></span> 4. INVESTIMENTO E CONDIÇÕES
             </h3>
             
-            <div className="border border-slate-300 rounded-2xl overflow-hidden shadow-sm mb-3">
+            <div className="border border-slate-300 rounded-2xl overflow-hidden shadow-sm mb-2">
                <table className="w-full text-center border-collapse">
                  <thead>
                    <tr className="bg-[#190c59] text-white text-[8.5px] font-black uppercase tracking-widest">
-                     <th className="py-2 px-4 w-[25%] border-r border-white/10">Nº VIDAS</th>
-                     <th className="py-2 px-4" colSpan={2}>PLANO SELECIONADO: <span className="text-reque-orange">{plan.toUpperCase()}</span></th>
-                     <th className="py-2 px-4 w-[20%] border-l border-white/10">PERIODICIDADE</th>
+                     <th className="py-1.5 px-4 w-[25%] border-r border-white/10">SERVIÇOS</th>
+                     <th className="py-1.5 px-4" colSpan={2}>PLANO SELECIONADO: <span className="text-reque-orange">{plan.toUpperCase()}</span></th>
+                     <th className="py-1.5 px-4 w-[20%] border-l border-white/10">CONDIÇÕES</th>
                    </tr>
                  </thead>
                  <tbody className="text-[10px]">
+                   {/* LINHA 1 - PROGRAMAS LEGAIS */}
                    <tr className="bg-white border-b border-slate-200">
-                     <td className="py-3 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">{result?.rangeLabel}</td>
-                     <td className="py-3 px-4 text-left font-bold text-slate-500 italic">
+                     <td className="py-2.5 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">PROGRAMAS LEGAIS</td>
+                     <td className="py-2.5 px-4 text-left font-bold text-slate-500 italic">
                         {result?.isRenewal ? 'Revisão e Manutenção Técnica' : (
                           <>
                             Elaboração PGR <br/>
                             Elaboração PCMSO
                           </>
-                        )} <br/>
-                        <span className="text-[8.5px] not-italic text-slate-400">({isCPF ? 'PGRTR' : 'PGR'} / PCMSO)</span>
+                        )}
                      </td>
-                     <td className="py-3 px-4 border-l border-slate-100 bg-[#f8f9fa]">
+                     <td className="py-2.5 px-4 border-l border-slate-100 bg-[#f8f9fa]">
                         {isFidelityActive ? (
                           <div className="flex flex-col items-center">
                             <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result?.originalProgramFee || 0)}</span>
@@ -305,47 +309,70 @@ export const ProposalView: React.FC<{
                           <span className="text-[14px] font-black text-reque-navy">{formatCurrency(result?.programFee || 0)}</span>
                         )}
                      </td>
-                     <td className="py-3 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
-                   </tr>
-                   {discountValue > 0 && (
-                     <tr className="bg-orange-50 border-b border-slate-200">
-                        <td className="py-2.5 px-4 font-black text-reque-orange border-r border-slate-200 text-[9px] tracking-widest uppercase">CONCESSÃO</td>
-                        <td className="py-2.5 px-4 text-left font-bold text-reque-orange italic uppercase">
-                           Desconto Especial Proposta SST
-                        </td>
-                        <td className="py-2.5 px-4 border-l border-slate-100 font-black text-reque-orange">
-                           -{formatCurrency(discountValue)}
-                        </td>
-                        <td className="py-2.5 px-4 font-black text-reque-orange/40 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
-                     </tr>
-                   )}
-                   <tr className="bg-[#fcfdfe]">
-                     <td className="py-3 px-4 font-black text-slate-400 uppercase border-r border-slate-200 text-[10px]">REF. MENSAL</td>
-                     <td className="py-3 px-4 text-left font-bold text-slate-500 italic leading-snug">
-                        Revisão Bianual dos riscos, Sistema de Gestão e eSocial <br/>
-                        {isFidelityActive && <span className="text-[8px] not-italic text-reque-orange font-black uppercase tracking-widest">FIDELIDADE 24 MESES</span>}
+                     <td className="py-2.5 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">
+                        {isFidelityActive ? 'FIDELIDADE 24 MESES' : 'SEM FIDELIDADE'}
                      </td>
-                     <td className="py-3 px-4 border-l border-slate-100">
+                   </tr>
+
+                   {/* LINHA 2 - ASSINATURA */}
+                   <tr className="bg-[#fcfdfe] border-b border-slate-200">
+                     <td className="py-2.5 px-4 font-black text-slate-400 border-r border-slate-200 text-[10px] uppercase leading-tight">
+                        {isNoFidelity ? 'ASSINATURA MENSAL' : `ASSINATURA ${plan === PlanType.PRO ? 'MENSAL' : 'ANUAL'}`}
+                     </td>
+                     <td className="py-2.5 px-4 text-left font-bold text-slate-500 italic leading-snug">
+                        Revisão Bianual dos riscos, Sistema de Gestão e eSocial
+                     </td>
+                     <td className="py-2.5 px-4 border-l border-slate-100">
                         <div className="flex flex-col items-center">
-                           <span className="text-[11px] font-[900] text-reque-navy uppercase leading-none">
-                              {selectedInstallments}x de
-                           </span>
-                           <span className="text-[18px] font-[900] text-reque-navy mt-1 leading-none">
-                              {formatCurrency(installmentValue)}
+                           <span className="text-[14px] font-black text-reque-navy mt-1 leading-none">
+                              {isNoFidelity ? `${formatCurrency(monthlyBase)}/mês` : `${formatCurrency(installmentValue)}${plan === PlanType.PRO ? '/mensal' : '/anual'}`}
                            </span>
                         </div>
                      </td>
-                     <td className="py-3 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">REF. MENSAL</td>
+                     <td className="py-2.5 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px] px-2 leading-tight">
+                        {isNoFidelity || plan === PlanType.PRO ? 'COBRANÇA RECORRENTE NO BOLETO' : (
+                          <>
+                            {plan === PlanType.EXPRESS && 'EM ATÉ 12X NO CARTÃO COM JUROS'}
+                            {plan === PlanType.ESSENCIAL && 'EM ATÉ 12X NO CARTÃO OU BOLETO COM JUROS'}
+                          </>
+                        )}
+                     </td>
                    </tr>
+
+                   {/* LINHA 3 - EXAMES OCUPACIONAIS */}
+                   <tr className="bg-white border-b border-slate-200">
+                     <td className="py-2.5 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">EXAMES OCUPACIONAIS</td>
+                     <td className="py-2.5 px-4 text-center font-bold text-slate-500 italic" colSpan={2}>
+                        CONSULTAR TABELA PAG. 3
+                     </td>
+                     <td className="py-2.5 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">
+                        POR DEMANDA
+                     </td>
+                   </tr>
+
+                   {discountValue > 0 && (
+                     <tr className="bg-orange-50 border-b border-slate-200">
+                        <td className="py-2 px-4 font-black text-reque-orange border-r border-slate-200 text-[9px] tracking-widest uppercase">CONCESSÃO</td>
+                        <td className="py-2 px-4 text-left font-bold text-reque-orange italic uppercase">
+                           Desconto Especial Proposta SST
+                        </td>
+                        <td className="py-2 px-4 border-l border-slate-100 font-black text-reque-orange">
+                           -{formatCurrency(discountValue)}
+                        </td>
+                        <td className="py-2 px-4 font-black text-reque-orange/40 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
+                     </tr>
+                   )}
                  </tbody>
                </table>
             </div>
 
-            <div className="bg-[#f0f2f5] border border-slate-200 rounded-2xl p-3 flex justify-between items-center mb-3 relative overflow-hidden shadow-inner">
+            <div className="bg-[#f0f2f5] border border-slate-200 rounded-2xl p-2.5 flex justify-between items-center mb-2 relative overflow-hidden shadow-inner">
                <div className="relative z-10 flex items-center gap-4">
                  <div className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm"><CheckCircle2 className="w-5 h-5 text-reque-orange" /></div>
                  <div>
-                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">VALOR TOTAL DA OFERTA</span>
+                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">
+                      {isNoFidelity ? 'PAGAMENTO INICIAL DA OFERTA' : 'VALOR TOTAL DA OFERTA'}
+                    </span>
                     <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">INCLUI PROGRAMAS + CICLO INICIAL</p>
                  </div>
                </div>
@@ -354,33 +381,35 @@ export const ProposalView: React.FC<{
                    {formatCurrency(finalTotalWithInterest)}
                  </p>
                  <span className="text-[9px] font-black text-reque-orange uppercase tracking-widest">
-                    {result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE'}
+                    {isNoFidelity ? 'PAGAMENTO ÚNICO' : (result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE')}
                  </span>
                </div>
                <div className="absolute right-0 top-0 h-full w-40 bg-[#190c59]/5 skew-x-[-15deg] translate-x-12"></div>
             </div>
 
-            <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
-              <h4 className="text-[9px] font-black text-reque-navy uppercase mb-2 flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-reque-orange" /> OPÇÕES DE PARCELAMENTO (CARTÃO DE CRÉDITO)
-              </h4>
-              <div className="grid grid-cols-4 gap-1.5">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
-                  const rate = interestRates[n] || 0;
-                  const instInterest = rate > 0 ? ((baseTotal * rate) / 100) + TRANSACTION_FIXED_FEE : 0;
-                  const installment = (baseTotal + instInterest) / n;
-                  return (
-                    <div key={n} className={`bg-[#f0f2f5]/60 border p-2 rounded-xl flex justify-between items-center transition-all ${selectedInstallments === n ? 'border-reque-orange ring-1 ring-reque-orange bg-orange-50' : 'border-slate-200 hover:bg-slate-100'}`}>
-                      <span className="text-[9px] font-black text-slate-400">{n}x de</span>
-                      <span className={`text-[10px] font-black ${selectedInstallments === n ? 'text-reque-orange' : 'text-reque-navy'}`}>{formatCurrency(installment)} {rate > 0 && '*'}</span>
-                    </div>
-                  );
-                })}
+            {plan !== PlanType.PRO && (
+              <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm">
+                <h4 className="text-[9px] font-black text-reque-navy uppercase mb-1.5 flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-reque-orange" /> {plan === PlanType.ESSENCIAL ? 'OPÇÕES DE PARCELAMENTO (CARTÃO DE CRÉDITO OU BOLETO BANCÁRIO)' : 'OPÇÕES DE PARCELAMENTO (CARTÃO DE CRÉDITO)'}
+                </h4>
+                <div className="grid grid-cols-4 gap-1">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(n => {
+                    const rate = interestRates[n] || 0;
+                    const instInterest = rate > 0 ? ((baseTotal * rate) / 100) + TRANSACTION_FIXED_FEE : 0;
+                    const installment = (baseTotal + instInterest) / n;
+                    return (
+                      <div key={n} className={`bg-[#f0f2f5]/60 border p-1.5 rounded-xl flex justify-between items-center transition-all ${selectedInstallments === n ? 'border-reque-orange ring-1 ring-reque-orange bg-orange-50' : 'border-slate-200 hover:bg-slate-100'}`}>
+                        <span className="text-[8.5px] font-black text-slate-400">{n}x de</span>
+                        <span className={`text-[9.5px] font-black ${selectedInstallments === n ? 'text-reque-orange' : 'text-reque-navy'}`}>{formatCurrency(installment)} {rate > 0 && '*'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-[7px] text-slate-400 font-bold uppercase tracking-widest mt-1.5 italic border-t border-slate-100 pt-1">
+                  * PARCELAS DE 4 A 12 COM ACRÉRESCIMO DE JUROS BANCÁRIOS E TAXA FIXA (R$ 0,49). ISENÇÃO EM 1X A 3X.
+                </p>
               </div>
-              <p className="text-[7.5px] text-slate-400 font-bold uppercase tracking-widest mt-2 italic border-t border-slate-100 pt-1">
-                * PARCELAS DE 4 A 12 COM ACRÉSCIMO DE JUROS BANCÁRIOS E TAXA FIXA (R$ 0,49). ISENÇÃO EM 1X A 3X.
-              </p>
-            </div>
+            )}
           </section>
         </A4Page>
 
@@ -404,15 +433,15 @@ export const ProposalView: React.FC<{
                 <div className="p-1.5 bg-orange-100 rounded-full"><Plus className="w-4 h-4 text-reque-orange" /></div> VISITA TÉCNICA
               </h4>
               <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                Quando solicitado pela CONTRATANTE, ou nos casos em que o cargo exigir visita técnica, será cobrado o valor de <span className="text-reque-navy font-black">R$ 100,00 por hora</span>, acrescido de <span className="text-reque-navy font-black">R$ 2,50 por quilômetro rodado</span>.
+                Quando solicitado pela CONTRATANTE, ou nos casos em que o novo cargo exigir visita técnica, será cobrado o valor de <span className="text-reque-navy font-black">R$ 100,00 por hora</span>, acrescido de <span className="text-reque-navy font-black">R$ 2,50 por quilômetro rodado</span>.
               </p>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
               <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
-                <div className="p-1.5 bg-orange-100 rounded-full"><Building2 className="w-4 h-4 text-reque-orange" /></div> INCLUSÃO DE CARGOS/GHE
+                <div className="p-1.5 bg-orange-100 rounded-full"><Building2 className="w-4 h-4 text-reque-orange" /></div> ATIALIZAÇÃO DE PROGRAMAS
               </h4>
               <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                Ao ultrapassar o número contratado, novos cargos/GHE terão custo pontual de <span className="text-reque-navy font-black">R$ 70,00 (PGR)</span> e <span className="text-reque-navy font-black">R$ 50,00 (PCMSO)</span> para atualização.
+                A proposta já contempla atualização a cada 24 meses. Caso sejam necessárias atualizações adicionais, será cobrado um valor pontual de <span className="text-reque-navy font-black">R$ 70,00 para o PGR</span> e <span className="text-reque-navy font-black">R$ 50,00 para o PCMSO</span>.
               </p>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
@@ -420,10 +449,18 @@ export const ProposalView: React.FC<{
                 <div className="p-1.5 bg-orange-100 rounded-full"><Users className="w-4 h-4 text-reque-orange" /></div> FUNCIONÁRIOS ADICIONAIS
               </h4>
               <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                Ao ultrapassar o limite contratado, a assinatura mensal será reajustada em <span className="text-reque-navy font-black">R$ 2,00 por funcionário adicional</span>. Contagem baseada em ativos todo dia 20.
+                Caso ocorra aumento de funcionários além do limite contratado, será cobrado o valor adicional de <span className="text-reque-navy font-black">R$ 25,00 mensais</span>, a ser incluído no próximo ciclo de pagamento.
               </p>
             </div>
             <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
+              <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
+                <div className="p-1.5 bg-orange-100 rounded-full"><Users className="w-4 h-4 text-reque-orange" /></div> SAFRISTAS
+              </h4>
+              <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
+                A contratação de trabalhadores safristas não implicará cobrança adicional por funcionários.
+              </p>
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2 col-span-2">
               <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
                 <div className="p-1.5 bg-orange-100 rounded-full"><Mail className="w-4 h-4 text-reque-orange" /></div> REMESSA DE PRONTUÁRIOS
               </h4>
@@ -451,11 +488,13 @@ export const ProposalView: React.FC<{
                <div className="bg-[#f0f2f5] border border-slate-300 rounded-2xl p-4 space-y-3 shadow-inner">
                  <p className="text-[9px] font-black text-reque-navy uppercase tracking-widest border-b border-slate-300 pb-1.5">MODALIDADE FINANCEIRA</p>
                  <div className="text-[10px] font-bold text-slate-600 space-y-2">
-                   <p>Ciclo de Cobrança: <span className="text-reque-navy">{result?.billingCycle}</span></p>
+                   <p>Ciclo de Cobrança: <span className="text-reque-navy">{(isFidelityActive && (plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL)) ? 'Cobrança Anual' : result?.billingCycle}</span></p>
                    <p>Meio de Pagamento Preferencial: <span className="text-reque-navy font-black">{plan === PlanType.ESSENCIAL ? 'BOLETO BANCÁRIO OU CARTÃO DE CRÉDITO' : (result?.paymentMethod || '').toUpperCase()}</span></p>
-                   <div className="pt-2 mt-2 border-t border-slate-200">
+                   <div className="pt-2 mt-2">
                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">OBSERVAÇÕES FINANCEIRAS:</p>
-                     <p className="text-[8.5px] italic leading-relaxed text-slate-400">Nota Fiscal emitida eletronicamente após a confirmação do pagamento inicial ou conforme ciclo mensal estabelecido.</p>
+                     <div className="bg-white border border-indigo-100 rounded-xl p-3 shadow-sm italic text-[8.5px] text-reque-navy leading-relaxed font-bold">
+                       Nota Fiscal emitida eletronicamente após a confirmação do pagamento inicial ou conforme o ciclo mensal estabelecido, sendo que os exames ocupacionais serão faturados pela REQUEMED – Clínica de Medicina do Trabalho LTDA, e os planos de SST serão faturados pela MR & CIA LTDA.
+                     </div>
                    </div>
                  </div>
                </div>

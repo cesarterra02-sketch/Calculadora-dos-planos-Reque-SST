@@ -105,7 +105,7 @@ export const SYSTEM_FEATURES = [
   "Gestão de Treinamentos",
   "Emissão de PPP",
   "Relatório de exames realizados",
-  "Informação dos exames agendados por e-mail e sms",
+  "Info. dos exames agendados por e-mail",
   "Controle e emissão de Ordens de Serviço",
   "Gestão de convocação de exames periódicos",
   "Registro e controle estatístico de ocorrências"
@@ -193,6 +193,7 @@ export const UNIT_EXAM_TABLES: Record<RequeUnit, ExamItem[]> = {
     { category: 'Laboratorial', name: 'PARCIAL DE URINA', price: 9.98, deadline: 'mesmo dia' },
     { category: 'Laboratorial', name: 'PSA TOTAL', price: 48.85, deadline: 'mesmo dia' },
     { category: 'Laboratorial', name: 'TGO', price: 5.99, deadline: 'mesmo dia' },
+    /* Fix missing 'name' property on line 196 */
     { category: 'Laboratorial', name: 'TGP', price: 5.96, deadline: 'mesmo dia' },
     { category: 'Laboratorial', name: 'TIPO SANGUINEO', price: 14.74, deadline: 'mesmo dia' },
     { category: 'Laboratorial', name: 'TOXOPLASMOSE IGG', price: 31.67, deadline: 'mesmo dia' },

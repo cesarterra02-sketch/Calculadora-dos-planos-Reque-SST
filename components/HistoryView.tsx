@@ -1,7 +1,27 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ProposalHistoryItem } from '../types';
-import { Clock, ArrowLeft, RotateCcw, Trash2, FileSearch, Truck, FileText, AlertTriangle, X, Loader2, User, Search, TrendingUp } from 'lucide-react';
+import { 
+  Clock, 
+  ArrowLeft, 
+  RotateCcw, 
+  Trash2, 
+  FileSearch, 
+  Truck, 
+  FileText, 
+  AlertTriangle, 
+  X, 
+  Loader2, 
+  User, 
+  Search, 
+  TrendingUp, 
+  BarChart3, 
+  PieChart, 
+  DollarSign,
+  FileCheck,
+  Users,
+  Sparkles
+} from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
 interface HistoryViewProps {
@@ -51,6 +71,28 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
     );
   });
 
+  // Estatísticas por Vendedor
+  const sellerStats = useMemo(() => {
+    const stats: Record<string, { count: number, total: number }> = {};
+    
+    // Filtramos apenas propostas do mês atual para o resumo
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    history.forEach(item => {
+      const itemDate = new Date(item.createdAt);
+      if (itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear) {
+        const seller = item.createdBy || 'Sistema';
+        if (!stats[seller]) stats[seller] = { count: 0, total: 0 };
+        stats[seller].count += 1;
+        stats[seller].total += item.initialTotal;
+      }
+    });
+
+    return Object.entries(stats).sort((a, b) => b[1].total - a[1].total);
+  }, [history]);
+
   return (
     <div className="space-y-6 relative">
       <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
@@ -78,6 +120,69 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
           Histórico de Propostas
         </h2>
       </div>
+
+      {/* DASHBOARD DE ESTATÍSTICAS POR VENDEDOR */}
+      {isAdmin && history.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 col-span-1 md:col-span-2">
+            <div className="flex items-center justify-between mb-4">
+               <h3 className="text-[11px] font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
+                 <BarChart3 className="w-4 h-4 text-reque-orange" /> Performance Mensal por Vendedor
+               </h3>
+               <span className="text-[9px] font-bold text-slate-400 uppercase">Mês Atual</span>
+            </div>
+            <div className="space-y-4">
+               {sellerStats.length === 0 ? (
+                 <p className="text-[10px] text-slate-400 italic">Nenhuma proposta criada no mês vigente.</p>
+               ) : sellerStats.map(([name, data]) => (
+                 <div key={name} className="relative">
+                    <div className="flex justify-between items-end mb-1">
+                       <span className="text-[10px] font-black text-reque-navy uppercase">{name}</span>
+                       <div className="text-right">
+                          <span className="text-[10px] font-black text-reque-navy block">{formatCurrency(data.total)}</span>
+                          <span className="text-[8px] font-bold text-slate-400 uppercase">{data.count} Propostas</span>
+                       </div>
+                    </div>
+                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                       <div 
+                        className="h-full bg-reque-orange rounded-full transition-all duration-1000" 
+                        style={{ width: `${Math.min(100, (data.total / (sellerStats[0][1].total || 1)) * 100)}%` }}
+                       />
+                    </div>
+                 </div>
+               ))}
+            </div>
+          </div>
+
+          <div className="bg-reque-navy p-5 rounded-2xl shadow-lg border border-white/10 flex flex-col justify-between">
+             <div>
+                <h3 className="text-[10px] font-black text-reque-orange uppercase tracking-widest flex items-center gap-2 mb-4">
+                   <TrendingUp className="w-4 h-4" /> Resumo de Receita
+                </h3>
+                <div className="space-y-4">
+                   <div>
+                      <p className="text-[9px] text-white/50 font-bold uppercase tracking-tight">Total Projetado (Mês)</p>
+                      <p className="text-2xl font-black text-white tracking-tighter">
+                        {formatCurrency(sellerStats.reduce((acc, curr) => acc + curr[1].total, 0))}
+                      </p>
+                   </div>
+                   <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
+                      <div className="p-2 bg-reque-orange rounded-lg">
+                        <FileCheck className="w-4 h-4 text-reque-navy" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black text-white uppercase leading-none">
+                           {sellerStats.reduce((acc, curr) => acc + curr[1].count, 0)}
+                        </p>
+                        <p className="text-[8px] text-white/40 font-bold uppercase tracking-widest mt-1">Simulações Ativas</p>
+                      </div>
+                   </div>
+                </div>
+             </div>
+             <p className="text-[8px] text-white/30 font-bold italic mt-4">* Dados sincronizados em tempo real com a nuvem.</p>
+          </div>
+        </div>
+      )}
 
       {history.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-slate-200">
@@ -116,8 +221,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                   <th className="px-6 py-4">Data/Hora</th>
                   <th className="px-6 py-4">Tipo</th>
                   <th className="px-6 py-4">Empresa / Contato</th>
-                  <th className="px-6 py-4">Criado por</th>
-                  <th className="px-6 py-4">Status / Margem</th>
+                  <th className="px-6 py-4">Informações Prévias</th>
+                  <th className="px-6 py-4">Criado por / Status</th>
                   <th className="px-6 py-4 text-right">Valor Total</th>
                   <th className="px-6 py-4 text-center">Ações</th>
                 </tr>
@@ -150,31 +255,33 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5">
-                        <User className="w-3 h-3 text-reque-orange opacity-70" />
-                        <span className="text-[10px] font-black text-reque-navy uppercase truncate max-w-[120px]" title={item.createdBy}>
-                          {item.createdBy || 'Sistema'}
-                        </span>
-                      </div>
+                       <div className="flex flex-col gap-1 text-[10px] font-bold text-slate-500">
+                          <div className="flex items-center gap-1.5">
+                            <Users className="w-3 h-3 text-reque-orange" />
+                            <span>{item.numEmployees || '0'} Vidas Ativas</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <Sparkles className="w-3 h-3 text-reque-navy opacity-50" />
+                            <span>{item.plan || 'Plano Personalizado'}</span>
+                          </div>
+                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {item.type === 'incompany' && (item.margemAlvoAplicada !== undefined || item.margemAtendimentoValor !== undefined) ? (
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1.5">
-                            <TrendingUp className="w-3 h-3 text-green-500" />
-                            <span className="text-[9px] font-black text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase tracking-tighter">
-                              MARGEM ALVO: {item.margemAlvoAplicada || '30'}%
-                            </span>
-                          </div>
-                          {item.margemAtendimentoValor !== undefined && (
-                            <span className="text-[8px] font-bold text-slate-400 italic">
-                              Lucro: {formatCurrency(item.margemAtendimentoValor)}
-                            </span>
-                          )}
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-1.5">
+                          <User className="w-3 h-3 text-reque-orange opacity-70" />
+                          <span className="text-[10px] font-black text-reque-navy uppercase truncate max-w-[120px]" title={item.createdBy}>
+                            {item.createdBy || 'Sistema'}
+                          </span>
                         </div>
-                      ) : (
-                        <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso Web Standard</span>
-                      )}
+                        {item.type === 'incompany' ? (
+                          <span className="text-[9px] font-black text-green-700 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase tracking-tighter w-fit">
+                            MARGEM: {item.margemAlvoAplicada || '30'}%
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-slate-300 font-black italic uppercase tracking-tighter">Acesso Web Standard</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-right font-black text-reque-navy">
                       {formatCurrency(item.initialTotal)}
