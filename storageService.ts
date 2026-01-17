@@ -20,6 +20,7 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     fidelity: data.fidelity || '',
     isRenewal: data.is_renewal || false,
     specialDiscount: data.special_discount || 0,
+    // FIX: Changed 'selected_unit' to 'selectedUnit' to match ProposalHistoryItem interface
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
     docDeliveryDate: data.doc_delivery_date,
@@ -64,11 +65,7 @@ const sanitizeUserForDb = (user: User) => {
 };
 
 const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
-  // Log de auditoria solicitado
-  console.log("DEBUG SALVAMENTO:", item.specialDiscount);
-
   const dbData: any = {
-    id: item.id,
     type: item.type,
     cnpj: item.cnpj,
     company_name: item.companyName, 
@@ -77,7 +74,7 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     created_by: item.createdBy,
     taxa_in_company: item.taxaInCompany,
     margem_atendimento_valor: item.margemAtendimentoValor,
-    // margemAlvoAplicada removida para evitar erro de schema cache se a coluna não existir fisicamente no DB
+    margem_alvo_aplicada: item.margemAlvoAplicada,
     imposto_aplicado: item.impostoAplicado,
     comissao_aplicada: item.comissaoAplicada,
     num_employees: item.numEmployees,
@@ -92,6 +89,11 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     doc_delivery_date: item.docDeliveryDate,
     in_company_details: item.inCompanyDetails
   };
+
+  // Se o item já possui um ID (UUID), incluímos para o UPSERT
+  if (item.id) {
+    dbData.id = item.id;
+  }
   
   return dbData;
 };
@@ -126,10 +128,19 @@ export const StorageService = {
   addHistoryItem: async (item: ProposalHistoryItem): Promise<ProposalHistoryItem> => {
     try {
       const dbItem = sanitizeProposalForDb(item);
-      const { data, error } = await supabase.from('reque_proposals').insert([dbItem]).select().single();
+      
+      // Se houver ID no objeto, fazemos UPSERT para atualizar ou inserir caso não exista
+      // Se não houver ID, o Supabase gera automaticamente via DEFAULT (UUID)
+      const { data, error } = await supabase
+        .from('reque_proposals')
+        .upsert([dbItem], { onConflict: 'id' })
+        .select()
+        .single();
+
       if (error) throw error;
       return mapProposalData(data);
     } catch (error: any) {
+      console.error("ERRO STORAGE SERVICE:", error);
       throw new Error(error?.message || 'Erro ao salvar proposta');
     }
   },
