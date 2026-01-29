@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { ProfessionalInCompany, ExamInCompany, VehicleInCompany, RequeUnit } from '../types';
 import { Printer, Download, Loader2, ArrowLeft, Check, Info, FileText, AlertTriangle, ShieldCheck, Truck } from 'lucide-react';
@@ -252,7 +251,7 @@ export const InCompanyProposalView: React.FC<{
                       <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-100'}>
                         <td className="py-2 px-4 font-bold text-slate-800">{p.type}</td>
                         <td className="py-2 px-4 text-center font-bold text-slate-800">{p.quantity}</td>
-                        <td className="py-2 px-4 text-center font-bold text-slate-800">{p.executionHours + p.travelHours}h</td>
+                        <td className="py-2 px-4 text-center font-bold text-slate-800">{p.executionHours}h</td>
                       </tr>
                     ))}
                   </tbody>
