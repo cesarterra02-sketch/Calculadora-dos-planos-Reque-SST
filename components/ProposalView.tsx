@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { PricingResult, PlanType, FidelityModel, BillingCycle, RequeUnit } from '../types';
 import { PLAN_SERVICES, UNIT_EXAM_TABLES, SYSTEM_FEATURES } from '../constants';
@@ -70,7 +69,10 @@ export const ProposalView: React.FC<{
   onBack: () => void;
   selectedInstallments: number;
   specialDiscount?: number;
-}> = ({ result, plan, fidelity, employees, companyName, contactName, cnpj, selectedUnit, onBack, selectedInstallments, specialDiscount }) => {
+  isCustomTable?: boolean;
+  customExams?: any[];
+  customCity?: string;
+}> = ({ result, plan, fidelity, employees, companyName, contactName, cnpj, selectedUnit, onBack, selectedInstallments, specialDiscount, isCustomTable, customExams, customCity }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [interestRates, setInterestRates] = useState<Record<number, number>>({});
   const contentRef = useRef<HTMLDivElement>(null);
@@ -109,7 +111,13 @@ export const ProposalView: React.FC<{
   const validadeDate = "10 dias";
 
   const EXAMS_PER_PAGE = 45; 
-  const allExams = UNIT_EXAM_TABLES[selectedUnit] || [];
+  const allExams = useMemo(() => {
+    if (isCustomTable && customExams && customExams.length > 0) {
+      return customExams;
+    }
+    return UNIT_EXAM_TABLES[selectedUnit] || [];
+  }, [isCustomTable, customExams, selectedUnit]);
+
   const examPages = useMemo(() => {
     const pages = [];
     for (let i = 0; i < allExams.length; i += EXAMS_PER_PAGE) { pages.push(allExams.slice(i, i + EXAMS_PER_PAGE)); }
@@ -521,7 +529,7 @@ export const ProposalView: React.FC<{
         {examPages.map((exams, pageIdx) => (
           <A4Page key={pageIdx} pageNumber={3 + pageIdx} totalPages={totalPages} plan={plan.toUpperCase()}>
             <div className="flex flex-col items-center mb-4">
-              <h3 className="text-[14px] font-[900] text-reque-navy uppercase tracking-tight">ANEXO - TABELA DE VALORES EXAMES | {selectedUnit.replace('Unidade Reque ', '').toUpperCase()}</h3>
+              <h3 className="text-[14px] font-[900] text-reque-navy uppercase tracking-tight">ANEXO - TABELA DE VALORES EXAMES | {isCustomTable && customCity ? customCity.toUpperCase() : selectedUnit.replace('Unidade Reque ', '').toUpperCase()}</h3>
               <div className="h-[2px] w-24 bg-reque-orange mt-1"></div>
             </div>
 
