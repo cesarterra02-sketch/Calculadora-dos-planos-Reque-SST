@@ -1,18 +1,19 @@
-
 import { ProposalHistoryItem, User, AccessLogEntry } from './types';
 import { supabase } from './supabaseClient';
 
 const mapProposalData = (data: any): ProposalHistoryItem => {
   if (!data) return data;
+  const isCred = data.type === 'credenciador';
   return {
     id: data.id,
     type: data.type || 'standard',
     createdAt: data.created_at || data.createdAt || data.timestamp || data.inserted_at || new Date().toISOString(),
     createdBy: data.created_by || data.createdBy || '',
-    companyName: data.company_name || data.company || data.companyName || data.empresa || data.name || '',
+    // Mapeamento dinâmico baseado no tipo para suportar colunas específicas do banco
+    companyName: isCred ? (data.razao_social || data.company_name) : (data.company_name || data.company || data.companyName || ''),
     contactName: data.contact_name || data.contactName || data.contato || data.contact || '',
-    cnpj: data.cnpj || '',
-    initialTotal: data.initial_total || data.initialTotal || data.valor_total || data.total || data.value || 0,
+    cnpj: isCred ? (data.cnpj_cliente || data.cnpj) : (data.cnpj || ''),
+    initialTotal: data.initial_total || data.initialTotal || 0,
     numEmployees: data.num_employees || 0,
     externalLivesCount: data.external_lives_count || 0,
     plan: data.plan || '',
@@ -20,7 +21,6 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     fidelity: data.fidelity || '',
     isRenewal: data.is_renewal || false,
     specialDiscount: data.special_discount || 0,
-    // FIX: Changed 'selected_unit' to 'selectedUnit' to match ProposalHistoryItem interface
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
     docDeliveryDate: data.doc_delivery_date,
@@ -29,7 +29,10 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     margemAlvoAplicada: data.margem_alvo_aplicada,
     impostoAplicado: data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
-    inCompanyDetails: data.in_company_details
+    // Reconstrói o inCompanyDetails para Credenciador a partir da coluna específica se disponível
+    inCompanyDetails: isCred ? { 
+      credenciadorUnits: data.unidades_customizadas || data.in_company_details?.credenciadorUnits 
+    } : data.in_company_details
   };
 };
 
@@ -45,6 +48,7 @@ const mapUserData = (data: any): User => {
     canAccessHistory: data.can_access_history !== undefined ? data.can_access_history : true,
     canAccessInCompany: data.can_access_incompany !== undefined ? data.can_access_incompany : true,
     canAccessCalculator: data.can_access_calculator !== undefined ? data.can_access_calculator : true,
+    canAccessCredenciador: data.can_access_credenciador !== undefined ? data.can_access_credenciador : false,
     canGenerateProposal: data.can_generate_proposal || false
   };
 };
@@ -60,23 +64,18 @@ const sanitizeUserForDb = (user: User) => {
     can_access_history: user.canAccessHistory,
     can_access_incompany: user.canAccessInCompany,
     can_access_calculator: user.canAccessCalculator,
+    can_access_credenciador: user.canAccessCredenciador,
     can_generate_proposal: user.canGenerateProposal
   };
 };
 
 const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
+  const isCred = item.type === 'credenciador';
+  
   const dbData: any = {
     type: item.type,
-    cnpj: item.cnpj,
-    company_name: item.companyName, 
-    contact_name: item.contactName,
     initial_total: Number(item.initialTotal) || 0,
     created_by: item.createdBy,
-    taxa_in_company: item.taxaInCompany,
-    margem_atendimento_valor: item.margemAtendimentoValor,
-    margem_alvo_aplicada: item.margemAlvoAplicada,
-    imposto_aplicado: item.impostoAplicado,
-    comissao_aplicada: item.comissaoAplicada,
     num_employees: item.numEmployees,
     external_lives_count: item.externalLivesCount,
     plan: item.plan,
@@ -87,10 +86,26 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     selected_unit: item.selectedUnit,
     client_delivery_date: item.clientDeliveryDate,
     doc_delivery_date: item.docDeliveryDate,
-    in_company_details: item.inCompanyDetails
+    contact_name: item.contactName,
   };
 
-  // Se o item já possui um ID (UUID), incluímos para o UPSERT
+  if (isCred) {
+    // Mapeamento específico solicitado para CREDENCIADOR
+    dbData.razao_social = item.companyName;
+    dbData.cnpj_cliente = item.cnpj;
+    dbData.unidades_customizadas = item.inCompanyDetails?.credenciadorUnits;
+  } else {
+    // Mapeamento padrão para outros tipos
+    dbData.company_name = item.companyName;
+    dbData.cnpj = item.cnpj;
+    dbData.in_company_details = item.inCompanyDetails;
+    dbData.taxa_in_company = item.taxaInCompany;
+    dbData.margem_atendimento_valor = item.margemAtendimentoValor;
+    dbData.margem_alvo_aplicada = item.margemAlvoAplicada;
+    dbData.imposto_aplicado = item.impostoAplicado;
+    dbData.comissao_aplicada = item.comissaoAplicada;
+  }
+
   if (item.id) {
     dbData.id = item.id;
   }
@@ -129,15 +144,16 @@ export const StorageService = {
     try {
       const dbItem = sanitizeProposalForDb(item);
       
-      // Se houver ID no objeto, fazemos UPSERT para atualizar ou inserir caso não exista
-      // Se não houver ID, o Supabase gera automaticamente via DEFAULT (UUID)
       const { data, error } = await supabase
         .from('reque_proposals')
         .upsert([dbItem], { onConflict: 'id' })
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.log('Erro detalhado:', error);
+        throw error;
+      }
       return mapProposalData(data);
     } catch (error: any) {
       console.error("ERRO STORAGE SERVICE:", error);
@@ -189,6 +205,7 @@ export const StorageService = {
     if (updates.canAccessHistory !== undefined) dbUpdates.can_access_history = updates.canAccessHistory;
     if (updates.canAccessInCompany !== undefined) dbUpdates.can_access_incompany = updates.canAccessInCompany;
     if (updates.canAccessCalculator !== undefined) dbUpdates.can_access_calculator = updates.canAccessCalculator;
+    if (updates.canAccessCredenciador !== undefined) dbUpdates.can_access_credenciador = updates.canAccessCredenciador;
     if (updates.canGenerateProposal !== undefined) dbUpdates.can_generate_proposal = updates.canGenerateProposal;
 
     const { error } = await supabase.from('reque_users').update(dbUpdates).eq('email', email);

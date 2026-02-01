@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, AccessLogEntry } from '../types';
 import { StorageService } from '../storageService';
@@ -18,7 +17,8 @@ import {
   ShieldCheck,
   UserCheck,
   Calculator,
-  User as UserIcon
+  User as UserIcon,
+  Network
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -143,6 +143,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                 <th className="px-4 py-5 text-center">Admin</th>
                 <th className="px-4 py-5 text-center">Planos</th>
                 <th className="px-4 py-5 text-center">In Company</th>
+                <th className="px-4 py-5 text-center">Credenc.</th>
                 <th className="px-4 py-5 text-center">Histórico</th>
                 <th className="px-4 py-5 text-center">Propostas</th>
                 <th className="px-6 py-5 text-center">Gestão</th>
@@ -188,6 +189,11 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                   <td className="px-4 py-4 text-center">
                     <button onClick={() => togglePermission(user.email, 'canAccessInCompany')} className={`p-2.5 rounded-xl transition-all border ${user.canAccessInCompany ? 'bg-orange-50 text-orange-700 border-orange-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
                       <Truck className="w-4 h-4" />
+                    </button>
+                  </td>
+                  <td className="px-4 py-4 text-center">
+                    <button onClick={() => togglePermission(user.email, 'canAccessCredenciador')} className={`p-2.5 rounded-xl transition-all border ${user.canAccessCredenciador ? 'bg-purple-50 text-purple-700 border-purple-100 shadow-sm' : 'bg-slate-50 text-slate-300 border-slate-100'}`}>
+                      <Network className="w-4 h-4" />
                     </button>
                   </td>
                   <td className="px-4 py-4 text-center">

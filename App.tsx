@@ -157,7 +157,7 @@ function App() {
       id: 'credenciador',
       label: 'CREDENCIADOR',
       icon: <Network className="w-4 h-4" />,
-      allowed: currentUser?.role === 'admin' || currentUser?.canAccessCalculator
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessCredenciador
     }
   ].filter(i => i.allowed);
 
@@ -258,7 +258,7 @@ function App() {
           {!isSidebarCollapsed && (
             <div className="flex flex-col leading-none animate-in fade-in duration-300 w-full">
               <span className="font-black text-3xl tracking-tighter text-white">Reque</span>
-              <span className="text-[10px] font-bold tracking-widest text-reque-orange uppercase mt-1 whitespace-nowrap">
+              <span className="text-[10px] font-bold tracking-widest text-reque-orange uppercase mt-1 whitespace-nowrap font-sans">
                 ESTRATÉGIA EM SST
               </span>
             </div>

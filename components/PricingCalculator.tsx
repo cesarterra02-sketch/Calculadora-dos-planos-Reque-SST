@@ -22,7 +22,7 @@ import {
 } from '../constants';
 import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
-import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus, X, MapPin, Edit3, Settings2, Plus, Trash2, Save as SaveIcon, ArrowDownToLine } from 'lucide-react';
+import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus, X, MapPin, Edit3, Settings2, Plus, Trash2, Save as SaveIcon, ArrowDownToLine, ChevronUp, ChevronDown } from 'lucide-react';
 
 const formatDocument = (value: string) => {
   const cleanValue = value.replace(/\D/g, '');
@@ -261,6 +261,17 @@ export const PricingCalculator: React.FC<{
 
   const removeCustomExam = (index: number) => {
     setCustomExams(customExams.filter((_, i) => i !== index));
+  };
+
+  const moveCustomExam = (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= customExams.length) return;
+    
+    const newExams = [...customExams];
+    const item = newExams[index];
+    newExams[index] = newExams[newIndex];
+    newExams[newIndex] = item;
+    setCustomExams(newExams);
   };
 
   const handleCustomExamChange = (index: number, field: string, value: any) => {
@@ -664,7 +675,7 @@ export const PricingCalculator: React.FC<{
                         <th className="px-4 w-[40%]">NOME DO EXAME</th>
                         <th className="px-4 text-center w-[18%] border-l border-white/10 uppercase leading-tight">Valor PCMSO da Reque SST</th>
                         <th className="px-4 text-center w-[18%] border-l border-white/10 uppercase leading-tight">Prazo de Resultados</th>
-                        <th className="px-4 text-center w-[60px] border-l border-white/10 uppercase">Ação</th>
+                        <th className="px-4 text-center w-[80px] border-l border-white/10 uppercase">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-xs font-bold text-slate-600">
@@ -723,12 +734,31 @@ export const PricingCalculator: React.FC<{
                             />
                           </td>
                           <td className="px-4 border-l border-slate-100 text-center">
-                            <button 
-                              onClick={() => removeCustomExam(idx)}
-                              className="p-0.5 text-slate-300 hover:text-red-500 transition-all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button 
+                                onClick={() => moveCustomExam(idx, 'up')}
+                                disabled={idx === 0}
+                                className="p-0.5 text-slate-300 hover:text-reque-navy disabled:opacity-0 transition-all"
+                                title="Subir"
+                              >
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => moveCustomExam(idx, 'down')}
+                                disabled={idx === customExams.length - 1}
+                                className="p-0.5 text-slate-300 hover:text-reque-navy disabled:opacity-0 transition-all"
+                                title="Descer"
+                              >
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              </button>
+                              <button 
+                                onClick={() => removeCustomExam(idx)}
+                                className="p-0.5 text-slate-300 hover:text-red-500 transition-all ml-1"
+                                title="Remover"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
