@@ -24,7 +24,9 @@ const {
   Wifi: NetOn, 
   WifiOff: NetOff, 
   ShieldAlert: Warn,
-  Network
+  Network,
+  Menu,
+  X: CloseIcon
 } = LucideIcons;
 
 function App() {
@@ -34,6 +36,7 @@ function App() {
   const [history, setHistory] = useState<ProposalHistoryItem[]>([]);
   const [editingItem, setEditingItem] = useState<ProposalHistoryItem | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isCalcExpanded, setIsCalcExpanded] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [isDbConnected, setIsDbConnected] = useState<boolean | null>(null);
@@ -90,6 +93,7 @@ function App() {
     setCurrentView('calculator');
     setEditingItem(null);
     setHistory([]);
+    setIsMobileSidebarOpen(false);
   };
 
   const handleSaveHistory = async (item: ProposalHistoryItem) => {
@@ -164,6 +168,12 @@ function App() {
   const allowedItems = navItems.filter(i => i.allowed);
   const hasCalculatorAccess = calcSubItems.length > 0;
 
+  const handleNavItemClick = (viewId: string) => {
+    setEditingItem(null);
+    setCurrentView(viewId as ViewType);
+    setIsMobileSidebarOpen(false); // Fecha no mobile ao clicar
+  };
+
   const renderContent = () => {
     if (isLoading) {
       return (
@@ -176,7 +186,7 @@ function App() {
 
     if (allowedItems.length === 0 && !hasCalculatorAccess) {
       return (
-        <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400 max-w-lg mx-auto text-center">
+        <div className="flex flex-col items-center justify-center h-full py-20 text-slate-400 max-w-lg mx-auto text-center px-6">
           <Warn className="w-16 h-16 text-reque-orange mb-6" />
           <h3 className="text-xl font-black text-reque-navy uppercase tracking-tight mb-2">Sem Acesso Liberado</h3>
           <p className="text-sm font-medium leading-relaxed">
@@ -228,8 +238,8 @@ function App() {
         return (
           <div className="animate-in fade-in duration-500">
             <div className="mb-8 border-l-4 border-reque-orange pl-5">
-              <h2 className="text-3xl font-black text-reque-navy tracking-tight">Nova Precificação SST</h2>
-              <p className="text-slate-500 mt-1 font-medium">
+              <h2 className="text-2xl lg:text-3xl font-black text-reque-navy tracking-tight">Nova Precificação SST</h2>
+              <p className="text-slate-500 mt-1 font-medium text-sm">
                 Configure os parâmetros para geração da proposta técnico-comercial.
               </p>
             </div>
@@ -248,13 +258,24 @@ function App() {
   const isCalcActive = currentView === 'calculator' || currentView === 'incompany' || currentView === 'credenciador';
 
   return (
-    <div className="min-h-screen bg-[#f8f9fc] flex font-sans">
+    <div className="min-h-screen bg-[#f8f9fc] flex font-sans relative">
+      {/* OVERLAY MOBILE */}
+      {isMobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden animate-in fade-in duration-300"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* SIDEBAR */}
       <aside 
-        className={`hidden lg:flex flex-col bg-reque-navy border-r border-white/10 shrink-0 sticky top-0 h-screen z-40 transition-all duration-300 ease-in-out ${
-          isSidebarCollapsed ? 'w-20' : 'w-72'
-        }`}
+        className={`flex flex-col bg-reque-navy border-r border-white/10 shrink-0 fixed lg:sticky top-0 h-screen z-50 transition-all duration-300 ease-in-out ${
+          isSidebarCollapsed ? 'lg:w-20' : 'lg:w-72'
+        } ${
+          isMobileSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full lg:translate-x-0 w-72 lg:w-72'
+        } ${isSidebarCollapsed && !isMobileSidebarOpen ? 'lg:w-20' : ''}`}
       >
-        <div className="p-8 flex items-center justify-between overflow-hidden text-center">
+        <div className="p-8 flex items-center justify-between overflow-hidden text-center relative">
           {!isSidebarCollapsed && (
             <div className="flex flex-col leading-none animate-in fade-in duration-300 w-full">
               <span className="font-black text-3xl tracking-tighter text-white">Reque</span>
@@ -266,9 +287,17 @@ function App() {
           {isSidebarCollapsed && (
             <span className="font-black text-2xl tracking-tighter text-white mx-auto">R.</span>
           )}
+          
+          {/* BOTÃO FECHAR MOBILE */}
+          <button 
+            className="lg:hidden absolute right-4 top-8 p-2 text-white/40 hover:text-white transition-colors"
+            onClick={() => setIsMobileSidebarOpen(false)}
+          >
+            <CloseIcon className="w-6 h-6" />
+          </button>
         </div>
 
-        <div className="px-4 mb-4">
+        <div className="px-4 mb-4 hidden lg:block">
           <button 
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
             className="w-full flex items-center justify-center py-2 bg-white/5 hover:bg-white/10 text-white/40 hover:text-white rounded-lg transition-all"
@@ -277,13 +306,13 @@ function App() {
           </button>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
           {/* Calculadora Group */}
           {hasCalculatorAccess && (
             <div className="space-y-1">
               <button
                 onClick={() => {
-                  if (isSidebarCollapsed) {
+                  if (isSidebarCollapsed && !isMobileSidebarOpen) {
                     setIsSidebarCollapsed(false);
                     setIsCalcExpanded(true);
                   } else {
@@ -296,32 +325,29 @@ function App() {
                     : 'text-white/60 hover:bg-white/5 hover:text-white'
                 }`}
               >
-                <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'mx-auto' : ''}`}>
+                <div className={`flex items-center gap-3 ${isSidebarCollapsed && !isMobileSidebarOpen ? 'mx-auto' : ''}`}>
                   <span className={`${isCalcActive ? 'text-white' : 'text-reque-orange'} transition-colors shrink-0`}>
                     <Calc className="w-5 h-5" />
                   </span>
-                  {!isSidebarCollapsed && (
+                  {(!isSidebarCollapsed || isMobileSidebarOpen) && (
                     <span className="text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
                       CALCULADORA
                     </span>
                   )}
                 </div>
-                {!isSidebarCollapsed && (
+                {(!isSidebarCollapsed || isMobileSidebarOpen) && (
                   <div className="ml-auto">
                     {isCalcExpanded ? <Up className="w-3.5 h-3.5 opacity-50" /> : <Down className="w-3.5 h-3.5 opacity-50" />}
                   </div>
                 )}
               </button>
 
-              {isCalcExpanded && !isSidebarCollapsed && (
+              {isCalcExpanded && (!isSidebarCollapsed || isMobileSidebarOpen) && (
                 <div className="pl-4 space-y-1 animate-in slide-in-from-top-2 duration-200">
                   {calcSubItems.map((sub) => (
                     <button
                       key={sub.id}
-                      onClick={() => {
-                        setEditingItem(null);
-                        setCurrentView(sub.id as ViewType);
-                      }}
+                      onClick={() => handleNavItemClick(sub.id)}
                       className={`w-full flex items-center px-4 py-2.5 rounded-lg transition-all group overflow-hidden ${
                         currentView === sub.id 
                           ? 'bg-white/10 text-reque-orange' 
@@ -346,8 +372,7 @@ function App() {
             <button
               key={item.id}
               onClick={() => {
-                setEditingItem(null);
-                setCurrentView(item.id as ViewType);
+                handleNavItemClick(item.id);
                 if (!isSidebarCollapsed) setIsCalcExpanded(false);
               }}
               className={`w-full flex items-center px-4 py-3.5 rounded-xl transition-all group overflow-hidden ${
@@ -356,17 +381,17 @@ function App() {
                   : 'text-white/60 hover:bg-white/5 hover:text-white'
               }`}
             >
-              <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'mx-auto' : ''}`}>
+              <div className={`flex items-center gap-3 ${isSidebarCollapsed && !isMobileSidebarOpen ? 'mx-auto' : ''}`}>
                 <span className={`${currentView === item.id ? 'text-reque-navy' : 'text-reque-orange'} transition-colors shrink-0`}>
                   {item.icon}
                 </span>
-                {!isSidebarCollapsed && (
+                {(!isSidebarCollapsed || isMobileSidebarOpen) && (
                   <span className="text-[11px] font-black uppercase tracking-wider whitespace-nowrap">
                     {item.label}
                   </span>
                 )}
               </div>
-              {!isSidebarCollapsed && (
+              {(!isSidebarCollapsed || isMobileSidebarOpen) && (
                 <Arrow className={`ml-auto w-4 h-4 transition-transform ${currentView === item.id ? 'translate-x-0 opacity-100' : '-translate-x-2 opacity-0 group-hover:translate-x-0 group-hover:opacity-100'}`} />
               )}
             </button>
@@ -375,18 +400,18 @@ function App() {
 
         <div className="p-6 mt-auto">
           <div className="bg-white/5 rounded-2xl p-4 border border-white/10 overflow-hidden">
-            <div className={`flex items-center gap-3 ${isSidebarCollapsed ? 'justify-center' : 'mb-4'}`}>
+            <div className={`flex items-center gap-3 ${isSidebarCollapsed && !isMobileSidebarOpen ? 'justify-center' : 'mb-4'}`}>
               <div className="w-10 h-10 rounded-full bg-reque-orange flex items-center justify-center font-black text-reque-navy uppercase shrink-0">
                 {currentUser?.name?.charAt(0) || 'U'}
               </div>
-              {!isSidebarCollapsed && (
+              {(!isSidebarCollapsed || isMobileSidebarOpen) && (
                 <div className="flex flex-col overflow-hidden animate-in fade-in duration-300" style={{ width: 'calc(100% - 3rem)' }}>
                   <span className="text-white text-xs font-black truncate uppercase">{currentUser?.name}</span>
                   <span className="text-white/40 text-[9px] font-bold uppercase tracking-widest">{currentUser?.role === 'admin' ? 'Master Admin' : 'Operador'}</span>
                 </div>
               )}
             </div>
-            {!isSidebarCollapsed && (
+            {(!isSidebarCollapsed || isMobileSidebarOpen) && (
               <button 
                 onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-white/10 text-white/70 hover:bg-red-500 hover:text-white transition-all text-[10px] font-black uppercase tracking-widest animate-in slide-in-from-bottom-2"
@@ -399,6 +424,26 @@ function App() {
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0">
+        {/* MOBILE HEADER */}
+        <header className="flex lg:hidden h-16 items-center justify-between px-6 bg-reque-navy text-white sticky top-0 z-30 shadow-md">
+           <button 
+            onClick={() => setIsMobileSidebarOpen(true)}
+            className="p-2 hover:bg-white/10 rounded-lg transition-all"
+           >
+              <Menu className="w-6 h-6 text-reque-orange" />
+           </button>
+           
+           <div className="flex flex-col items-center">
+              <span className="font-black text-xl tracking-tighter">Reque</span>
+              <span className="text-[7px] font-bold tracking-widest text-reque-orange uppercase">ESTRATÉGIA EM SST</span>
+           </div>
+
+           <div className="w-10 h-10 rounded-full bg-reque-orange flex items-center justify-center font-black text-reque-navy uppercase text-sm">
+              {currentUser?.name?.charAt(0) || 'U'}
+           </div>
+        </header>
+
+        {/* DESKTOP HEADER */}
         <header className="hidden lg:flex h-20 items-center justify-between px-10 bg-white border-b border-slate-200">
           <div className="flex items-center gap-6">
             <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border transition-colors ${isDbConnected ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
@@ -419,7 +464,7 @@ function App() {
           </div>
         </header>
 
-        <main className="flex-1 p-6 lg:p-10 lg:pt-8 overflow-y-auto">
+        <main className="flex-1 p-4 lg:p-10 lg:pt-8 overflow-y-auto">
           {renderContent()}
         </main>
       </div>
