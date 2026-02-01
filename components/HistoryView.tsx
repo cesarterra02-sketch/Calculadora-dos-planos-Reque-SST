@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { ProposalHistoryItem } from '../types';
 import { 
@@ -20,7 +19,9 @@ import {
   DollarSign,
   FileCheck,
   Users,
-  Sparkles
+  Sparkles,
+  Network,
+  LayoutGrid
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
@@ -71,26 +72,28 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
     );
   });
 
-  // Estatísticas por Vendedor
-  const sellerStats = useMemo(() => {
-    const stats: Record<string, { count: number, total: number }> = {};
+  // Estatísticas Consolidadas para Dashboard ADM (Todos os registros)
+  const dashboardStats = useMemo(() => {
+    const sellers: Record<string, { count: number, total: number }> = {};
+    const types: Record<string, number> = { 'standard': 0, 'incompany': 0, 'credenciador': 0 };
     
-    // Filtramos apenas propostas do mês atual para o resumo
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-
+    // No perfil ADM visualizamos todos os registros sem filtro de data
     history.forEach(item => {
-      const itemDate = new Date(item.createdAt);
-      if (itemDate.getMonth() === currentMonth && itemDate.getFullYear() === currentYear) {
-        const seller = item.createdBy || 'Sistema';
-        if (!stats[seller]) stats[seller] = { count: 0, total: 0 };
-        stats[seller].count += 1;
-        stats[seller].total += item.initialTotal;
-      }
+      const seller = item.createdBy || 'Sistema';
+      if (!sellers[seller]) sellers[seller] = { count: 0, total: 0 };
+      sellers[seller].count += 1;
+      sellers[seller].total += item.initialTotal;
+
+      const type = item.type || 'standard';
+      types[type] = (types[type] || 0) + 1;
     });
 
-    return Object.entries(stats).sort((a, b) => b[1].total - a[1].total);
+    return {
+      sellers: Object.entries(sellers).sort((a, b) => b[1].count - a[1].count),
+      types: Object.entries(types).sort((a, b) => b[1] - a[1]),
+      totalRevenue: Object.values(sellers).reduce((acc, curr) => acc + curr.total, 0),
+      totalCount: Object.values(sellers).reduce((acc, curr) => acc + curr.count, 0)
+    };
   }, [history]);
 
   return (
@@ -121,36 +124,59 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
         </h2>
       </div>
 
-      {/* DASHBOARD DE ESTATÍSTICAS POR VENDEDOR */}
+      {/* DASHBOARD DE ESTATÍSTICAS (APENAS ADM) */}
       {isAdmin && history.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 col-span-1 md:col-span-2">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4 border-b border-slate-50 pb-2">
                <h3 className="text-[11px] font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
-                 <BarChart3 className="w-4 h-4 text-reque-orange" /> Performance Mensal por Vendedor
+                 <BarChart3 className="w-4 h-4 text-reque-orange" /> Performance Consolidada (ADM)
                </h3>
-               <span className="text-[9px] font-bold text-slate-400 uppercase">Mês Atual</span>
+               <span className="text-[9px] font-bold text-slate-400 uppercase">Total de Registros</span>
             </div>
-            <div className="space-y-4">
-               {sellerStats.length === 0 ? (
-                 <p className="text-[10px] text-slate-400 italic">Nenhuma proposta criada no mês vigente.</p>
-               ) : sellerStats.map(([name, data]) => (
-                 <div key={name} className="relative">
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* RANKING POR VENDEDOR */}
+              <div className="space-y-3">
+                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Criado Por</h4>
+                {dashboardStats.sellers.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 italic">Nenhum registro encontrado.</p>
+                ) : dashboardStats.sellers.map(([name, data]) => (
+                  <div key={name} className="relative">
                     <div className="flex justify-between items-end mb-1">
                        <span className="text-[10px] font-black text-reque-navy uppercase">{name}</span>
-                       <div className="text-right">
-                          <span className="text-[10px] font-black text-reque-navy block">{formatCurrency(data.total)}</span>
-                          <span className="text-[8px] font-bold text-slate-400 uppercase">{data.count} Propostas</span>
-                       </div>
+                       <span className="text-[10px] font-black text-reque-orange uppercase">{data.count} <span className="text-[8px] text-slate-400">Propostas</span></span>
                     </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                        <div 
-                        className="h-full bg-reque-orange rounded-full transition-all duration-1000" 
-                        style={{ width: `${Math.min(100, (data.total / (sellerStats[0][1].total || 1)) * 100)}%` }}
+                        className="h-full bg-reque-navy rounded-full transition-all duration-1000" 
+                        style={{ width: `${Math.min(100, (data.count / (dashboardStats.sellers[0][1].count || 1)) * 100)}%` }}
                        />
                     </div>
-                 </div>
-               ))}
+                  </div>
+                ))}
+              </div>
+
+              {/* RANKING POR TIPO */}
+              <div className="space-y-3">
+                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Tipo de Proposta</h4>
+                {dashboardStats.types.map(([type, count]) => (
+                  <div key={type} className="relative">
+                    <div className="flex justify-between items-end mb-1">
+                       <span className="text-[10px] font-black text-reque-navy uppercase">
+                          {type === 'standard' ? 'Planos SST' : type === 'incompany' ? 'In Company' : 'Credenciador'}
+                       </span>
+                       <span className="text-[10px] font-black text-reque-navy uppercase">{count} <span className="text-[8px] text-slate-400">Qtd</span></span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                       <div 
+                        className="h-full bg-reque-orange rounded-full transition-all duration-1000" 
+                        style={{ width: `${Math.min(100, (count / (Math.max(...dashboardStats.types.map(t => t[1] as number)) || 1)) * 100)}%` }}
+                       />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -161,9 +187,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                 </h3>
                 <div className="space-y-4">
                    <div>
-                      <p className="text-[9px] text-white/50 font-bold uppercase tracking-tight">Total Projetado (Mês)</p>
+                      <p className="text-[9px] text-white/50 font-bold uppercase tracking-tight">Total Projetado</p>
                       <p className="text-2xl font-black text-white tracking-tighter">
-                        {formatCurrency(sellerStats.reduce((acc, curr) => acc + curr[1].total, 0))}
+                        {formatCurrency(dashboardStats.totalRevenue)}
                       </p>
                    </div>
                    <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
@@ -172,7 +198,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-white uppercase leading-none">
-                           {sellerStats.reduce((acc, curr) => acc + curr[1].count, 0)}
+                           {dashboardStats.totalCount}
                         </p>
                         <p className="text-[8px] text-white/40 font-bold uppercase tracking-widest mt-1">Simulações Ativas</p>
                       </div>
@@ -242,10 +268,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                     </td>
                     <td className="px-6 py-4">
                        <span className={`px-2 py-1 rounded text-[10px] font-black uppercase flex items-center gap-1.5 w-fit ${
-                         item.type === 'incompany' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'
+                         item.type === 'incompany' ? 'bg-orange-100 text-orange-700' : 
+                         item.type === 'credenciador' ? 'bg-purple-100 text-purple-700' :
+                         'bg-blue-100 text-blue-700'
                        }`}>
-                         {item.type === 'incompany' ? <Truck className="w-3 h-3" /> : <FileText className="w-3 h-3" />}
-                         {item.type === 'incompany' ? 'In Company' : 'Planos SST'}
+                         {item.type === 'incompany' ? <Truck className="w-3 h-3" /> : 
+                          item.type === 'credenciador' ? <Network className="w-3 h-3" /> :
+                          <FileText className="w-3 h-3" />}
+                         {item.type === 'incompany' ? 'In Company' : 
+                          item.type === 'credenciador' ? 'Credenciador' : 
+                          'Planos SST'}
                        </span>
                     </td>
                     <td className="px-6 py-4">
@@ -256,14 +288,23 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                     </td>
                     <td className="px-6 py-4">
                        <div className="flex flex-col gap-1 text-[10px] font-bold text-slate-500">
-                          <div className="flex items-center gap-1.5">
-                            <Users className="w-3 h-3 text-reque-orange" />
-                            <span>{item.numEmployees || '0'} Vidas Ativas</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="w-3 h-3 text-reque-navy opacity-50" />
-                            <span>{item.plan || 'Plano Personalizado'}</span>
-                          </div>
+                          {item.type === 'credenciador' ? (
+                            <div className="flex items-center gap-1.5">
+                              <LayoutGrid className="w-3 h-3 text-reque-orange" />
+                              <span>{item.inCompanyDetails?.credenciadorUnits?.length || 0} Tabelas Personalizadas</span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-1.5">
+                                <Users className="w-3 h-3 text-reque-orange" />
+                                <span>{item.numEmployees || '0'} Vidas Ativas</span>
+                              </div>
+                              <div className="flex items-center gap-1.5">
+                                <Sparkles className="w-3 h-3 text-reque-navy opacity-50" />
+                                <span>{item.plan || 'Plano Personalizado'}</span>
+                              </div>
+                            </>
+                          )}
                        </div>
                     </td>
                     <td className="px-6 py-4">
@@ -284,7 +325,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right font-black text-reque-navy">
-                      {formatCurrency(item.initialTotal)}
+                      {item.type === 'credenciador' ? formatCurrency(0) : formatCurrency(item.initialTotal)}
                     </td>
                     <td className="px-6 py-4">
                        <div className="flex items-center justify-center gap-2">

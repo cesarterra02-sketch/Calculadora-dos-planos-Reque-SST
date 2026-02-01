@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { PricingCalculator } from './components/PricingCalculator';
 import { InCompanyCalculator } from './components/InCompanyCalculator';
+import { CredenciadorCalculator } from './components/CredenciadorCalculator';
 import { HistoryView } from './components/HistoryView';
 import { LoginView } from './components/LoginView';
 import { AdminView } from './components/AdminView';
@@ -23,7 +23,8 @@ const {
   Loader2: Spin, 
   Wifi: NetOn, 
   WifiOff: NetOff, 
-  ShieldAlert: Warn 
+  ShieldAlert: Warn,
+  Network
 } = LucideIcons;
 
 function App() {
@@ -115,7 +116,9 @@ function App() {
 
   const handleEditHistory = (item: ProposalHistoryItem) => {
     setEditingItem(item);
-    setCurrentView(item.type === 'incompany' ? 'incompany' : 'calculator');
+    if (item.type === 'incompany') setCurrentView('incompany');
+    else if (item.type === 'credenciador') setCurrentView('credenciador');
+    else setCurrentView('calculator');
   };
 
   if (!isAuthenticated) {
@@ -149,6 +152,12 @@ function App() {
       label: 'IN COMPANY',
       icon: <Van className="w-4 h-4" />,
       allowed: currentUser?.role === 'admin' || currentUser?.canAccessInCompany
+    },
+    {
+      id: 'credenciador',
+      label: 'CREDENCIADOR',
+      icon: <Network className="w-4 h-4" />,
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessCalculator
     }
   ].filter(i => i.allowed);
 
@@ -212,6 +221,8 @@ function App() {
         }} />;
       case 'incompany':
         return <InCompanyCalculator currentUser={currentUser} onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'incompany' ? editingItem : null} />;
+      case 'credenciador':
+        return <CredenciadorCalculator currentUser={currentUser} onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'credenciador' ? editingItem : null} />;
       case 'calculator':
       default:
         return (
@@ -234,7 +245,7 @@ function App() {
     }
   };
 
-  const isCalcActive = currentView === 'calculator' || currentView === 'incompany';
+  const isCalcActive = currentView === 'calculator' || currentView === 'incompany' || currentView === 'credenciador';
 
   return (
     <div className="min-h-screen bg-[#f8f9fc] flex font-sans">
@@ -369,7 +380,7 @@ function App() {
                 {currentUser?.name?.charAt(0) || 'U'}
               </div>
               {!isSidebarCollapsed && (
-                <div className="flex flex-col overflow-hidden animate-in fade-in duration-300">
+                <div className="flex flex-col overflow-hidden animate-in fade-in duration-300" style={{ width: 'calc(100% - 3rem)' }}>
                   <span className="text-white text-xs font-black truncate uppercase">{currentUser?.name}</span>
                   <span className="text-white/40 text-[9px] font-bold uppercase tracking-widest">{currentUser?.role === 'admin' ? 'Master Admin' : 'Operador'}</span>
                 </div>
@@ -402,7 +413,7 @@ function App() {
              <div className="text-right">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Painel Atual</p>
                 <p className="text-sm font-black text-reque-navy uppercase">
-                  {currentView === 'calculator' ? 'Plano SST' : currentView === 'incompany' ? 'In Company' : currentView === 'history' ? 'Histórico' : 'Administração'}
+                  {currentView === 'calculator' ? 'Plano SST' : currentView === 'incompany' ? 'In Company' : currentView === 'credenciador' ? 'Credenciador' : currentView === 'history' ? 'Histórico' : 'Administração'}
                 </p>
              </div>
           </div>

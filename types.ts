@@ -1,4 +1,3 @@
-
 export enum PlanType {
   EXPRESS = 'SST Express',
   ESSENCIAL = 'SST Essencial',
@@ -68,7 +67,7 @@ export interface PricingResult {
 
 export interface ProposalHistoryItem {
   id: string;
-  type: 'standard' | 'incompany';
+  type: 'standard' | 'incompany' | 'credenciador';
   createdAt: string;
   createdBy?: string;
   companyName: string;
@@ -92,14 +91,15 @@ export interface ProposalHistoryItem {
   impostoAplicado?: number;
   comissaoAplicada?: number;
   inCompanyDetails?: {
-    profs: ProfessionalInCompany[];
-    vehicles: VehicleInCompany[];
-    exams: ExamInCompany[];
-    executionDays: number;
-    isEarlyDeparture: boolean;
-    mealsPerDay: number;
-    taxaInCompany: number;
-    receitaExames: number;
+    profs?: ProfessionalInCompany[];
+    vehicles?: VehicleInCompany[];
+    exams?: ExamInCompany[];
+    executionDays?: number;
+    isEarlyDeparture?: boolean;
+    mealsPerDay?: number;
+    taxaInCompany?: number;
+    receitaExames?: number;
+    credenciadorExams?: any[];
   };
 }
 
@@ -122,10 +122,11 @@ export interface User {
   canAccessHistory: boolean;
   canAccessInCompany: boolean;
   canAccessCalculator: boolean;
+  canAccessCredenciador?: boolean;
   canGenerateProposal: boolean;
 }
 
-export type ViewType = 'calculator' | 'history' | 'admin' | 'incompany';
+export type ViewType = 'calculator' | 'history' | 'admin' | 'incompany' | 'credenciador';
 
 export type PricingTable = Record<string, number>;
 export type ProgramFeeTable = Record<string, number>;
