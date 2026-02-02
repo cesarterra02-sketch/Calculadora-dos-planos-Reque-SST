@@ -81,7 +81,20 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
       pagebreak: { mode: 'css' } 
     };
     try { 
+      // Ocultar elementos para evitar quebras
+      const pages = contentRef.current.querySelectorAll('.page-a4');
+      pages.forEach((p: any) => {
+        p.style.setProperty('margin', '0', 'important');
+        p.style.setProperty('box-shadow', 'none', 'important');
+      });
+
       await html2pdf().set(opt).from(contentRef.current).save(); 
+
+      // Restaurar estilos após geração
+      pages.forEach((p: any) => {
+        p.style.setProperty('margin', '0 auto 32px auto', 'important');
+        p.style.setProperty('box-shadow', '0 25px 50px -12px rgb(0 0 0 / 0.25)', 'important');
+      });
     } catch (e) { 
       console.error(e); 
     } finally { 
@@ -92,9 +105,9 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
   return (
     <div className="bg-slate-200/50 min-h-screen pb-12 print:bg-white print:p-0">
       <style>{`
-        .page-a4 { width: 210mm; height: 297mm; margin: 0 auto 32px auto; background: white; page-break-after: always; }
+        .page-a4 { width: 210mm; height: 296.5mm; margin: 0 auto 32px auto; background: white; page-break-after: always; position: relative; }
         .page-a4:last-child { page-break-after: auto; margin-bottom: 0; }
-        @media print { .no-print { display: none !important; } .page-a4 { box-shadow: none !important; margin: 0 !important; } }
+        @media print { .no-print { display: none !important; } .page-a4 { box-shadow: none !important; margin: 0 !important; height: 297mm !important; } }
       `}</style>
 
       <div className="w-full bg-white/95 backdrop-blur-md border-b border-slate-300 sticky top-0 z-50 no-print px-4 py-3 mb-8 shadow-sm">
@@ -172,7 +185,7 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
 
           <p className="font-bold uppercase border-b border-black pb-1 mt-4">CLÁUSULA SEXTA - SIGILO DE CONFIDENCIALIDADE</p>
           <p>VI: A CONTRATADA compromete-se a manter a confidencialidade sobre toda e qualquer informação, relativa ao prontuário dos pacientes, dados técnicos, pessoais ou não, banco de dados, metodologias, bem como custos dos exames, prazos de pagamento das notas, situações de inadimplemento entre outros. Em razão de sua relação de prestação de serviço ou de qualquer outra natureza sobre todo o conteúdo do presente instrumento, regendo-se pela ética profissional e boa-fé;</p>
-          <p>A CONTRATADA obriga-se a cumprir e respeitar integralmente a Lei Geral de Proteção de Dados e, caso realize qualquer ato que constitua tratamento de dados pessoais, nos termos da aludida lei, que sejam de titularidade de sócios, empregados, colaboradores, ou qualquer outra pessoa vinculada ou relacionada à CONTRATANTE e/ou às suas associadas, obriga-se a: (I) obter eventuais consentimentos necessários; (II) manter os mais criteriosos recursos para segurança e privacidade desses dados; (III) não revelá-los ou compartilhá-los de qualquer forma, nem utilizá-los fora das finalidades previstas, exceto em caso de expresso e inequívoco consentimento do titular; (IV) não permitir que terceiros os acesse ou violem; (V) comunicar prontamente à CONTRATANTE sobre qualquer violação; (VI) respeitar todos os termos da lei de proteção geral de dados.</p>
+          <p>A CONTRATADA obriga-se a cumprir e respeitar integralmente a Lei Geral de Proteção de Dados e, caso realize qualquer ato que constitua tratamento de dados pessoal, nos termos da aludida lei, que sejam de titularidade de sócios, empregados, colaboradores, ou qualquer outra pessoa vinculada ou relacionada à CONTRATANTE e/ou às suas associadas, obriga-se a: (I) obter eventuais consentimentos necessários; (II) manter os mais criteriosos recursos para segurança e privacidade desses dados; (III) não revelá-los ou compartilhá-los de qualquer forma, nem utilizá-los fora das finalidades previstas, exceto em caso de expresso e inequívoco consentimento do titular; (IV) não permitir que terceiros os acesse ou violem; (V) comunicar prontamente à CONTRATANTE sobre qualquer violação; (VI) respeitar todos os termos da lei de proteção geral de dados.</p>
           <p>Em caso de descumprimento das obrigações de confidencialidade ou da LGPD, a parte infratora será responsável por todas as perdas e danos diretos e indiretos.</p>
 
           <p className="font-bold uppercase border-b border-black pb-1 mt-4">CLÁUSULA SÉTIMA - DAS OBRIGAÇÕES DA CONTRATANTE</p>
