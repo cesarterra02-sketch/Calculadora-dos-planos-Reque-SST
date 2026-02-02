@@ -115,7 +115,7 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
           <p>Pelo presente Contrato Particular de Prestação de Serviços Profissionais que entre si fazem, de um lado,</p>
           
           <p className="font-bold">
-            {contractData.unidadeAtendimento}, situado na {contratadaInfo.endereco} inscrita sob o CNPJ {contratadaInfo.cnpj} neste ato representada por seu diretor Daniel Ribeiro Reque, portador do CPF 035.961.249-05 daqui por diante e para os efeitos do presente, simplesmente denominada “CONTRATADA”
+            {contractData.unidadeAtendimento}, situado na {contratadaInfo.endereco} inscrita sob o CNPJ {contratadaInfo.cnpj} neste ato representada por seu diretor Daniel Ribeiro Reque, portador do CPF 035.961.249-05 daqui por diante e para os efeitos do presente, simplymente denominada “CONTRATADA”
           </p>
           
           <p>e, de outro lado,</p>
@@ -143,6 +143,7 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
           <p>4- Pelos serviços objeto deste contrato, a CONTRATANTE pagará à CONTRATADA os valores estabelecidos em anexo para cada unidade selecionada: {selectedUnits.map(u => u.replace('Unidade Reque ', '')).join(' | ')}.</p>
           <p>4.1- Os serviços realizados entre os dias 21 de cada mês e 20 do mês subsequente deverão ser pagos até o dia 10 do mês seguinte, mediante depósito bancário, com envio de relatório discriminado.</p>
           <p>4.2- A tratativa das inconsistências dos serviços prestados será auditada através do sistema SOC, pela CONTRATANTE e periodicamente, ao longo do ciclo de atendimento.</p>
+          <p>4.3- O não comparecimento de colaborador aos atendimentos agendados, sem aviso prévio mínimo de 24 (vinte e quatro) horas, implicará na cobrança do valor correspondente a uma consulta clínica ocupacional base, a título de cobertura de custos de disponibilidade técnica, profissional e estrutural. A cobrança será aplicada por colaborador ausente e incluída no ciclo regular de faturamento, conforme tabela vigente da CONTRATADA.</p>
           
           <p className="font-bold mt-2">PARÁGRAFO PRIMEIRO:</p>
           <p>A emissão da NFs deverá ocorrer entre o 1º e 5º dia do mês subsequente ao serviço prestado. O pagamento será efetuado através de DEPÓSITO bancário no dia 10 do mês da emissão da Nota Fiscal/Fatura.</p>
