@@ -61,7 +61,13 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
   const contentRef = useRef<HTMLDivElement>(null);
   
   const contratadaInfo = CONTRATADA_DATA[contractData.unidadeAtendimento] || { cnpj: "___", endereco: "___" };
-  const totalPages = 2 + selectedUnits.length;
+  const totalPages = 5 + selectedUnits.length;
+
+  const today = new Date();
+  const day = today.getDate();
+  const month = today.toLocaleString('pt-BR', { month: 'long' });
+  const year = today.getFullYear();
+  const dateLine = `Ponta Grossa, PR, ${day} de ${month.charAt(0).toUpperCase() + month.slice(1)} de ${year}.`;
 
   const handleDownloadPDF = async () => {
     if (!contentRef.current) return;
@@ -137,30 +143,75 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
           <p>3- Os atendimentos oriundos da prestação de serviços objeto deste Contrato serão feitos pela CONTRATADA através do Sistema SOC, com acesso disponibilizado pela CONTRATANTE, sendo autorizada a realização de atendimento através de prontuário físico caso solicitado pela CONTRATANTE.</p>
         </A4Page>
 
-        {/* PÁGINA 2: FINANCEIRO E VIGÊNCIA */}
+        {/* PÁGINA 2: FINANCEIRO */}
         <A4Page pageNumber={2} totalPages={totalPages}>
           <p className="font-bold uppercase border-b border-black pb-1 mt-2">CLÁUSULA QUARTA – DO PREÇO E FORMA DE PAGAMENTO</p>
           <p>4- Pelos serviços objeto deste contrato, a CONTRATANTE pagará à CONTRATADA os valores estabelecidos em anexo para cada unidade selecionada: {selectedUnits.map(u => u.replace('Unidade Reque ', '')).join(' | ')}.</p>
           <p>4.1- Os serviços realizados entre os dias 21 de cada mês e 20 do mês subsequente deverão ser pagos até o dia 10 do mês seguinte, mediante depósito bancário, com envio de relatório discriminado.</p>
           <p>4.2- A tratativa das inconsistências dos serviços prestados será auditada através do sistema SOC, pela CONTRATANTE e periodicamente, ao longo do ciclo de atendimento.</p>
           <p>4.3- O não comparecimento de colaborador aos atendimentos agendados, sem aviso prévio mínimo de 24 (vinte e quatro) horas, implicará na cobrança do valor correspondente a uma consulta clínica ocupacional base, a título de cobertura de custos de disponibilidade técnica, profissional e estrutural. A cobrança será aplicada por colaborador ausente e incluída no ciclo regular de faturamento, conforme tabela vigente da CONTRATADA.</p>
+          <p>4.4- No documento de cobrança deverão ser claramente discriminados os serviços executados e os preços a eles correspondentes;</p>
           
           <p className="font-bold mt-2">PARÁGRAFO PRIMEIRO:</p>
           <p>A emissão da NFs deverá ocorrer entre o 1º e 5º dia do mês subsequente ao serviço prestado. O pagamento será efetuado através de DEPÓSITO bancário no dia 10 do mês da emissão da Nota Fiscal/Fatura.</p>
 
           <p className="font-bold mt-2">PARÁGRAFO SEGUNDO:</p>
           <p>A CONTRATANTE está ciente de que anualmente os valores dos exames presentes na cláusula quarta deste contrato serão corrigidos pelo IPCA acumulado do ano anterior, reajuste que incidirá sobre os exames realizados a partir do 1º de março de cada ano.</p>
-          
-          <p className="font-bold uppercase border-b border-black pb-1 mt-3">CLÁUSULA QUINTA - DO PRAZO DE VIGÊNCIA</p>
-          <p>V- O presente Contrato vigorará pelo período de 12 meses, contados da data de sua assinatura, com renovação automática, por igual período, sucessivamente, salvo comunicação escrita em contrário, manifestado por qualquer das partes até 30 (trinta) dias antes de seu vencimento.</p>
 
-          <p className="font-bold uppercase border-b border-black pb-1 mt-3">CLÁUSULA OITAVA – DAS DISPOSIÇÕES GERAIS</p>
+          <p className="font-bold mt-2">PARÁGRAFO TERCEIRO</p>
+          <p>Havendo necessidade de ajuste ao mercado, ou situações excepcionais, a CONTRATADA enviará à CONTRATANTE proposta de ajuste de valores para negociação que, caso reste frutífera, será lavrada a termo por meio de aditivo contratual, mantendo firmes e valiosas as demais cláusulas.</p>
+
+          <p className="font-bold mt-2">PARÁGRAFO QUARTO</p>
+          <p>O pagamento de valores divergentes do estabelecido na Cláusula Quarta não implica aceitação tácita desses valores, prevalecendo sempre a tabela vigente, salvo hipóteses excepcionais, devidamente comprovadas e aceitas pela CONTRATANTE.</p>
+        </A4Page>
+
+        {/* PÁGINA 3: VIGÊNCIA, SIGILO E OBRIGAÇÕES */}
+        <A4Page pageNumber={3} totalPages={totalPages}>
+          <p className="font-bold uppercase border-b border-black pb-1 mt-2">CLÁUSULA QUINTA - DO PRAZO DE VIGÊNCIA</p>
+          <p>V- O presente Contrato vigorará pelo período de 12 meses, contados da data de sua assinatura, com renovação automática, por igual período, sucessivamente, salvo comunicação escrita em contrário, , manifestado por qualquer das partes até 30 (trinta) dias antes de seu vencimento.</p>
+
+          <p className="font-bold uppercase border-b border-black pb-1 mt-4">CLÁUSULA SEXTA - SIGILO DE CONFIDENCIALIDADE</p>
+          <p>VI: A CONTRATADA compromete-se a manter a confidencialidade sobre toda e qualquer informação, relativa ao prontuário dos pacientes, dados técnicos, pessoais ou não, banco de dados, metodologias, bem como custos dos exames, prazos de pagamento das notas, situações de inadimplemento entre outros. Em razão de sua relação de prestação de serviço ou de qualquer outra natureza sobre todo o conteúdo do presente instrumento, regendo-se pela ética profissional e boa-fé;</p>
+          <p>A CONTRATADA obriga-se a cumprir e respeitar integralmente a Lei Geral de Proteção de Dados e, caso realize qualquer ato que constitua tratamento de dados pessoais, nos termos da aludida lei, que sejam de titularidade de sócios, empregados, colaboradores, ou qualquer outra pessoa vinculada ou relacionada à CONTRATANTE e/ou às suas associadas, obriga-se a: (I) obter eventuais consentimentos necessários; (II) manter os mais criteriosos recursos para segurança e privacidade desses dados; (III) não revelá-los ou compartilhá-los de qualquer forma, nem utilizá-los fora das finalidades previstas, exceto em caso de expresso e inequívoco consentimento do titular; (IV) não permitir que terceiros os acesse ou violem; (V) comunicar prontamente à CONTRATANTE sobre qualquer violação; (VI) respeitar todos os termos da lei de proteção geral de dados.</p>
+          <p>Em caso de descumprimento das obrigações de confidencialidade ou da LGPD, a parte infratora será responsável por todas as perdas e danos diretos e indiretos.</p>
+
+          <p className="font-bold uppercase border-b border-black pb-1 mt-4">CLÁUSULA SÉTIMA - DAS OBRIGAÇÕES DA CONTRATANTE</p>
+          <p>VII- A CONTRATANTE obriga-se a:</p>
+          <p>7.1 A CONTRATANTE se obriga a fornecer as informações necessárias, prestando esclarecimentos de forma a permitir o bom andamento dos serviços;</p>
+          <p>7.2 A fornecer à CONTRATADA os acessos necessários ao sistema para que possa inserir as informação via web;</p>
+          <p>7.3 A CONTRATANTE se obriga a efetuar o pagamento à CONTRATADA, nos termos deste contrato;</p>
+        </A4Page>
+
+        {/* PÁGINA 4: DISPOSIÇÕES GERAIS PARTE 1 */}
+        <A4Page pageNumber={4} totalPages={totalPages}>
+          <p className="font-bold uppercase border-b border-black pb-1 mt-2">CLÁUSULA OITAVA – DAS DISPOSIÇÕES GERAIS</p>
+          <p>VIII- O presente contrato dispõe das seguintes disposições gerais para as partes:</p>
+          <p>8.1 Todos os serviços que não estiverem previstos expressamente neste contrato serão obrigatoriamente objeto de aditamento contratual;</p>
+          <p>8.2 Qualquer alteração ao presente contrato só será válida se feita por instrumento escrito assinado pelos representantes autorizados de ambas as partes;</p>
+          <p>8.3 Qualquer tolerância das partes, não será considerada precedente ou novação, permanecendo as cláusulas deste contrato em pleno vigor e efeito na forma aqui prevista;</p>
+          <p>8.4 Todos os avisos, comunicações ou notificações a serem efetuados no âmbito deste instrumento far-se-ão por escrito, por meio de notificação judicial ou extrajudicial, correspondência física ou eletrônica, com aviso de recebimento da parte contrária;</p>
+          <p>8.5 O presente instrumento, seus anexos, aditamentos e Propostas Comerciais constituem-se os únicos documentos reguladores das relações contratuais, revogando-se expressamente todo e qualquer contrato anteriormente existente entre as partes que trate do mesmo objeto aqui especificado;</p>
+          <p>8.6 A contratação dos serviços descritos neste instrumento não isenta as responsabilidades da CONTRATANTE perante a lei;</p>
+          <p>8.7 A nulidade ou invalidade de qualquer das cláusulas deste instrumento não prejudicará a validade e a eficácia das demais cláusulas. Na hipótese de uma determinada cláusula ser considerada inválida ou ineficaz, o juiz ou as partes, conforme o caso, deverão substituir a disposição por outra, que sendo lícito e eficaz, permita às partes alcançar na maior extensão possível, o resultado prático visado;</p>
+          <p>8.8 A CONTRATADA não autorizará o encaminhamento de qualquer cliente para atendimentos ou exames não abrangidos pelos serviços prestados no presente instrumento, salvo aprovação prévia por parte da CONTRATANTE;</p>
+          <p>8.9 Os serviços serão prestados in dias e horários definidos pela CONTRATADA, mediante prévio agendamento.</p>
+          <p>8.10 A CONTRATADA compromete-se, sempre que solicitada, a fornecer à CONTRATANTE todas as informações necessárias, bem como a preencher por completo as guias de atendimentos ocupacionais dos empregados dos clientes da CONTRATANTE, conforme a modalidade do contrato firmado com aqueles, devendo todos os documentos utilizados virem, obrigatoriamente, assinados digitalmente ou com o carimbo identificador do profissional por eles responsável.</p>
+        </A4Page>
+
+        {/* PÁGINA 5: DISPOSIÇÕES GERAIS PARTE 2 E CONCLUSÃO */}
+        <A4Page pageNumber={5} totalPages={totalPages}>
+          <p>8.11 Este instrumento não configura vínculo empregatício de qualquer natureza entre a CONTRATANTE e os empregados da CONTRATADA e com os demais prestadores de serviço por esta última. Arregimentados para a viabilização da execução do presente contrato, tampouco faz gerar, responsabilidade solidária ou subsidiária da CONTRATANTE nesse aspecto, ficando tais ônus exclusivamente sob a responsabilidade da CONTRATADA.</p>
+          <p>8.12 O não cumprimento de qualquer cláusula do presente Contrato implicará em falta grave, o que possibilitará sua rescisão imediata, independentemente de qualquer notificação ou interpelação extrajudicial ou judicial, sem prejuízo da aplicação da multa e demais penalidades.</p>
           <p>8.13 Para solução de litígios advindos do presente Contrato, fica eleito o Foro da Comarca de Ponta Grossa/PR, renunciando a outros, mesmo que mais privilegiados.</p>
+
+          <p className="mt-8">E, por estarem assim, justos e acordados, assinam o presente Contrato em duas (2) vias em seu anverso, de igual teor e forma, perante duas (2) testemunhas identificadas.</p>
+
+          <p className="mt-8 font-bold">{dateLine}</p>
         </A4Page>
 
         {/* PÁGINAS DE ANEXOS: TABELAS DE CADA UNIDADE */}
         {selectedUnits.map((unitKey, unitIdx) => (
-          <A4Page key={unitKey} pageNumber={3 + unitIdx} totalPages={totalPages}>
+          <A4Page key={unitKey} pageNumber={6 + unitIdx} totalPages={totalPages}>
             <div className="text-center mb-4">
               <h3 className="text-xl font-bold uppercase underline leading-tight">ANEXO - TABELA DE VALORES EXAMES | {unitKey.replace('Unidade Reque ', '').toUpperCase()}</h3>
             </div>
