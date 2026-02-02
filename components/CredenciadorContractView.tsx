@@ -32,8 +32,8 @@ const CONTRATADA_DATA: Record<string, { cnpj: string; endereco: string }> = {
     endereco: "Rua Coronel Bittencourt, 265, Centro, Ponta Grossa, PR CEP 84.010-290"
   },
   "ZR CLINICA DE MEDICINA DO TRABALHO LTDA": {
-    cnpj: "02.502.945/0001-08",
-    endereco: "Rua Dr. Colares, 461, Centro, Ponta Grossa, PR CEP 84.010-010"
+    cnpj: "57.044.028/0001-48",
+    endereco: "Rua Brigadeiro Rocha, 1756 Sala B, Centro, Guarapuava, PR CEP 85.010-210"
   }
 };
 
@@ -114,7 +114,7 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
           <p>Pelo presente Contrato Particular de Prestação de Serviços Profissionais que entre si fazem, de um lado,</p>
           
           <p className="font-bold">
-            {contractData.unidadeAtendimento}, situado na {contratadaInfo.endereco} inscrita sob o CNPJ {contratadaInfo.cnpj} neste ato representada por seu diretor Daniel Ribeiro Reque, portador do CPF 035.961.249-05 daqui por diante e para os efeitos do presente, simply denominado “CONTRATADA”
+            {contractData.unidadeAtendimento}, situado na {contratadaInfo.endereco} inscrita sob o CNPJ {contratadaInfo.cnpj} neste ato representada por seu diretor Daniel Ribeiro Reque, portador do CPF 035.961.249-05 daqui por diante e para os efeitos do presente, simplesmente denominada “CONTRATADA”
           </p>
           
           <p>e, de outro lado,</p>
