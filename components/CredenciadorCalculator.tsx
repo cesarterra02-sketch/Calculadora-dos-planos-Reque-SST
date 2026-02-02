@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { RequeUnit, ExamItem, User, ProposalHistoryItem } from '../types';
 import { UNIT_EXAM_TABLES } from '../constants';
 import { CredenciadorContractView } from './CredenciadorContractView';
+import { CredenciadorProposalView } from './CredenciadorProposalView';
 import { 
   Building2, 
   Hash, 
@@ -113,6 +115,7 @@ export const CredenciadorCalculator: React.FC<{
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [showContractView, setShowContractView] = useState(false);
+  const [showProposalView, setShowProposalView] = useState(false);
 
   // Estados para dados do contrato
   const [showContractModal, setShowContractModal] = useState(false);
@@ -354,6 +357,19 @@ export const CredenciadorCalculator: React.FC<{
         onBack={() => setShowContractView(false)}
         contractData={contractData}
         companyName={companyName}
+        cnpj={cnpj}
+        selectedUnits={selectedUnits}
+        unitExamsMap={unitExamsMap}
+      />
+    );
+  }
+
+  if (showProposalView) {
+    return (
+      <CredenciadorProposalView 
+        onBack={() => setShowProposalView(false)}
+        companyName={companyName}
+        contactName={contactName}
         cnpj={cnpj}
         selectedUnits={selectedUnits}
         unitExamsMap={unitExamsMap}
@@ -622,7 +638,13 @@ export const CredenciadorCalculator: React.FC<{
            {isSaving ? 'Salvando...' : isSaved ? 'Simulações Salvas!' : 'Salvar Todas as Tabelas'}
          </button>
          <button 
-           onClick={() => alert(`Gerando proposta consolidada para ${selectedUnits.length} unidades.`)}
+           onClick={() => {
+              if (!companyName || !contactName || !cnpj) {
+                alert("Por favor, preencha Razão Social, Responsável e CNPJ para gerar a proposta.");
+                return;
+              }
+              setShowProposalView(true);
+           }}
            className="flex-[1.5] py-4 bg-reque-navy text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-reque-blue transition-all flex items-center justify-center gap-2"
          >
            <FileText className="w-4 h-4 text-reque-orange" /> Gerar Proposta Consolidada
