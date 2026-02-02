@@ -48,7 +48,7 @@ const A4Page: React.FC<{ children: React.ReactNode; pageNumber: number; totalPag
       <div className="text-center font-bold text-sm uppercase">CONTRATO CREDENCIAMENTO</div>
       <div className="text-[10px] font-bold uppercase tracking-widest">PÁG {pageNumber} DE {totalPages}</div>
     </div>
-    <div className="flex-1 text-[10.5pt] leading-relaxed text-justify space-y-2 overflow-hidden">
+    <div className="flex-1 text-[10.5pt] leading-relaxed text-justify space-y-2 overflow-hidden h-auto min-h-0">
       {children}
     </div>
   </div>
@@ -162,24 +162,24 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
         {selectedUnits.map((unitKey, unitIdx) => (
           <A4Page key={unitKey} pageNumber={3 + unitIdx} totalPages={totalPages}>
             <div className="text-center mb-4">
-              <h3 className="text-xl font-bold uppercase underline">ANEXO - TABELA DE VALORES EXAMES | {unitKey.replace('Unidade Reque ', '').toUpperCase()}</h3>
+              <h3 className="text-xl font-bold uppercase underline leading-tight">ANEXO - TABELA DE VALORES EXAMES | {unitKey.replace('Unidade Reque ', '').toUpperCase()}</h3>
             </div>
             
-            <div className="border border-black overflow-hidden rounded-sm">
-              <table className="w-full text-[8pt] border-collapse text-left">
+            <div className="border border-black overflow-hidden rounded-sm h-auto">
+              <table className="w-full text-xs border-collapse text-left">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-black font-bold uppercase text-[8pt]">
-                    <th className="py-2 px-4 border-r border-black w-1/4">TIPO DE EXAME</th>
-                    <th className="py-2 px-4 border-r border-black w-1/2">NOME DO EXAME</th>
-                    <th className="py-2 text-center">VALOR (R$)</th>
+                  <tr className="bg-slate-100 border-b border-black font-bold uppercase text-xs h-auto">
+                    <th className="py-1 px-4 border-r border-black w-1/4 leading-tight">TIPO DE EXAME</th>
+                    <th className="py-1 px-4 border-r border-black w-1/2 leading-tight">NOME DO EXAME</th>
+                    <th className="py-1 text-center leading-tight">VALOR (R$)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
                   {(unitExamsMap[unitKey] || []).map((exam, idx) => (
-                    <tr key={idx} className="border-b border-slate-100">
-                      <td className="py-1 px-4 border-r border-black uppercase font-bold text-slate-600">{exam.category}</td>
-                      <td className="py-1 px-4 border-r border-black uppercase">{exam.name}</td>
-                      <td className="py-1 text-center font-bold">
+                    <tr key={idx} className="border-b border-slate-100 h-auto">
+                      <td className="py-0.5 px-4 border-r border-black uppercase font-bold text-slate-600 leading-tight">{exam.category}</td>
+                      <td className="py-0.5 px-4 border-r border-black uppercase leading-tight">{exam.name}</td>
+                      <td className="py-0.5 text-center font-bold leading-tight">
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(exam.price)}
                       </td>
                     </tr>
@@ -188,7 +188,7 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
               </table>
             </div>
             
-            <div className="mt-4 p-4 bg-slate-50 border border-slate-200 italic text-[10.5pt]">
+            <div className="mt-4 p-4 bg-slate-50 border border-slate-200 italic text-[10.5pt] h-auto">
               <p>* Valores exclusivos para realização na rede própria ou credenciada da Unidade Reque SST {unitKey.replace('Unidade Reque ', '')}. Sujeito a reajustes conforme cláusula contratual.</p>
             </div>
           </A4Page>
