@@ -1,6 +1,40 @@
 import { ProposalHistoryItem, User, AccessLogEntry } from './types';
 import { supabase } from './supabaseClient';
 
+/**
+ * LISTA DE COLUNAS MAPEADAS PARA DEBUG
+ * Utilizada para validar se o objeto de envio (payload) possui chaves que 
+ * ainda não foram criadas fisicamente na tabela 'reque_proposals'.
+ */
+const EXPECTED_COLUMNS = [
+  'id', 'type', 'initial_total', 'created_by', 'num_employees', 'external_lives_count',
+  'plan', 'risk_level', 'fidelity', 'is_renewal', 'special_discount', 'selected_unit',
+  'client_delivery_date', 'doc_delivery_date', 'contact_name', 'razao_social', 
+  'cnpj_cliente', 'unidades_customizadas', 'contract_data', 'logradouro', 'fachada', 
+  'bairro', 'cidade_uf', 'cep', 'responsavel_legal', 'cpf_responsavel', 
+  'unidade_atendimento', 'company_name', 'cnpj', 'in_company_details', 
+  'taxa_in_company', 'margem_atendimento_valor', 'margem_alvo_aplicada', 
+  'imposto_aplicado', 'comissao_aplicada'
+];
+
+/**
+ * FUNÇÃO DE DEBUG: Compara as chaves do objeto com o schema esperado.
+ */
+const debugDatabaseSchema = (payload: any) => {
+  const keys = Object.keys(payload);
+  const missingColumns = keys.filter(k => !EXPECTED_COLUMNS.includes(k));
+  
+  if (missingColumns.length > 0) {
+    console.group("⚠️ [DEBUG SCHEMA] DIVERGÊNCIA DE PERSISTÊNCIA DETECTADA");
+    console.warn("Os seguintes campos no objeto de envio não constam na lista de colunas oficiais do banco de dados:");
+    missingColumns.forEach(field => {
+      console.warn(`- ${field} (Ação: Criar via SQL no Supabase se for campo persistente)`);
+    });
+    console.log("Dica SQL: ALTER TABLE reque_proposals ADD COLUMN nome_do_campo TIPO_DADO;");
+    console.groupEnd();
+  }
+};
+
 const mapProposalData = (data: any): ProposalHistoryItem => {
   if (!data) return data;
   const isCred = data.type === 'credenciador';
@@ -182,6 +216,9 @@ export const StorageService = {
     try {
       const dbItem = sanitizeProposalForDb(item);
       
+      // EXECUÇÃO DO DEBUG ANTES DA PERSISTÊNCIA
+      debugDatabaseSchema(dbItem);
+
       const { data, error } = await supabase
         .from('reque_proposals')
         .upsert([dbItem], { onConflict: 'id' })
