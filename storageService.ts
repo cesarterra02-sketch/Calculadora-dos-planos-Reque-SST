@@ -4,12 +4,15 @@ import { supabase } from './supabaseClient';
 const mapProposalData = (data: any): ProposalHistoryItem => {
   if (!data) return data;
   const isCred = data.type === 'credenciador';
+  
+  // Recupera dados do contrato priorizando o objeto JSONB contract_data, com fallback para colunas individuais
+  const contractSource = data.contract_data || data;
+  
   return {
     id: data.id,
     type: data.type || 'standard',
     createdAt: data.created_at || data.createdAt || data.timestamp || data.inserted_at || new Date().toISOString(),
     createdBy: data.created_by || data.createdBy || '',
-    // Mapeamento dinâmico baseado no tipo para suportar colunas específicas do banco
     companyName: isCred ? (data.razao_social || data.company_name) : (data.company_name || data.company || data.companyName || ''),
     contactName: data.contact_name || data.contactName || data.contato || data.contact || '',
     cnpj: isCred ? (data.cnpj_cliente || data.cnpj) : (data.cnpj || ''),
@@ -29,9 +32,18 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     margemAlvoAplicada: data.margem_alvo_aplicada,
     impostoAplicado: data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
-    // Reconstrói o inCompanyDetails para Credenciador a partir da coluna específica se disponível
     inCompanyDetails: isCred ? { 
-      credenciadorUnits: data.unidades_customizadas || data.in_company_details?.credenciadorUnits 
+      credenciadorUnits: data.unidades_customizadas || data.in_company_details?.credenciadorUnits,
+      contractData: {
+        logradouro: contractSource.logradouro || '',
+        fachada: contractSource.fachada || '',
+        bairro: contractSource.bairro || '',
+        cidadeUf: contractSource.cidade_uf || contractSource.cidadeUf || '',
+        cep: contractSource.cep || '',
+        responsavelLegal: contractSource.responsavel_legal || contractSource.responsavelLegal || '',
+        cpfResponsavel: contractSource.cpf_responsavel || contractSource.cpfResponsavel || '',
+        unidadeAtendimento: contractSource.unidade_atendimento || contractSource.unidadeAtendimento || ''
+      }
     } : data.in_company_details
   };
 };
@@ -72,6 +84,7 @@ const sanitizeUserForDb = (user: User) => {
 const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
   const isCred = item.type === 'credenciador';
   
+  // 1. Modularização: Dados básicos comuns
   const dbData: any = {
     type: item.type,
     initial_total: Number(item.initialTotal) || 0,
@@ -90,12 +103,36 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
   };
 
   if (isCred) {
-    // Mapeamento específico solicitado para CREDENCIADOR
+    // 1. Modularização: Dados básicos do Credenciador
     dbData.razao_social = item.companyName;
     dbData.cnpj_cliente = item.cnpj;
     dbData.unidades_customizadas = item.inCompanyDetails?.credenciadorUnits;
+    
+    // 2. Estrutura de Saída: Agrupamento de campos dentro de contract_data (JSONB)
+    const cd = item.inCompanyDetails?.contractData;
+    if (cd) {
+      dbData.contract_data = {
+        logradouro: cd.logradouro,
+        fachada: cd.fachada,
+        bairro: cd.bairro,
+        cidade_uf: cd.cidadeUf, // Mapeamento obrigatório do input CIDADE-UF
+        cep: cd.cep,
+        responsavel_legal: cd.responsavelLegal,
+        cpf_responsavel: cd.cpfResponsavel,
+        unidade_atendimento: cd.unidadeAtendimento
+      };
+      
+      // Sincronização redundante para colunas individuais (caso existam no schema flat)
+      dbData.logradouro = cd.logradouro;
+      dbData.fachada = cd.fachada;
+      dbData.bairro = cd.bairro;
+      dbData.cidade_uf = cd.cidadeUf; 
+      dbData.cep = cd.cep;
+      dbData.responsavel_legal = cd.responsavelLegal;
+      dbData.cpf_responsavel = cd.cpfResponsavel;
+      dbData.unidade_atendimento = cd.unidadeAtendimento;
+    }
   } else {
-    // Mapeamento padrão para outros tipos
     dbData.company_name = item.companyName;
     dbData.cnpj = item.cnpj;
     dbData.in_company_details = item.inCompanyDetails;
@@ -106,6 +143,7 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     dbData.comissao_aplicada = item.comissaoAplicada;
   }
 
+  // 3. Segurança de ID: Não envia id se for um novo registro (permite UUID automático do Supabase)
   if (item.id) {
     dbData.id = item.id;
   }
@@ -151,13 +189,13 @@ export const StorageService = {
         .single();
 
       if (error) {
-        console.log('Erro detalhado:', error);
+        console.error('ERRO DE SCHEMA/DB SUPABASE:', error);
         throw error;
       }
       return mapProposalData(data);
     } catch (error: any) {
-      console.error("ERRO STORAGE SERVICE:", error);
-      throw new Error(error?.message || 'Erro ao salvar proposta');
+      console.error("LOG DETALHADO - ERRO STORAGE SERVICE:", error);
+      throw new Error(error?.message || 'Erro ao salvar proposta no banco de dados');
     }
   },
 

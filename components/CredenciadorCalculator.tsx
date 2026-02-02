@@ -64,6 +64,43 @@ const validateCNPJ = (cnpj: string): boolean => {
   return resultado == parseInt(digitos.charAt(1));
 };
 
+const formatCPF = (value: string) => {
+  const clean = value.replace(/\D/g, '');
+  return clean
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+    .slice(0, 14);
+};
+
+const validateCPF = (cpf: string): boolean => {
+  cpf = cpf.replace(/[^\d]+/g, '');
+  if (cpf.length !== 11 || /^(\d)\1+$/.test(cpf)) return false;
+  let add = 0;
+  for (let i = 0; i < 9; i++) add += parseInt(cpf.charAt(i)) * (10 - i);
+  let rev = 11 - (add % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  if (rev !== parseInt(cpf.charAt(9))) return false;
+  add = 0;
+  for (let i = 0; i < 10; i++) add += parseInt(cpf.charAt(i)) * (11 - i);
+  rev = 11 - (add % 11);
+  if (rev === 10 || rev === 11) rev = 0;
+  if (rev !== parseInt(cpf.charAt(10))) return false;
+  return true;
+};
+
+const formatCEP = (value: string) => {
+  const clean = value.replace(/\D/g, '');
+  return clean
+    .replace(/^(\d{2})(\d)/, '$1.$2')
+    .replace(/\.(\d{3})(\d)/, '.$1-$2')
+    .slice(0, 10);
+};
+
+const validateCEP = (cep: string) => {
+  return cep.replace(/\D/g, '').length === 8;
+};
+
 export const CredenciadorCalculator: React.FC<{
   currentUser: User | null;
   onSaveHistory: (item: ProposalHistoryItem) => Promise<any>;
@@ -79,6 +116,9 @@ export const CredenciadorCalculator: React.FC<{
 
   // Estados para dados do contrato
   const [showContractModal, setShowContractModal] = useState(false);
+  const [isCepValidModal, setIsCepValidModal] = useState<boolean | null>(null);
+  const [isCpfValidModal, setIsCpfValidModal] = useState<boolean | null>(null);
+  
   const [contractData, setContractData] = useState(() => {
     const details = initialData?.inCompanyDetails as any;
     return {
@@ -95,7 +135,10 @@ export const CredenciadorCalculator: React.FC<{
 
   // Validação se os dados do contrato estão preenchidos para destaque visual
   const isContractDataFilled = useMemo(() => {
-    return Object.values(contractData).every(value => value && value.toString().trim() !== '');
+    const allFilled = Object.values(contractData).every(value => value && value.toString().trim() !== '');
+    const validCep = validateCEP(contractData.cep);
+    const validCpf = validateCPF(contractData.cpfResponsavel);
+    return allFilled && validCep && validCpf;
   }, [contractData]);
 
   // 1. Estado para múltiplas unidades selecionadas
@@ -270,7 +313,7 @@ export const CredenciadorCalculator: React.FC<{
     
     setIsSaving(true);
     try {
-      // 3. Agrupamento de todas as tabelas em um objeto JSON
+      // Agrupamento de todas as tabelas em um objeto JSON
       const credenciadorUnits = selectedUnits.map(unit => ({
         unit,
         exams: unitExamsMap[unit]
@@ -281,17 +324,17 @@ export const CredenciadorCalculator: React.FC<{
       , 0);
       
       await onSaveHistory({
-        id: initialData?.id || crypto.randomUUID(),
+        id: initialData?.id, // Cirúrgico: Não enviar UUID novo se for insert, permitir que o Supabase gere
         type: 'credenciador',
         createdAt: new Date().toISOString(),
         companyName,
         contactName,
         cnpj,
-        selectedUnit: selectedUnits[0], // Mantém a primeira como referência principal
+        selectedUnit: selectedUnits[0], 
         initialTotal: totalSimulationValue,
         inCompanyDetails: {
-          credenciadorUnits, // Salvando o JSON estruturado para recuperar as N tabelas
-          contractData // Persistindo os dados do contrato preenchidos no modal
+          credenciadorUnits, 
+          contractData 
         }
       });
       
@@ -612,13 +655,13 @@ export const CredenciadorCalculator: React.FC<{
               </div>
               
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Fachada</label>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Fachada (Somente Números)</label>
                 <input 
                   type="text" 
                   value={contractData.fachada} 
-                  onChange={e => setContractData({...contractData, fachada: e.target.value.toUpperCase()})}
+                  onChange={e => setContractData({...contractData, fachada: e.target.value.replace(/\D/g, '')})}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:bg-white focus:border-reque-orange transition-all"
-                  placeholder="NOME NA FACHADA"
+                  placeholder="EX: 555"
                 />
               </div>
               
@@ -645,14 +688,29 @@ export const CredenciadorCalculator: React.FC<{
               </div>
               
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">CEP</label>
-                <input 
-                  type="text" 
-                  value={contractData.cep} 
-                  onChange={e => setContractData({...contractData, cep: e.target.value})}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all"
-                  placeholder="00000-000"
-                />
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest text-reque-navy">CEP</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={contractData.cep} 
+                    onChange={e => {
+                      const fmt = formatCEP(e.target.value);
+                      setContractData({...contractData, cep: fmt});
+                      if (fmt.replace(/\D/g, '').length === 8) {
+                        setIsCepValidModal(validateCEP(fmt));
+                      } else {
+                        setIsCepValidModal(null);
+                      }
+                    }}
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:bg-white transition-all ${isCepValidModal === false ? 'border-red-500 ring-1 ring-red-500 bg-red-50' : 'border-slate-200 focus:border-reque-orange'}`}
+                    placeholder="84.073-170"
+                  />
+                  {isCepValidModal === false && (
+                    <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                      <AlertCircle className="w-3 h-3" /> CEP incompleto (8 dígitos)
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2">
@@ -667,14 +725,29 @@ export const CredenciadorCalculator: React.FC<{
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">CPF</label>
-                <input 
-                  type="text" 
-                  value={contractData.cpfResponsavel} 
-                  onChange={e => setContractData({...contractData, cpfResponsavel: e.target.value})}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all"
-                  placeholder="000.000.000-00"
-                />
+                <label className="block text-[10px] font-black text-reque-navy uppercase mb-1 tracking-widest">CPF</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={contractData.cpfResponsavel} 
+                    onChange={e => {
+                      const fmt = formatCPF(e.target.value);
+                      setContractData({...contractData, cpfResponsavel: fmt});
+                      if (fmt.replace(/\D/g, '').length === 11) {
+                        setIsCpfValidModal(validateCPF(fmt));
+                      } else {
+                        setIsCpfValidModal(null);
+                      }
+                    }}
+                    className={`w-full p-2.5 bg-slate-50 border rounded-xl text-xs font-bold outline-none focus:bg-white transition-all ${isCpfValidModal === false ? 'border-red-500 ring-1 ring-red-500 bg-red-50' : 'border-slate-200 focus:border-reque-orange'}`}
+                    placeholder="000.000.000-00"
+                  />
+                  {isCpfValidModal === false && (
+                    <p className="text-[9px] text-red-500 font-bold uppercase mt-1 ml-1 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                      <AlertCircle className="w-3 h-3" /> CPF inválido ou incompleto
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -702,7 +775,7 @@ export const CredenciadorCalculator: React.FC<{
               <button 
                 onClick={() => {
                   if (!isContractDataFilled) {
-                    alert("Por favor, preencha todos os dados adicionais para gerar o contrato.");
+                    alert("Por favor, preencha corretamente todos os dados (incluindo CEP e CPF válidos) para gerar o contrato.");
                     return;
                   }
                   setShowContractView(true);
