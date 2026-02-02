@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { RequeUnit } from '../types';
 import { Printer, Download, Loader2, ArrowLeft } from 'lucide-react';
@@ -164,9 +165,9 @@ export const CredenciadorContractView: React.FC<CredenciadorContractViewProps> =
             </div>
             
             <div className="border border-black overflow-hidden rounded-sm">
-              <table className="w-full text-[9pt] border-collapse text-left">
+              <table className="w-full text-[8pt] border-collapse text-left">
                 <thead>
-                  <tr className="bg-slate-100 border-b border-black font-bold uppercase text-[9pt]">
+                  <tr className="bg-slate-100 border-b border-black font-bold uppercase text-[8pt]">
                     <th className="py-2 px-4 border-r border-black w-1/4">TIPO DE EXAME</th>
                     <th className="py-2 px-4 border-r border-black w-1/2">NOME DO EXAME</th>
                     <th className="py-2 text-center">VALOR (R$)</th>
