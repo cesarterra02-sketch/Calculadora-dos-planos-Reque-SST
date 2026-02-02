@@ -1,4 +1,5 @@
 
+
 export enum PlanType {
   EXPRESS = 'SST Express',
   ESSENCIAL = 'SST Essencial',
@@ -103,6 +104,17 @@ export interface ProposalHistoryItem {
     credenciadorExams?: any[];
     // Fix: Added credenciadorUnits to the inCompanyDetails definition to resolve type errors in storage and calculators
     credenciadorUnits?: any[];
+    // Added contractData to the inCompanyDetails definition to resolve type errors in CredenciadorCalculator
+    contractData?: {
+      logradouro: string;
+      fachada: string;
+      bairro: string;
+      cidadeUf: string;
+      cep: string;
+      responsavelLegal: string;
+      cpfResponsavel: string;
+      unidadeAtendimento: string;
+    };
   };
 }
 

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { RequeUnit, ExamItem, User, ProposalHistoryItem } from '../types';
 import { UNIT_EXAM_TABLES } from '../constants';
+import { CredenciadorContractView } from './CredenciadorContractView';
 import { 
   Building2, 
   Hash, 
@@ -74,6 +75,28 @@ export const CredenciadorCalculator: React.FC<{
   const [isCnpjValid, setIsCnpjValid] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [showContractView, setShowContractView] = useState(false);
+
+  // Estados para dados do contrato
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [contractData, setContractData] = useState(() => {
+    const details = initialData?.inCompanyDetails as any;
+    return {
+      logradouro: details?.contractData?.logradouro || '',
+      fachada: details?.contractData?.fachada || '',
+      bairro: details?.contractData?.bairro || '',
+      cidadeUf: details?.contractData?.cidadeUf || '',
+      cep: details?.contractData?.cep || '',
+      responsavelLegal: details?.contractData?.responsavelLegal || '',
+      cpfResponsavel: details?.contractData?.cpfResponsavel || '',
+      unidadeAtendimento: details?.contractData?.unidadeAtendimento || ''
+    };
+  });
+
+  // Validação se os dados do contrato estão preenchidos para destaque visual
+  const isContractDataFilled = useMemo(() => {
+    return Object.values(contractData).every(value => value && value.toString().trim() !== '');
+  }, [contractData]);
 
   // 1. Estado para múltiplas unidades selecionadas
   const [selectedUnits, setSelectedUnits] = useState<RequeUnit[]>(() => {
@@ -267,7 +290,8 @@ export const CredenciadorCalculator: React.FC<{
         selectedUnit: selectedUnits[0], // Mantém a primeira como referência principal
         initialTotal: totalSimulationValue,
         inCompanyDetails: {
-          credenciadorUnits // Salvando o JSON estruturado para recuperar as N tabelas
+          credenciadorUnits, // Salvando o JSON estruturado para recuperar as N tabelas
+          contractData // Persistindo os dados do contrato preenchidos no modal
         }
       });
       
@@ -280,6 +304,19 @@ export const CredenciadorCalculator: React.FC<{
       setIsSaving(false);
     }
   };
+
+  if (showContractView) {
+    return (
+      <CredenciadorContractView 
+        onBack={() => setShowContractView(false)}
+        contractData={contractData}
+        companyName={companyName}
+        cnpj={cnpj}
+        selectedUnits={selectedUnits}
+        unitExamsMap={unitExamsMap}
+      />
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-20">
@@ -345,9 +382,22 @@ export const CredenciadorCalculator: React.FC<{
 
           {/* MULTI-SELECT UNIDADES */}
           <div className="md:col-span-12 pt-4">
-            <label className="block text-[10px] font-black text-slate-400 uppercase mb-3 tracking-widest flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-reque-orange" /> Seleção de Unidades (Tabelas Simultâneas)
-            </label>
+            <div className="flex justify-between items-center mb-3">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                <MapPin className="w-4 h-4 text-reque-orange" /> Seleção de Unidades (Tabelas Simultâneas)
+              </label>
+              <button 
+                onClick={() => setShowContractModal(true)}
+                className={`px-4 py-1.5 border-2 rounded-lg font-black text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 shadow-sm ${
+                  isContractDataFilled 
+                    ? 'bg-green-600 border-green-600 text-white shadow-lg shadow-green-100 ring-2 ring-green-100' 
+                    : 'border-reque-blue text-reque-blue hover:bg-reque-blue hover:text-white'
+                }`}
+              >
+                {isContractDataFilled ? <Check className="w-3.5 h-3.5" /> : <FileText className="w-3.5 h-3.5" />}
+                {isContractDataFilled ? 'Contrato Pronto' : 'Dados para o Contrato'}
+              </button>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
               {Object.values(RequeUnit).map(unit => (
                 <button
@@ -535,6 +585,137 @@ export const CredenciadorCalculator: React.FC<{
            <FileText className="w-4 h-4 text-reque-orange" /> Gerar Proposta Consolidada
          </button>
       </div>
+
+      {/* MODAL DE DADOS PARA O CONTRATO */}
+      {showContractModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-reque-navy p-6 flex justify-between items-center text-white">
+              <h3 className="text-lg font-black uppercase tracking-tight flex items-center gap-3">
+                <FileText className="w-6 h-6 text-reque-orange" /> Dados Adicionais para Contrato
+              </h3>
+              <button onClick={() => setShowContractModal(false)} className="p-2 hover:bg-white/10 rounded-xl transition-all">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[70vh] overflow-y-auto">
+              <div className="md:col-span-2">
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Logradouro</label>
+                <input 
+                  type="text" 
+                  value={contractData.logradouro} 
+                  onChange={e => setContractData({...contractData, logradouro: e.target.value.toUpperCase()})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:bg-white focus:border-reque-orange transition-all"
+                  placeholder="AV. / RUA / LOGRADOURO COMPLETO"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Fachada</label>
+                <input 
+                  type="text" 
+                  value={contractData.fachada} 
+                  onChange={e => setContractData({...contractData, fachada: e.target.value.toUpperCase()})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:bg-white focus:border-reque-orange transition-all"
+                  placeholder="NOME NA FACHADA"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Bairro</label>
+                <input 
+                  type="text" 
+                  value={contractData.bairro} 
+                  onChange={e => setContractData({...contractData, bairro: e.target.value.toUpperCase()})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:bg-white focus:border-reque-orange transition-all"
+                  placeholder="BAIRRO"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Cidade-UF</label>
+                <input 
+                  type="text" 
+                  value={contractData.cidadeUf} 
+                  onChange={e => setContractData({...contractData, cidadeUf: e.target.value.toUpperCase()})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:bg-white focus:border-reque-orange transition-all"
+                  placeholder="CIDADE - UF"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">CEP</label>
+                <input 
+                  type="text" 
+                  value={contractData.cep} 
+                  onChange={e => setContractData({...contractData, cep: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all"
+                  placeholder="00000-000"
+                />
+              </div>
+
+              <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                <label className="block text-[10px] font-black text-reque-navy uppercase mb-1 tracking-widest">Nome Completo do Responsável Legal</label>
+                <input 
+                  type="text" 
+                  value={contractData.responsavelLegal} 
+                  onChange={e => setContractData({...contractData, responsavelLegal: e.target.value.toUpperCase()})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase outline-none focus:bg-white focus:border-reque-orange transition-all"
+                  placeholder="NOME COMPLETO DO RESPONSÁVEL LEGAL"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">CPF</label>
+                <input 
+                  type="text" 
+                  value={contractData.cpfResponsavel} 
+                  onChange={e => setContractData({...contractData, cpfResponsavel: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all"
+                  placeholder="000.000.000-00"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Unidade de Atendimento</label>
+                <select 
+                  value={contractData.unidadeAtendimento} 
+                  onChange={e => setContractData({...contractData, unidadeAtendimento: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white focus:border-reque-orange transition-all cursor-pointer"
+                >
+                  <option value="">SELECIONE UMA EMPRESA...</option>
+                  <option value="G MED BOURGUIGON SERVICOS CLINICOS LTDA">G MED BOURGUIGON SERVICOS CLINICOS LTDA</option>
+                  <option value="REQUEMED - CLINICA DE MEDICINA DO TRABALHO LTDA">REQUEMED - CLINICA DE MEDICINA DO TRABALHO LTDA</option>
+                  <option value="ZR CLINICA DE MEDICINA DO TRABALHO LTDA">ZR CLINICA DE MEDICINA DO TRABALHO LTDA</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-200 flex gap-3">
+              <button 
+                onClick={() => setShowContractModal(false)}
+                className="flex-1 py-3 bg-white border border-slate-200 text-slate-500 font-black text-[10px] uppercase tracking-widest rounded-xl hover:bg-slate-100 transition-all"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={() => {
+                  if (!isContractDataFilled) {
+                    alert("Por favor, preencha todos os dados adicionais para gerar o contrato.");
+                    return;
+                  }
+                  setShowContractView(true);
+                  setShowContractModal(false);
+                }}
+                className="flex-1 py-3 bg-reque-navy text-white font-black text-[10px] uppercase tracking-widest rounded-xl shadow-lg hover:bg-reque-blue transition-all"
+              >
+                Gerar Contrato
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
