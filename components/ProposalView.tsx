@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { PricingResult, PlanType, FidelityModel, BillingCycle, RequeUnit } from '../types';
 import { PLAN_SERVICES, UNIT_EXAM_TABLES, SYSTEM_FEATURES } from '../constants';
@@ -79,7 +80,7 @@ export const ProposalView: React.FC<{
   
   const discountValue = Number(specialDiscount || result?.specialDiscount || 0);
   
-  const formatCurrency = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+  const formatCurrency = (v: number) => v === 0 ? "BONIFICADO" : new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
   
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '___/___/_____';
@@ -174,6 +175,8 @@ export const ProposalView: React.FC<{
 
   // Valor da assinatura base mensal para exibir quando "Sem Fidelidade" no Quadro 4
   const monthlyBase = (result?.monthlyValue || 0) - (result?.schedulingCostTotal || 0);
+
+  const formatCurrencyValueOnly = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
   return (
     <div className="bg-slate-200/50 min-h-screen pb-12 print:bg-white print:p-0">
@@ -297,7 +300,7 @@ export const ProposalView: React.FC<{
                      <td className="py-2.5 px-4 text-left font-bold text-slate-500 italic">
                         {result?.isRenewal ? 'Revisão e Manutenção Técnica' : (
                           <>
-                            Elaboração PGR <br/>
+                            Elaboração PGR NR1 2026 <br/>
                             Elaboração PCMSO
                           </>
                         )}
@@ -305,16 +308,16 @@ export const ProposalView: React.FC<{
                      <td className="py-2.5 px-4 border-l border-slate-100 bg-[#f8f9fa]">
                         {isFidelityActive ? (
                           <div className="flex flex-col items-center">
-                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result?.originalProgramFee || 0)}</span>
+                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrencyValueOnly(result?.originalProgramFee || 0)}</span>
                             <span className="text-[14px] font-black text-reque-orange uppercase">BONIFICADO*</span>
                           </div>
                         ) : result?.isRenewal ? (
                            <div className="flex flex-col items-center">
-                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrency(result?.originalProgramFee || 0)}</span>
+                            <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrencyValueOnly(result?.originalProgramFee || 0)}</span>
                             <span className="text-[14px] font-black text-reque-orange uppercase">50% DESCONTO</span>
                           </div>
                         ) : (
-                          <span className="text-[14px] font-black text-reque-navy">{formatCurrency(result?.programFee || 0)}</span>
+                          <span className="text-[14px] font-black text-reque-navy">{formatCurrencyValueOnly(result?.programFee || 0)}</span>
                         )}
                      </td>
                      <td className="py-2.5 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">
@@ -333,7 +336,7 @@ export const ProposalView: React.FC<{
                      <td className="py-2.5 px-4 border-l border-slate-100">
                         <div className="flex flex-col items-center">
                            <span className="text-[14px] font-black text-reque-navy mt-1 leading-none">
-                              {isNoFidelity ? `${formatCurrency(monthlyBase)}/mês` : `${formatCurrency(installmentValue)}${plan === PlanType.PRO ? '/mensal' : '/anual'}`}
+                              {isNoFidelity ? `${formatCurrencyValueOnly(monthlyBase)}/mês` : `${formatCurrencyValueOnly(installmentValue)}${plan === PlanType.PRO ? '/mensal' : '/anual'}`}
                            </span>
                         </div>
                      </td>
@@ -365,7 +368,7 @@ export const ProposalView: React.FC<{
                            Desconto Especial Proposta SST
                         </td>
                         <td className="py-2 px-4 border-l border-slate-100 font-black text-reque-orange">
-                           -{formatCurrency(discountValue)}
+                           -{formatCurrencyValueOnly(discountValue)}
                         </td>
                         <td className="py-2 px-4 font-black text-reque-orange/40 border-l border-slate-200 uppercase tracking-widest text-[8px]">ÚNICA</td>
                      </tr>
@@ -386,7 +389,7 @@ export const ProposalView: React.FC<{
                </div>
                <div className="text-right relative z-10">
                  <p className="text-[18px] font-[900] text-reque-navy leading-none">
-                   {formatCurrency(finalTotalWithInterest)}
+                   {formatCurrencyValueOnly(finalTotalWithInterest)}
                  </p>
                  <span className="text-[9px] font-black text-reque-orange uppercase tracking-widest">
                     {isNoFidelity ? 'PAGAMENTO ÚNICO' : (result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE')}
@@ -408,7 +411,7 @@ export const ProposalView: React.FC<{
                     return (
                       <div key={n} className={`bg-[#f0f2f5]/60 border p-1.5 rounded-xl flex justify-between items-center transition-all ${selectedInstallments === n ? 'border-reque-orange ring-1 ring-reque-orange bg-orange-50' : 'border-slate-200 hover:bg-slate-100'}`}>
                         <span className="text-[8.5px] font-black text-slate-400">{n}x de</span>
-                        <span className={`text-[9.5px] font-black ${selectedInstallments === n ? 'text-reque-orange' : 'text-reque-navy'}`}>{formatCurrency(installment)} {rate > 0 && '*'}</span>
+                        <span className={`text-[9.5px] font-black ${selectedInstallments === n ? 'text-reque-orange' : 'text-reque-navy'}`}>{formatCurrencyValueOnly(installment)} {rate > 0 && '*'}</span>
                       </div>
                     );
                   })}
@@ -548,7 +551,7 @@ export const ProposalView: React.FC<{
                     <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-[#f0f2f5]/40'}>
                       <td className="py-1 px-4 font-bold text-reque-navy text-[7.5px] uppercase border-r border-slate-200">{exam.category}</td>
                       <td className="py-1 px-4 font-bold text-slate-800 uppercase text-[8px]">{exam.name}</td>
-                      <td className="py-1 px-4 text-center font-black text-reque-navy text-[8.5px] border-l border-slate-200">{formatCurrency(exam.price).replace('R$', '')}</td>
+                      <td className="py-1 px-4 text-center font-black text-reque-navy text-[8.5px] border-l border-slate-200">{formatCurrencyValueOnly(exam.price).replace('R$', '')}</td>
                       <td className="py-1 px-4 text-center text-[7.5px] font-bold text-slate-600 border-l border-slate-200">{exam.deadline}</td>
                     </tr>
                   ))}
