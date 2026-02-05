@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { PricingResult, BillingCycle, PlanType, User, FidelityModel } from '../types';
 import { StorageService } from '../storageService';
@@ -34,6 +33,7 @@ interface SummaryCardProps {
   isGenerateDisabled?: boolean;
   specialDiscount: number;
   setSpecialDiscount: (value: number) => void;
+  currentAssinaturaValue?: number;
 }
 
 export const SummaryCard: React.FC<SummaryCardProps> = ({ 
@@ -47,7 +47,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   onSaveHistory,
   isGenerateDisabled = false,
   specialDiscount,
-  setSpecialDiscount
+  setSpecialDiscount,
+  currentAssinaturaValue = 0
 }) => {
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -65,10 +66,10 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   }, [result]);
 
   useEffect(() => {
-    if (plan === PlanType.PRO && selectedInstallments > 3) {
+    if ((plan === PlanType.PRO || result.isUpdateMode) && selectedInstallments > 3) {
       onInstallmentsChange(1);
     }
-  }, [plan]);
+  }, [plan, result.isUpdateMode]);
 
   const loadInterestRates = async () => {
     try {
@@ -135,17 +136,13 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const isNoFidelity = fidelity === FidelityModel.NO_FIDELITY;
   const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
 
-  const showInstallments = plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL || (isPro && isNoFidelity);
+  const showInstallments = !result.isUpdateMode && (plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL || (isPro && isNoFidelity));
   const installmentOptions = isPro ? [1, 2, 3] : [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-  const currentInterestRate = isPro ? 0 : (interestRates[selectedInstallments] || 0);
+  const currentInterestRate = (isPro || result.isUpdateMode) ? 0 : (interestRates[selectedInstallments] || 0);
   
-  // Constante da operadora de cartão
   const TRANSACTION_FIXED_FEE = 0.49;
-
-  // Cálculo base subtraindo o desconto especial
   const baseTotal = Math.max(0, result.initialPaymentAmount - specialDiscount);
   
-  // Nova lógica: (Valor Total * Percentual da Parcela) + 0.49 (taxa fixa aplicada uma única vez no montante)
   const interestAmount = currentInterestRate > 0 
     ? ((baseTotal * currentInterestRate) / 100) + TRANSACTION_FIXED_FEE 
     : 0;
@@ -153,11 +150,8 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
 
-  const assinaturaNoCiclo = result.billingCycle === BillingCycle.ANNUAL 
-    ? result.monthlyValue * 12 
-    : result.monthlyValue;
-
   const monthlyBase = result.monthlyValue - (result.schedulingCostTotal || 0);
+  const diffSubscription = monthlyBase - currentAssinaturaValue;
 
   return (
     <div className="bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden sticky top-6">
@@ -174,7 +168,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
           </div>
         </div>
         
-        {currentUser?.role === 'admin' && !isPro && (
+        {currentUser?.role === 'admin' && !isPro && !result.isUpdateMode && (
           <button 
             onClick={() => {
               setTempRates({...interestRates});
@@ -188,124 +182,160 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
       </div>
 
       <div className="p-6 space-y-6">
-        <div className="space-y-1">
-          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Composição de Valores</h3>
-          
-          <div className="space-y-3">
-            <div className="flex justify-between items-start py-3 border-b border-slate-50">
-              <div className="flex gap-3">
-                <div className="mt-0.5"><Sparkles className="w-4 h-4 text-reque-orange opacity-70" /></div>
-                <div>
-                  <p className="text-xs font-bold text-slate-700 uppercase">Plano Selecionado</p>
-                  <p className="text-[10px] text-slate-400 font-medium">Categoria {plan}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] font-black text-reque-navy bg-slate-100 px-2.5 py-1 rounded-md uppercase tracking-tighter">OFERTA ATIVA</span>
-              </div>
-            </div>
-
-            {isFidelityActive && (
+        {!result.isUpdateMode && (
+          <div className="space-y-1">
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Composição de Valores</h3>
+            
+            <div className="space-y-3">
               <div className="flex justify-between items-start py-3 border-b border-slate-50">
                 <div className="flex gap-3">
-                  <div className="mt-0.5"><ShieldCheck className="w-4 h-4 text-reque-navy opacity-60" /></div>
+                  <div className="mt-0.5"><Sparkles className="w-4 h-4 text-reque-orange opacity-70" /></div>
                   <div>
-                    <p className="text-xs font-bold text-slate-700">Fidelidade Contratual</p>
-                    <p className="text-[10px] text-slate-400 font-medium">Permanência de 24 Meses</p>
+                    <p className="text-xs font-bold text-slate-700 uppercase">Plano Selecionado</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Categoria {plan}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-black text-reque-navy bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-tighter border border-indigo-100">ATIVO</span>
+                  <span className="text-[10px] font-black text-reque-navy bg-slate-100 px-2.5 py-1 rounded-md uppercase tracking-tighter">OFERTA ATIVA</span>
                 </div>
               </div>
-            )}
 
-            <div className="flex justify-between items-start py-3 border-b border-slate-50">
-              <div className="flex gap-3">
-                <div className="mt-0.5">
-                  {result.isRenewal ? <RefreshCcw className="w-4 h-4 text-reque-orange opacity-70" /> : <FileCheck className="w-4 h-4 text-reque-blue opacity-50" />}
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-slate-700">{result.isRenewal ? 'Revisão e Manutenção (Programas)' : 'Programas (PGR e PCMSO)'}</p>
-                  <p className="text-[10px] text-slate-400">{result.isRenewal ? 'Ciclo de renovação vigente' : 'Taxa de elaboração técnica inicial'}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                {isFidelityActive ? (
-                  <div className="flex flex-col items-end">
-                    <span className="text-[11px] font-black text-green-700 bg-green-100 border-green-200 px-3 py-1 rounded-lg border">
-                      BONIFICAÇÃO
-                    </span>
-                    <div className="flex flex-col items-end mt-1">
-                      <span className="text-[11px] text-slate-400 line-through font-black">De {formatCurrency(result.originalProgramFee)}</span>
+              {isFidelityActive && !result.isUpdateMode && (
+                <div className="flex justify-between items-start py-3 border-b border-slate-50">
+                  <div className="flex gap-3">
+                    <div className="mt-0.5"><ShieldCheck className="w-4 h-4 text-reque-navy opacity-60" /></div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">Fidelidade Contratual</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Permanência de 24 Meses</p>
                     </div>
                   </div>
-                ) : result.isRenewal ? (
-                  <div className="flex flex-col items-end">
-                    <span className="text-[11px] font-black text-reque-orange bg-orange-50 border-orange-200 px-3 py-1 rounded-lg border">
-                      50% DESCONTO
-                    </span>
-                    <div className="flex flex-col items-end mt-1">
-                      <span className="text-[11px] font-black text-reque-navy">{formatCurrency(result.programFee)}</span>
-                      <span className="text-[11px] text-slate-400 line-through font-black">De {formatCurrency(result.originalProgramFee)}</span>
-                    </div>
+                  <div className="text-right">
+                    <span className="text-[10px] font-black text-reque-navy bg-indigo-50 px-2.5 py-1 rounded-md uppercase tracking-tighter border border-indigo-100">ATIVO</span>
                   </div>
-                ) : (
-                  <span className="text-sm font-black text-slate-700">{formatCurrency(result.programFee)}</span>
-                )}
-              </div>
-            </div>
+                </div>
+              )}
 
-            <div className="flex justify-between items-start py-3 border-b border-slate-50">
-              <div className="flex gap-3">
-                <div className="mt-0.5"><Calendar className="w-4 h-4 text-[#ec9d23] opacity-70" /></div>
-                <div>
-                  <p className="text-xs font-bold text-slate-700">Assinatura SST Base</p>
-                  <p className="text-[10px] text-slate-400 font-medium">{result.rangeLabel}</p>
+              <div className="flex justify-between items-start py-3 border-b border-slate-50">
+                <div className="flex gap-3">
+                  <div className="mt-0.5">
+                    {result.isRenewal ? <RefreshCcw className="w-4 h-4 text-reque-orange opacity-70" /> : <FileCheck className="w-4 h-4 text-reque-blue opacity-50" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">{result.isRenewal ? 'Revisão e Manutenção (Programas)' : 'Programas (PGR e PCMSO)'}</p>
+                    <p className="text-[10px] text-slate-400">{result.isRenewal ? 'Ciclo de renovação vigente' : 'Taxa de elaboração técnica inicial'}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {isFidelityActive && !result.isUpdateMode ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-[11px] font-black text-green-700 bg-green-100 border-green-200 px-3 py-1 rounded-lg border">
+                        BONIFICAÇÃO
+                      </span>
+                      <div className="flex flex-col items-end mt-1">
+                        <span className="text-[11px] text-slate-400 line-through font-black">De {formatCurrency(result.originalProgramFee)}</span>
+                      </div>
+                    </div>
+                  ) : result.isRenewal ? (
+                    <div className="flex flex-col items-end">
+                      <span className="text-[11px] font-black text-reque-orange bg-orange-50 border-orange-200 px-3 py-1 rounded-lg border">
+                        {result.isUpdateMode ? 'VALOR ATUALIZAÇÃO' : '50% DESCONTO'}
+                      </span>
+                      <div className="flex flex-col items-end mt-1">
+                        <span className="text-[11px] font-black text-reque-navy">{formatCurrency(result.programFee)}</span>
+                        {!result.isUpdateMode && <span className="text-[11px] text-slate-400 line-through font-black">De {formatCurrency(result.originalProgramFee)}</span>}
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-sm font-black text-slate-700">{formatCurrency(result.programFee)}</span>
+                  )}
                 </div>
               </div>
-              <div className="text-right flex flex-col items-end">
-                <span className="text-sm font-black text-[#190c59]">{formatCurrency(monthlyBase)}/mês</span>
-                {result.billingCycle === BillingCycle.ANNUAL && (
-                  <span className="text-[9px] font-black text-reque-orange uppercase mt-1">Anual Antecipado</span>
-                )}
-              </div>
-            </div>
 
-            {result.isRenewal && (
-              <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 mt-2 animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Tag className="w-3.5 h-3.5 text-reque-orange" />
-                  <label className="text-[10px] font-black text-reque-navy uppercase tracking-widest">Desconto Especial Proposta (R$)</label>
+              <div className="flex justify-between items-start py-3 border-b border-slate-50">
+                <div className="flex gap-3">
+                  <div className="mt-0.5"><Calendar className="w-4 h-4 text-[#ec9d23] opacity-70" /></div>
+                  <div>
+                    <p className="text-xs font-bold text-slate-700">Assinatura SST Base</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{result.rangeLabel}</p>
+                  </div>
                 </div>
-                <div className="relative">
-                  <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-xs">R$</span>
-                  <input 
-                    type="number" 
-                    value={specialDiscount || ''} 
-                    onChange={(e) => setSpecialDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="w-full pl-9 pr-4 py-2 bg-white border border-orange-200 rounded-lg text-xs font-black text-reque-navy outline-none focus:border-reque-orange transition-all"
-                    placeholder="0,00"
-                  />
+                <div className="text-right flex flex-col items-end">
+                  <span className="text-sm font-black text-[#190c59]">{formatCurrency(monthlyBase)}/mês</span>
+                  {result.billingCycle === BillingCycle.ANNUAL && !result.isUpdateMode && (
+                    <span className="text-[9px] font-black text-reque-orange uppercase mt-1">Anual Antecipado</span>
+                  )}
                 </div>
-                {specialDiscount > 0 && (
-                  <p className="text-[9px] text-orange-600 font-bold mt-1.5 uppercase italic tracking-tighter">
-                    * Valor será abatido do montante total de entrada.
-                  </p>
-                )}
               </div>
-            )}
+
+              {result.isRenewal && !result.isUpdateMode && (
+                <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 mt-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Tag className="w-3.5 h-3.5 text-reque-orange" />
+                    <label className="text-[10px] font-black text-reque-navy uppercase tracking-widest">Desconto Especial Proposta (R$)</label>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-xs">R$</span>
+                    <input 
+                      type="number" 
+                      value={specialDiscount || ''} 
+                      onChange={(e) => setSpecialDiscount(Math.max(0, parseFloat(e.target.value) || 0))}
+                      className="w-full pl-9 pr-4 py-2 bg-white border border-orange-200 rounded-lg text-xs font-black text-reque-navy outline-none focus:border-reque-orange transition-all"
+                      placeholder="0,00"
+                    />
+                  </div>
+                  {specialDiscount > 0 && (
+                    <p className="text-[9px] text-orange-600 font-bold mt-1.5 uppercase italic tracking-tighter">
+                      * Valor será abatido do montante total de entrada.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="bg-[#190c59] p-5 rounded-2xl relative overflow-hidden shadow-lg border border-white/10">
            <div className="relative z-10">
-              <span className="text-[10px] font-black text-[#ec9d23] uppercase tracking-[0.25em]">Valor total da Oferta</span>
-              <div className="flex items-baseline gap-1 mt-1 text-white">
-                 <span className="text-3xl font-black tracking-tighter">
-                    {result.isCustomQuote ? 'Sob Consulta' : isNoFidelity ? `${formatCurrency(monthlyBase)}/mês` : formatCurrency(finalTotalWithInterest)}
-                 </span>
-              </div>
+              {result.isUpdateMode ? (
+                <div className="space-y-5">
+                  <span className="text-xs font-black text-[#ec9d23] uppercase tracking-[0.3em] block mb-2">Valor total da Oferta</span>
+                  
+                  <div className="bg-white/10 p-5 rounded-2xl border-2 border-white/20 space-y-5 shadow-inner">
+                    <div className="flex justify-between items-center text-white border-b border-white/20 pb-4">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black uppercase tracking-wider text-white/80">Nova Assinatura</span>
+                        <span className={`text-[11px] font-black uppercase mt-1 ${diffSubscription >= 0 ? 'text-green-400' : 'text-blue-300'}`}>
+                          Dif. {formatCurrency(Math.abs(diffSubscription))} {diffSubscription >= 0 ? 'Adicional' : 'Redução'}
+                        </span>
+                      </div>
+                      <span className="text-3xl font-black text-white">{formatCurrency(monthlyBase)}<span className="text-xs opacity-50 font-bold">/mês</span></span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-white">
+                      <div className="flex flex-col">
+                        <span className="text-sm font-black uppercase tracking-wider text-white/80">Atualização Doc.</span>
+                        <span className="text-[11px] text-white/50 font-bold uppercase italic tracking-tighter mt-1">Inclui Aplicação Psicossocial</span>
+                      </div>
+                      <span className="text-3xl font-black text-white">{formatCurrency(result.programFee)}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-white/10 p-4 rounded-xl border border-white/5">
+                    <p className="text-[11px] text-[#ec9d23] font-bold italic leading-relaxed text-center px-2">
+                      * Aplicação da avaliação psicossocial contemplada na atualização do documento. Revisão da avaliação em até 24 meses contemplada no valor da assinatura.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <span className="text-[10px] font-black text-[#ec9d23] uppercase tracking-[0.25em]">Valor total da Oferta</span>
+                  <div className="flex items-baseline gap-1 mt-1 text-white">
+                    <span className="text-3xl font-black tracking-tighter">
+                        {result.isCustomQuote ? 'Sob Consulta' : (isNoFidelity ? `${formatCurrency(monthlyBase)}/mês` : formatCurrency(finalTotalWithInterest))}
+                    </span>
+                  </div>
+                </>
+              )}
               
               {showInstallments && !result.isCustomQuote && (
                 <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
@@ -356,7 +386,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
               )}
 
               <p className="text-[9px] text-white/50 font-medium uppercase mt-4 border-t border-white/10 pt-2 flex items-center gap-1">
-                 <Info className="w-3 h-3" /> Inclui Programas + Ciclo Inicial ({result.billingCycle === BillingCycle.ANNUAL ? '12m' : '1m'})
+                 <Info className="w-3 h-3" /> Inclui Programas + Ciclo Inicial ({result.billingCycle === BillingCycle.ANNUAL && !result.isUpdateMode ? '12m' : '1m'})
               </p>
            </div>
         </div>
@@ -364,7 +394,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
         <div className="space-y-3 pt-2">
           {onSaveHistory && (
             <button 
-              onClick={handleSave}
+              onClick={handleSave} 
               disabled={isSaving}
               className={`w-full py-3 border-2 rounded-xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2 ${
                 isSaved ? 'bg-green-50 border-green-200 text-green-600' : 'bg-white border-slate-100 text-[#190c59] hover:bg-slate-50'

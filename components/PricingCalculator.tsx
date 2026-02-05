@@ -16,6 +16,7 @@ import {
   EMPLOYEE_RANGES, 
   MONTHLY_VALUES_EXPRESS,
   MONTHLY_VALUES_PRO,
+  UPDATE_MONTHLY_VALUES,
   PROGRAM_FEES_TABLE, 
   UPDATE_FEE_TABLE,
   PLAN_SERVICES,
@@ -23,7 +24,7 @@ import {
 } from '../constants';
 import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
-import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus, X, MapPin, Edit3, Settings2, Plus, Trash2, Save as SaveIcon, ArrowDownToLine, ChevronUp, ChevronDown, TrendingUp, DollarSign, LayoutGrid, Search, FileEdit } from 'lucide-react';
+import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus, X, MapPin, Edit3, Settings2, Plus, Trash2, Save as SaveIcon, ArrowDownToLine, ChevronUp, ChevronDown, TrendingUp, DollarSign, LayoutGrid, Search, FileEdit, Receipt } from 'lucide-react';
 
 const formatDocument = (value: string) => {
   const cleanValue = value.replace(/\D/g, '');
@@ -50,6 +51,7 @@ export const PricingCalculator: React.FC<{
   const [fidelity, setFidelity] = useState<FidelityModel>(FidelityModel.WITH_FIDELITY);
   const [isRenewal, setIsRenewal] = useState(false);
   const [isUpdateMode, setIsUpdateMode] = useState(false);
+  const [currentPlan, setCurrentPlan] = useState('');
   const [currentAssinatura, setCurrentAssinatura] = useState<number>(0);
   const [clientDeliveryDate, setClientDeliveryDate] = useState('');
   const [docDeliveryDate, setDocDeliveryDate] = useState('');
@@ -88,25 +90,31 @@ export const PricingCalculator: React.FC<{
   const pricingResult = useMemo((): PricingResult => {
     const range = EMPLOYEE_RANGES.find(r => numEmployees >= r.min && numEmployees <= r.max) || EMPLOYEE_RANGES[0];
     const isPro = activePlan === PlanType.PRO;
-    const baseMonthlyValue = (isPro ? MONTHLY_VALUES_PRO[range.id] : MONTHLY_VALUES_EXPRESS[range.id]) || 0;
+    
+    // Regra cirúrgica: Na aba atualização, utilizar a tabela UPDATE_MONTHLY_VALUES
+    const baseMonthlyValue = isUpdateMode 
+      ? (UPDATE_MONTHLY_VALUES[range.id] || 0) 
+      : ((isPro ? MONTHLY_VALUES_PRO[range.id] : MONTHLY_VALUES_EXPRESS[range.id]) || 0);
+      
     const originalProgramFee = PROGRAM_FEES_TABLE[range.id] || 0;
     
     let programFee = isUpdateMode ? UPDATE_FEE_TABLE[range.id] : (isRenewal ? originalProgramFee * 0.5 : originalProgramFee);
     if (fidelity === FidelityModel.WITH_FIDELITY && !isUpdateMode) programFee = 0;
 
-    // Regra de Negócio: Fidelidade exige 12 meses antecipados de assinatura
     const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
-    const calculatedInitialTotal = programFee + (isFidelityActive ? baseMonthlyValue * 12 : baseMonthlyValue);
+    // Regra: Na atualização, não há multiplicação por 12x
+    const calculatedInitialTotal = programFee + (isUpdateMode ? baseMonthlyValue : (isFidelityActive ? baseMonthlyValue * 12 : baseMonthlyValue));
 
     return {
       rangeLabel: range.label,
       monthlyValue: baseMonthlyValue,
-      billingCycle: isFidelityActive ? BillingCycle.ANNUAL : BillingCycle.MONTHLY,
+      billingCycle: (isFidelityActive && !isUpdateMode) ? BillingCycle.ANNUAL : BillingCycle.MONTHLY,
       paymentMethod: PaymentMethod.BOLETO,
       programFee,
       originalProgramFee,
       programFeeDiscounted: (isRenewal || isFidelityActive) && !isUpdateMode,
       isRenewal: isRenewal || isUpdateMode,
+      isUpdateMode,
       riskLevel,
       clientDeliveryDate,
       docDeliveryDate,
@@ -210,6 +218,12 @@ export const PricingCalculator: React.FC<{
     setCustomExams(newExams);
   };
 
+  const handleCurrencyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '');
+    const numberValue = Number(value) / 100;
+    setCurrentAssinatura(numberValue);
+  };
+
   if (showProposal) {
     return <ProposalView result={pricingResult} plan={activePlan} fidelity={fidelity} employees={numEmployees} companyName={companyName} contactName={contactName} cnpj={cnpj} selectedUnit={selectedUnit} selectedInstallments={selectedInstallments} isCustomTable={isCustomTable} customExams={customExams} customCity={customCity} onBack={() => setShowProposal(false)} />;
   }
@@ -269,22 +283,59 @@ export const PricingCalculator: React.FC<{
           </div>
         </section>
 
-        {/* 2. PRAZOS DE ENTREGA */}
-        <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-          <h3 className="text-[10px] font-black text-reque-navy uppercase mb-5 tracking-widest flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-reque-orange" /> Prazos de Entrega
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Entrega das Descrições (Cliente)</label>
-              <input type="date" value={clientDeliveryDate} onChange={e => setClientDeliveryDate(e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white transition-all" />
+        {/* 2. MAPEAMENTO OU PRAZOS DE ENTREGA */}
+        {isUpdateMode ? (
+          <section className="bg-slate-50 p-5 rounded-2xl shadow-sm border border-reque-navy/20 animate-in fade-in slide-in-from-top-2">
+            <h3 className="text-[10px] font-black text-reque-navy uppercase mb-5 tracking-widest flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-reque-orange" /> Mapeamento de Contrato Atual
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Plano Atual</label>
+                <select 
+                  value={currentPlan} 
+                  onChange={e => setCurrentPlan(e.target.value)}
+                  className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all"
+                >
+                  <option value="">SELECIONE...</option>
+                  <option value="ASSINATURA PRO">ASSINATURA PRÓ</option>
+                  <option value="ASSINATURA EXPRESS">ASSINATURA EXPRESS</option>
+                  <option value="ASSINATURA PRO - Fidelidade">ASSINATURA PRÓ - FIDELIDADE</option>
+                  <option value="ASSINATURA EXPRESS - Fidelidade">ASSINATURA EXPRESS - FIDELIDADE</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Valor Assinatura Atual</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-300">R$</span>
+                  <input 
+                    type="text" 
+                    value={new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2 }).format(currentAssinatura)}
+                    onChange={handleCurrencyChange}
+                    className="w-full pl-10 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all"
+                    placeholder="0,00"
+                  />
+                </div>
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Entrega Combinada (Programas)</label>
-              <input type="date" disabled className="w-full p-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold opacity-60" value={docDeliveryDate} />
+          </section>
+        ) : (
+          <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <h3 className="text-[10px] font-black text-reque-navy uppercase mb-5 tracking-widest flex items-center gap-2">
+              <CalendarDays className="w-4 h-4 text-reque-orange" /> Prazos de Entrega
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Entrega das Descrições (Cliente)</label>
+                <input type="date" value={clientDeliveryDate} onChange={e => setClientDeliveryDate(e.target.value)} className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white transition-all" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Entrega Combinada (Programas)</label>
+                <input type="date" disabled className="w-full p-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold opacity-60" value={docDeliveryDate} />
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* 3. PARÂMETROS DO PLANO */}
         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
@@ -302,13 +353,15 @@ export const PricingCalculator: React.FC<{
                 ))}
               </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Modelo Fidelidade</label>
-              <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
-                <button onClick={() => setFidelity(FidelityModel.WITH_FIDELITY)} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${fidelity === FidelityModel.WITH_FIDELITY ? 'bg-reque-orange text-white shadow-sm' : 'text-slate-400'}`}>Com Fidelidade</button>
-                <button onClick={() => setFidelity(FidelityModel.NO_FIDELITY)} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${fidelity === FidelityModel.NO_FIDELITY ? 'bg-white text-reque-navy shadow-sm ring-1 ring-slate-200' : 'text-slate-400'}`}>Sem Fidelidade</button>
+            {!isUpdateMode && (
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">Modelo Fidelidade</label>
+                <div className="flex bg-slate-50 p-1 rounded-xl border border-slate-200">
+                  <button onClick={() => setFidelity(FidelityModel.WITH_FIDELITY)} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${fidelity === FidelityModel.WITH_FIDELITY ? 'bg-reque-orange text-white shadow-sm' : 'text-slate-400'}`}>Com Fidelidade</button>
+                  <button onClick={() => setFidelity(FidelityModel.NO_FIDELITY)} className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${fidelity === FidelityModel.NO_FIDELITY ? 'bg-white text-reque-navy shadow-sm ring-1 ring-slate-200' : 'text-slate-400'}`}>Sem Fidelidade</button>
+                </div>
               </div>
-            </div>
+            )}
             {!isUpdateMode && (
               <div className="md:col-span-2 flex items-center gap-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
                 <input type="checkbox" id="rest-renewal" checked={isRenewal} onChange={e => setIsRenewal(e.target.checked)} className="w-5 h-5 accent-reque-orange cursor-pointer" />
@@ -330,7 +383,7 @@ export const PricingCalculator: React.FC<{
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
-            <div className="space-y-4">
+            <div className={`space-y-4 ${isUpdateMode ? 'md:col-span-2' : ''}`}>
               <div className="flex justify-between items-end">
                 <div>
                    <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Nº de Funcionários</label>
@@ -340,16 +393,18 @@ export const PricingCalculator: React.FC<{
               </div>
               <input type="range" min="1" max="200" value={numEmployees} onChange={e => setNumEmployees(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-reque-orange" />
             </div>
-            <div className="space-y-4 border-l border-slate-100 pl-6">
-              <div className="flex justify-between items-end">
-                <div>
-                   <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Gestão de Agendamento</label>
-                   <p className="text-[8px] text-slate-300 font-bold uppercase leading-none">Vidas fora das unidades Reque</p>
+            {!isUpdateMode && (
+              <div className="space-y-4 border-l border-slate-100 pl-6">
+                <div className="flex justify-between items-end">
+                  <div>
+                    <label className="block text-[9px] font-black text-slate-400 uppercase mb-1">Gestão de Agendamento</label>
+                    <p className="text-[8px] text-slate-300 font-bold uppercase leading-none">Vidas fora das unidades Reque</p>
+                  </div>
+                  <span className="text-3xl font-black text-reque-orange tracking-tighter">{externalLivesCount}</span>
                 </div>
-                <span className="text-3xl font-black text-reque-orange tracking-tighter">{externalLivesCount}</span>
+                <input type="range" min="0" max="100" value={externalLivesCount} onChange={e => setExternalLivesCount(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-reque-orange" />
               </div>
-              <input type="range" min="0" max="100" value={externalLivesCount} onChange={e => setExternalLivesCount(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-reque-orange" />
-            </div>
+            )}
           </div>
         </section>
 
@@ -403,22 +458,24 @@ export const PricingCalculator: React.FC<{
         )}
 
         {/* 7. ITENS DO PLANO */}
-        <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
-           <div className="flex items-center gap-2 mb-4">
-             <ShieldCheck className="w-4 h-4 text-[#ec9d23]" />
-             <h3 className="text-[10px] font-black text-reque-navy uppercase tracking-widest">Itens do Plano</h3>
-             <span className="h-px flex-1 bg-slate-50"></span>
-             <span className="text-[9px] font-black text-reque-navy bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{activePlan}</span>
-           </div>
-           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-             {PLAN_SERVICES[activePlan].map((s, i) => (
-               <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-100 text-[8px] font-black uppercase leading-tight bg-slate-50/50">
-                 <CheckCircle className="w-2.5 h-2.5 text-green-500 shrink-0" />
-                 {s}
-               </div>
-             ))}
-           </div>
-        </section>
+        {!isUpdateMode && (
+          <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div className="flex items-center gap-2 mb-4">
+              <ShieldCheck className="w-4 h-4 text-[#ec9d23]" />
+              <h3 className="text-[10px] font-black text-reque-navy uppercase tracking-widest">Itens do Plano</h3>
+              <span className="h-px flex-1 bg-slate-50"></span>
+              <span className="text-[9px] font-black text-reque-navy bg-slate-50 px-2 py-0.5 rounded border border-slate-100">{activePlan}</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {PLAN_SERVICES[activePlan].map((s, i) => (
+                <div key={i} className="flex items-center gap-1.5 p-2 rounded-lg border border-slate-100 text-[8px] font-black uppercase leading-tight bg-slate-50/50">
+                  <CheckCircle className="w-2.5 h-2.5 text-green-500 shrink-0" />
+                  {s}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
 
       <div className="lg:col-span-4">
@@ -434,6 +491,7 @@ export const PricingCalculator: React.FC<{
           isGenerateDisabled={!canGenerateProposal || !companyName} 
           specialDiscount={specialDiscount} 
           setSpecialDiscount={setSpecialDiscount} 
+          currentAssinaturaValue={currentAssinatura}
         />
       </div>
 

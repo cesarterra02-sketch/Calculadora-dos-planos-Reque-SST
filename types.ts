@@ -1,5 +1,4 @@
 
-
 export enum PlanType {
   EXPRESS = 'SST Express',
   ESSENCIAL = 'SST Essencial',
@@ -52,6 +51,7 @@ export interface PricingResult {
   originalProgramFee: number;
   programFeeDiscounted: boolean;
   isRenewal?: boolean;
+  isUpdateMode?: boolean;
   riskLevel: RiskLevel;
   clientDeliveryDate: string;
   docDeliveryDate: string;

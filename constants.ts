@@ -1,3 +1,4 @@
+
 import { EmployeeRange, PlanType, PricingTable, ProgramFeeTable, RequeUnit, ExamItem } from './types';
 
 export const EMPLOYEE_RANGES: EmployeeRange[] = [
@@ -43,6 +44,12 @@ export const MONTHLY_VALUES_PRO: PricingTable = {
   R5: 300, R6: 360, R7: 420, R8: 480, R9: 540, R10: 600, R11: 660, R12: 720, R13: 780, R14: 840,
   R15: 900, R16: 960, R17: 1020, R18: 1080, R19: 1140, R20: 1200, R21: 1320, R22: 1440, R23: 1560, R24: 1680,
   R25: 1800, R26: 1920, R27: 2040, R28: 2160, R29: 2280, R30: 2400,
+};
+
+export const UPDATE_MONTHLY_VALUES: PricingTable = {
+  R1: 60, R2: 85, R3: 115, R4: 145, R5: 170, R6: 190, R7: 210, R8: 230, R9: 250, R10: 270,
+  R11: 290, R12: 310, R13: 330, R14: 345, R15: 360, R16: 375, R17: 395, R18: 410, R19: 430, R20: 445,
+  R21: 480, R22: 515, R23: 550, R24: 585, R25: 620, R26: 655, R27: 690, R28: 725, R29: 760, R30: 795,
 };
 
 export const PROGRAM_FEES_TABLE: ProgramFeeTable = {
