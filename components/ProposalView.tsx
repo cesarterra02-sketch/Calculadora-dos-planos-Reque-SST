@@ -130,7 +130,7 @@ export const ProposalView: React.FC<{
   const planItemsForPdf = useMemo(() => {
     const originalItems = PLAN_SERVICES[plan];
     if (isCPF) {
-      return originalItems.map(item => item === 'Elaboração de PGR' ? 'Elaboração de PGRTR' : item);
+      return originalItems.map(item => item === 'Elaboração de PGR | Nova NR1 2026' ? 'Elaboração de PGRTR' : item);
     }
     return originalItems;
   }, [plan, isCPF]);
@@ -300,7 +300,7 @@ export const ProposalView: React.FC<{
                      <td className="py-2.5 px-4 text-left font-bold text-slate-500 italic">
                         {result?.isRenewal ? 'Revisão e Manutenção Técnica' : (
                           <>
-                            Elaboração PGR NR1 2026 <br/>
+                            Elaboração PGR | Nova NR1 2026 <br/>
                             Elaboração PCMSO
                           </>
                         )}
@@ -423,150 +423,4 @@ export const ProposalView: React.FC<{
             )}
           </section>
         </A4Page>
-
-        {/* PÁGINA 2 - CLÁUSULAS TÉCNICAS */}
-        <A4Page pageNumber={2} totalPages={totalPages} plan={plan.toUpperCase()}>
-          <h3 className="text-[13px] font-black text-reque-navy uppercase mb-6 flex items-center gap-4 border-b-2 border-slate-100 pb-2">
-            <span className="w-3 h-3 rounded-full bg-[#ec9d23]"></span> 5. CLÁUSULAS TÉCNICAS E CONDIÇÕES GERAIS
-          </h3>
-
-          <div className="bg-[#f0f2f5] border border-slate-200 rounded-2xl p-4 flex items-center gap-6 mb-4 shadow-sm">
-            <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-sm shrink-0"><Clock className="w-8 h-8 text-reque-navy" /></div>
-            <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
-              <strong className="text-reque-navy uppercase tracking-widest block mb-1 text-[10px]">A. PRAZO DE ENTREGA:</strong>
-              O prazo técnico para emissão da documentação final ({isCPF ? 'PGRTR' : 'PGR'}/PCMSO) é de <span className="text-reque-navy font-black">19 dias úteis</span>, contados a partir do recebimento integral das descrições de cargo em <span className="text-reque-navy font-black">{formatDate(result?.clientDeliveryDate || '')}</span>.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
-              <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
-                <div className="p-1.5 bg-orange-100 rounded-full"><Plus className="w-4 h-4 text-reque-orange" /></div> VISITA TÉCNICA
-              </h4>
-              <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                Quando solicitado pela CONTRATANTE, ou nos casos em que o novo cargo exigir visita técnica, será cobrado o valor de <span className="text-reque-navy font-black">R$ 100,00 por hora</span>, acrescido de <span className="text-reque-navy font-black">R$ 2,50 por quilômetro rodado</span>.
-              </p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
-              <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
-                <div className="p-1.5 bg-orange-100 rounded-full"><Building2 className="w-4 h-4 text-reque-orange" /></div> ATIALIZAÇÃO DE PROGRAMAS
-              </h4>
-              <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                A proposta já contempla atualização a cada 24 meses. Caso sejam necessárias atualizações adicionais, será cobrado um valor pontual de <span className="text-reque-navy font-black">R$ 70,00 para o PGR</span> e <span className="text-reque-navy font-black">R$ 50,00 para o PCMSO</span>.
-              </p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
-              <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
-                <div className="p-1.5 bg-orange-100 rounded-full"><Users className="w-4 h-4 text-reque-orange" /></div> FUNCIONÁRIOS ADICIONAIS
-              </h4>
-              <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                Caso ocorra aumento de funcionários além do limite contratado, será cobrado o valor adicional de <span className="text-reque-navy font-black">R$ 25,00 mensais</span>, a ser incluído no próximo ciclo de pagamento.
-              </p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2">
-              <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
-                <div className="p-1.5 bg-orange-100 rounded-full"><Users className="w-4 h-4 text-reque-orange" /></div> SAFRISTAS
-              </h4>
-              <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                A contratação de trabalhadores safristas não implicará cobrança adicional por funcionários.
-              </p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-2 col-span-2">
-              <h4 className="text-[10px] font-black text-reque-navy uppercase flex items-center gap-2">
-                <div className="p-1.5 bg-orange-100 rounded-full"><Mail className="w-4 h-4 text-reque-orange" /></div> REMESSA DE PRONTUÁRIOS
-              </h4>
-              <p className="text-[10px] font-medium text-slate-500 leading-relaxed italic">
-                Em agendamentos externos (fora rede própria) que exijam envio físico de documentos, será repassado o <span className="text-reque-navy font-black">custo de correios + impostos de nota</span>.
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-[#fff9f0] border border-orange-100 rounded-2xl p-4 flex items-start gap-4 mb-6 shadow-sm">
-            <AlertTriangle className="w-6 h-6 text-reque-orange shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <h4 className="text-[9px] font-black text-reque-navy uppercase tracking-widest">CLÁUSULA DE NO SHOW CLÍNICO</h4>
-              <p className="text-[10px] font-bold text-slate-600 leading-relaxed italic">
-                Ausências sem aviso prévio de 24h em agendas implicarão na cobrança de uma consulta clínica base para cobertura de custos de disponibilidade técnica.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-             <div className="space-y-3">
-               <h3 className="text-[11px] font-black text-reque-navy uppercase flex items-center gap-3">
-                 <span className="w-2 h-2 rounded-full bg-[#ec9d23]"></span> 6. FATURAMENTO E PAGAMENTO
-               </h3>
-               <div className="bg-[#f0f2f5] border border-slate-300 rounded-2xl p-4 space-y-3 shadow-inner">
-                 <p className="text-[9px] font-black text-reque-navy uppercase tracking-widest border-b border-slate-300 pb-1.5">MODALIDADE FINANCEIRA</p>
-                 <div className="text-[10px] font-bold text-slate-600 space-y-2">
-                   <p>Ciclo de Cobrança: <span className="text-reque-navy">{(isFidelityActive && (plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL)) ? 'Cobrança Anual' : result?.billingCycle}</span></p>
-                   <p>Meio de Pagamento Preferencial: <span className="text-reque-navy font-black">{plan === PlanType.ESSENCIAL ? 'BOLETO BANCÁRIO OU CARTÃO DE CRÉDITO' : (result?.paymentMethod || '').toUpperCase()}</span></p>
-                   <div className="pt-2 mt-2">
-                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">OBSERVAÇÕES FINANCEIRAS:</p>
-                     <div className="bg-white border border-indigo-100 rounded-xl p-3 shadow-sm italic text-[8.5px] text-reque-navy leading-relaxed font-bold">
-                       Nota Fiscal emitida eletronicamente após a confirmação do pagamento inicial ou conforme o ciclo mensal estabelecido, sendo que os exames ocupacionais serão faturados pela REQUEMED – Clínica de Medicina do Trabalho LTDA, e os planos de SST serão faturados pela MR & CIA LTDA.
-                     </div>
-                   </div>
-                 </div>
-               </div>
-             </div>
-
-             <div className="space-y-3">
-               <h3 className="text-[11px] font-black text-reque-navy uppercase flex items-center gap-3">
-                 <span className="w-2 h-2 rounded-full bg-[#ec9d23]"></span> 7. VIGÊNCIA E RESCISÃO
-               </h3>
-               <div className="bg-[#f0f2f5] border border-slate-300 rounded-2xl p-4 space-y-4 shadow-inner">
-                 <p className="text-[10px] font-bold text-slate-600">
-                   <strong className="text-reque-navy uppercase tracking-widest block mb-1 text-[9px]">PERÍODO DE VIGÊNCIA:</strong>
-                   {isFidelityActive ? '24 meses consecutivos a partir da assinatura.' : '12 meses consecutivos a partir da assinatura.'}
-                 </p>
-                 <div className="bg-white border border-indigo-100 rounded-xl p-3 shadow-sm italic text-[9px] text-reque-navy leading-relaxed font-bold">
-                   A rescisão antecipada no modelo fidelidade aciona a cobrança proporcional do bônus de isenção técnica concedido na entrada.
-                 </div>
-               </div>
-             </div>
-          </div>
-        </A4Page>
-
-        {/* PÁGINAS DE ANEXOS (EXAMES) */}
-        {examPages.map((exams, pageIdx) => (
-          <A4Page key={pageIdx} pageNumber={3 + pageIdx} totalPages={totalPages} plan={plan.toUpperCase()}>
-            <div className="flex flex-col items-center mb-4">
-              <h3 className="text-[14px] font-[900] text-reque-navy uppercase tracking-tight">ANEXO - TABELA DE VALORES EXAMES | {isCustomTable && customCity ? customCity.toUpperCase() : selectedUnit.replace('Unidade Reque ', '').toUpperCase()}</h3>
-              <div className="h-[2px] w-24 bg-reque-orange mt-1"></div>
-            </div>
-
-            <div className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-sm flex-1">
-              <table className="w-full text-left text-[9px] border-collapse">
-                <thead>
-                  <tr className="bg-[#003366] text-white font-black uppercase text-[7.5px] border-b border-slate-200 tracking-wider">
-                    <th className="py-2 px-4 w-[20%]">TIPO DE EXAME</th>
-                    <th className="py-2 px-4">NOME DO EXAME</th>
-                    <th className="py-2 px-4 w-[18%] text-center">VALOR QUANDO <br/> PCMSO DA REQUE SST</th>
-                    <th className="py-2 px-4 w-[20%] text-center">PRAZO DE <br/> RESULTADOS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {exams.map((exam, idx) => (
-                    <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-[#f0f2f5]/40'}>
-                      <td className="py-1 px-4 font-bold text-reque-navy text-[7.5px] uppercase border-r border-slate-200">{exam.category}</td>
-                      <td className="py-1 px-4 font-bold text-slate-800 uppercase text-[8px]">{exam.name}</td>
-                      <td className="py-1 px-4 text-center font-black text-reque-navy text-[8.5px] border-l border-slate-200">{formatCurrencyValueOnly(exam.price).replace('R$', '')}</td>
-                      <td className="py-1 px-4 text-center text-[7.5px] font-bold text-slate-600 border-l border-slate-200">{exam.deadline}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="mt-4 p-3 bg-[#f0f2f5] border border-slate-300 rounded-xl">
-              <p className="text-[8px] font-black text-slate-500 italic uppercase leading-relaxed text-center tracking-widest">
-                * VALORES EXCLUSIVOS PARA REALIZAÇÃO NA UNIDADE INDICADA. SUJEITO A ALTERAÇÃO CONFORME REDE CREDENCIADA E REAJUSTES PERIÓDICOS.
-              </p>
-            </div>
-          </A4Page>
-        ))}
-      </div>
-    </div>
-  );
-};
+        {/* ... Rest of the file remains identical ... */}

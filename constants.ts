@@ -66,18 +66,16 @@ export const UPDATE_FEE_TABLE: ProgramFeeTable = {
 
 export const PLAN_SERVICES: Record<PlanType, string[]> = {
   [PlanType.EXPRESS]: [
-    'Elaboração de PGR',
+    'Elaboração de PGR | Nova NR1 2026',
     'Elaboração de PCMSO',
     'eSocial/PPP eletrônico',
-    'Exames Ocupacionais',
-    'Avaliação Psicossocial'
+    'Exames Ocupacionais'
   ],
   [PlanType.ESSENCIAL]: [
-    'Elaboração de PGR',
+    'Elaboração de PGR | Nova NR1 2026',
     'Elaboração de PCMSO',
     'eSocial/PPP eletrônico',
     'Exames Ocupacionais',
-    'Avaliação Psicossocial',
     'Sistema de Gestão de SST',
     'Ordem de Serviço',
     'Controle de entrega de EPI',
@@ -86,11 +84,10 @@ export const PLAN_SERVICES: Record<PlanType, string[]> = {
     'Agendamento Online'
   ],
   [PlanType.PRO]: [
-    'Elaboração de PGR',
+    'Elaboração de PGR | Nova NR1 2026',
     'Elaboração de PCMSO',
     'eSocial/PPP eletrônico',
     'Exames Ocupacionais',
-    'Avaliação Psicossocial',
     'Sistema de Gestão de SST',
     'Ordem de Serviço',
     'Controle de entrega de EPI',
