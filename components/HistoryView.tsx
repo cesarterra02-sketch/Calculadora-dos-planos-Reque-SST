@@ -72,43 +72,27 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
     );
   });
 
-  // Estatísticas Consolidadas para Dashboard ADM (Focado em CNPJs Distintos)
+  // Estatísticas Consolidadas para Dashboard ADM (Todos os registros)
   const dashboardStats = useMemo(() => {
-    const sellers: Record<string, { cnpjs: Set<string>, total: number }> = {};
-    const types: Record<string, Set<string>> = { 'standard': new Set(), 'incompany': new Set(), 'credenciador': new Set() };
-    const globalCnpjs = new Set<string>();
+    const sellers: Record<string, { count: number, total: number }> = {};
+    const types: Record<string, number> = { 'standard': 0, 'incompany': 0, 'credenciador': 0 };
     
-    // No perfil ADM visualizamos todos os registros processando unicidade por CNPJ
+    // No perfil ADM visualizamos todos os registros sem filtro de data
     history.forEach(item => {
       const seller = item.createdBy || 'Sistema';
-      const type = item.type || 'standard';
-      const cnpjKey = (item.cnpj || item.companyName || item.id).trim(); // CNPJ como chave primária de unicidade
-
-      if (!sellers[seller]) sellers[seller] = { cnpjs: new Set(), total: 0 };
-      sellers[seller].cnpjs.add(cnpjKey);
+      if (!sellers[seller]) sellers[seller] = { count: 0, total: 0 };
+      sellers[seller].count += 1;
       sellers[seller].total += item.initialTotal;
 
-      if (!types[type]) types[type] = new Set();
-      types[type].add(cnpjKey);
-      
-      globalCnpjs.add(cnpjKey);
+      const type = item.type || 'standard';
+      types[type] = (types[type] || 0) + 1;
     });
 
-    const sellerEntries = Object.entries(sellers).map(([name, data]) => [
-      name, 
-      { count: data.cnpjs.size, total: data.total }
-    ]);
-
-    const typeEntries = Object.entries(types).map(([type, set]) => [
-      type, 
-      set.size
-    ]);
-
     return {
-      sellers: (sellerEntries as any).sort((a: any, b: any) => b[1].count - a[1].count),
-      types: (typeEntries as any).sort((a: any, b: any) => b[1] - a[1]),
+      sellers: Object.entries(sellers).sort((a, b) => b[1].count - a[1].count),
+      types: Object.entries(types).sort((a, b) => b[1] - a[1]),
       totalRevenue: Object.values(sellers).reduce((acc, curr) => acc + curr.total, 0),
-      totalCount: globalCnpjs.size
+      totalCount: Object.values(sellers).reduce((acc, curr) => acc + curr.count, 0)
     };
   }, [history]);
 
@@ -148,20 +132,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                <h3 className="text-[11px] font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
                  <BarChart3 className="w-4 h-4 text-reque-orange" /> Performance Consolidada (ADM)
                </h3>
-               <span className="text-[9px] font-bold text-slate-400 uppercase">Total de CNPJs Distintos</span>
+               <span className="text-[9px] font-bold text-slate-400 uppercase">Total de Registros</span>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* RANKING POR VENDEDOR */}
               <div className="space-y-3">
-                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Criado Por (Empresas Únicas)</h4>
+                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Criado Por</h4>
                 {dashboardStats.sellers.length === 0 ? (
                   <p className="text-[10px] text-slate-400 italic">Nenhum registro encontrado.</p>
                 ) : dashboardStats.sellers.map(([name, data]) => (
                   <div key={name} className="relative">
                     <div className="flex justify-between items-end mb-1">
                        <span className="text-[10px] font-black text-reque-navy uppercase">{name}</span>
-                       <span className="text-[10px] font-black text-reque-orange uppercase">{data.count} <span className="text-[8px] text-slate-400">Empresas</span></span>
+                       <span className="text-[10px] font-black text-reque-orange uppercase">{data.count} <span className="text-[8px] text-slate-400">Propostas</span></span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                        <div 
@@ -175,14 +159,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
 
               {/* RANKING POR TIPO */}
               <div className="space-y-3">
-                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Tipo (CNPJs Distintos)</h4>
+                <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Tipo de Proposta</h4>
                 {dashboardStats.types.map(([type, count]) => (
                   <div key={type} className="relative">
                     <div className="flex justify-between items-end mb-1">
                        <span className="text-[10px] font-black text-reque-navy uppercase">
                           {type === 'standard' ? 'Planos SST' : type === 'incompany' ? 'In Company' : 'Credenciador'}
                        </span>
-                       <span className="text-[10px] font-black text-reque-navy uppercase">{count} <span className="text-[8px] text-slate-400">Empresas</span></span>
+                       <span className="text-[10px] font-black text-reque-navy uppercase">{count} <span className="text-[8px] text-slate-400">Qtd</span></span>
                     </div>
                     <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
                        <div 
@@ -203,25 +187,25 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                 </h3>
                 <div className="space-y-4">
                    <div>
-                      <p className="text-[9px] text-white/50 font-bold uppercase tracking-tight">Total Projetado (Bruto)</p>
+                      <p className="text-[9px] text-white/50 font-bold uppercase tracking-tight">Total Projetado</p>
                       <p className="text-2xl font-black text-white tracking-tighter">
                         {formatCurrency(dashboardStats.totalRevenue)}
                       </p>
                    </div>
                    <div className="flex items-center gap-3 bg-white/5 p-3 rounded-xl border border-white/5">
                       <div className="p-2 bg-reque-orange rounded-lg">
-                        <Users className="w-4 h-4 text-reque-navy" />
+                        <FileCheck className="w-4 h-4 text-reque-navy" />
                       </div>
                       <div>
                         <p className="text-[10px] font-black text-white uppercase leading-none">
                            {dashboardStats.totalCount}
                         </p>
-                        <p className="text-[8px] text-white/40 font-bold uppercase tracking-widest mt-1">Clientes Únicos</p>
+                        <p className="text-[8px] text-white/40 font-bold uppercase tracking-widest mt-1">Simulações Ativas</p>
                       </div>
                    </div>
                 </div>
              </div>
-             <p className="text-[8px] text-white/30 font-bold italic mt-4">* Estatísticas baseadas em CNPJs distintos.</p>
+             <p className="text-[8px] text-white/30 font-bold italic mt-4">* Dados sincronizados em tempo real com a nuvem.</p>
           </div>
         </div>
       )}

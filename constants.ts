@@ -1,4 +1,3 @@
-
 import { EmployeeRange, PlanType, PricingTable, ProgramFeeTable, RequeUnit, ExamItem } from './types';
 
 export const EMPLOYEE_RANGES: EmployeeRange[] = [
