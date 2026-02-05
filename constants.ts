@@ -69,13 +69,15 @@ export const PLAN_SERVICES: Record<PlanType, string[]> = {
     'Elaboração de PGR',
     'Elaboração de PCMSO',
     'eSocial/PPP eletrônico',
-    'Exames Ocupacionais'
+    'Exames Ocupacionais',
+    'Avaliação Psicossocial'
   ],
   [PlanType.ESSENCIAL]: [
     'Elaboração de PGR',
     'Elaboração de PCMSO',
     'eSocial/PPP eletrônico',
     'Exames Ocupacionais',
+    'Avaliação Psicossocial',
     'Sistema de Gestão de SST',
     'Ordem de Serviço',
     'Controle de entrega de EPI',
@@ -88,6 +90,7 @@ export const PLAN_SERVICES: Record<PlanType, string[]> = {
     'Elaboração de PCMSO',
     'eSocial/PPP eletrônico',
     'Exames Ocupacionais',
+    'Avaliação Psicossocial',
     'Sistema de Gestão de SST',
     'Ordem de Serviço',
     'Controle de entrega de EPI',
