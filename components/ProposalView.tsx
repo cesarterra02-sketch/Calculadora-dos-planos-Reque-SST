@@ -322,7 +322,11 @@ export const ProposalView: React.FC<{
                         )}
                      </td>
                      <td className="py-2.5 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">
-                        {isFidelityActive ? 'FIDELIDADE 24 MESES' : 'SEM FIDELIDADE'}
+                        {result?.isUpdateMode ? (
+                          (result?.programFee || 0) < 500 ? 'PAGAMENTO ANTECIPADO' : 'PAGAMENTO EM ATÉ 3x'
+                        ) : (
+                          isFidelityActive ? 'FIDELIDADE 24 MESES' : 'SEM FIDELIDADE'
+                        )}
                      </td>
                    </tr>
 
