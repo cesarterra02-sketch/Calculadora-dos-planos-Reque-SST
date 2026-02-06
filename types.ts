@@ -69,7 +69,7 @@ export interface PricingResult {
 
 export interface ProposalHistoryItem {
   id: string;
-  type: 'standard' | 'incompany' | 'credenciador';
+  type: 'standard' | 'incompany' | 'credenciador' | 'venda_avulsa_psico';
   createdAt: string;
   createdBy?: string;
   companyName: string;
@@ -92,6 +92,7 @@ export interface ProposalHistoryItem {
   margemAlvoAplicada?: number; // Novo campo
   impostoAplicado?: number;
   comissaoAplicada?: number;
+  valorAvulsoPsico?: number;
   inCompanyDetails?: {
     profs?: ProfessionalInCompany[];
     vehicles?: VehicleInCompany[];
@@ -138,10 +139,11 @@ export interface User {
   canAccessInCompany: boolean;
   canAccessCalculator: boolean;
   canAccessCredenciador?: boolean;
+  canAccessVendaAvulsaPsico?: boolean;
   canGenerateProposal: boolean;
 }
 
-export type ViewType = 'calculator' | 'history' | 'admin' | 'incompany' | 'credenciador';
+export type ViewType = 'calculator' | 'history' | 'admin' | 'incompany' | 'credenciador' | 'venda_avulsa_psico';
 
 export type PricingTable = Record<string, number>;
 export type ProgramFeeTable = Record<string, number>;

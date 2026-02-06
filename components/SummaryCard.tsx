@@ -221,7 +221,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                     {result.isRenewal ? <RefreshCcw className="w-4 h-4 text-reque-orange opacity-70" /> : <FileCheck className="w-4 h-4 text-reque-blue opacity-50" />}
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-slate-700">{result.isRenewal ? 'Revisão e Manutenção (Programas)' : 'Programas (PGR e PCMSO)'}</p>
+                    <p className="text-xs font-bold text-slate-700">{result.isUpdateMode ? 'Atualização Nova NR1 2026' : result.isRenewal ? 'Revisão e Manutenção Técnica dos Programas' : 'Programas (PGR e PCMSO)'}</p>
                     <p className="text-[10px] text-slate-400">{result.isRenewal ? 'Ciclo de renovação vigente' : 'Taxa de elaboração técnica inicial'}</p>
                   </div>
                 </div>

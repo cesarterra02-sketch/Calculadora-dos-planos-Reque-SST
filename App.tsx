@@ -1,7 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { PricingCalculator } from './components/PricingCalculator';
 import { InCompanyCalculator } from './components/InCompanyCalculator';
 import { CredenciadorCalculator } from './components/CredenciadorCalculator';
+import { FatoresPsicoCalculator } from './components/FatoresPsicoCalculator';
 import { HistoryView } from './components/HistoryView';
 import { LoginView } from './components/LoginView';
 import { AdminView } from './components/AdminView';
@@ -26,7 +28,8 @@ const {
   ShieldAlert: Warn,
   Network,
   Menu,
-  X: CloseIcon
+  X: CloseIcon,
+  Brain
 } = LucideIcons;
 
 function App() {
@@ -75,6 +78,8 @@ function App() {
       setCurrentView('calculator');
     } else if (user.canAccessInCompany) {
       setCurrentView('incompany');
+    } else if (user.canAccessVendaAvulsaPsico) {
+      setCurrentView('venda_avulsa_psico');
     } else if (user.canAccessHistory) {
       setCurrentView('history');
     } else if (user.canAccessAdmin) {
@@ -122,6 +127,7 @@ function App() {
     setEditingItem(item);
     if (item.type === 'incompany') setCurrentView('incompany');
     else if (item.type === 'credenciador') setCurrentView('credenciador');
+    else if (item.type === 'venda_avulsa_psico') setCurrentView('venda_avulsa_psico');
     else setCurrentView('calculator');
   };
 
@@ -162,6 +168,12 @@ function App() {
       label: 'CREDENCIADOR',
       icon: <Network className="w-4 h-4" />,
       allowed: currentUser?.role === 'admin' || currentUser?.canAccessCredenciador
+    },
+    {
+      id: 'venda_avulsa_psico',
+      label: 'FATORES PSICOSSOCIAL',
+      icon: <Brain className="w-4 h-4" />,
+      allowed: currentUser?.role === 'admin' || currentUser?.canAccessVendaAvulsaPsico
     }
   ].filter(i => i.allowed);
 
@@ -233,6 +245,8 @@ function App() {
         return <InCompanyCalculator currentUser={currentUser} onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'incompany' ? editingItem : null} />;
       case 'credenciador':
         return <CredenciadorCalculator currentUser={currentUser} onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'credenciador' ? editingItem : null} />;
+      case 'venda_avulsa_psico':
+        return <FatoresPsicoCalculator currentUser={currentUser} onSaveHistory={handleSaveHistory} initialData={editingItem?.type === 'venda_avulsa_psico' ? editingItem : null} />;
       case 'calculator':
       default:
         return (
@@ -255,7 +269,7 @@ function App() {
     }
   };
 
-  const isCalcActive = currentView === 'calculator' || currentView === 'incompany' || currentView === 'credenciador';
+  const isCalcActive = currentView === 'calculator' || currentView === 'incompany' || currentView === 'credenciador' || currentView === 'venda_avulsa_psico';
 
   return (
     <div className="min-h-screen bg-[#f8f9fc] flex font-sans relative">
@@ -458,7 +472,7 @@ function App() {
              <div className="text-right">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Painel Atual</p>
                 <p className="text-sm font-black text-reque-navy uppercase">
-                  {currentView === 'calculator' ? 'Plano SST' : currentView === 'incompany' ? 'In Company' : currentView === 'credenciador' ? 'Credenciador' : currentView === 'history' ? 'Histórico' : 'Administração'}
+                  {currentView === 'calculator' ? 'Plano SST' : currentView === 'incompany' ? 'In Company' : currentView === 'credenciador' ? 'Credenciador' : currentView === 'history' ? 'Histórico' : currentView === 'venda_avulsa_psico' ? 'Psicossocial' : 'Administração'}
                 </p>
              </div>
           </div>

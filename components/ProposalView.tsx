@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { PricingResult, PlanType, FidelityModel, BillingCycle, RequeUnit } from '../types';
 import { PLAN_SERVICES, UNIT_EXAM_TABLES, SYSTEM_FEATURES } from '../constants';
@@ -298,7 +297,7 @@ export const ProposalView: React.FC<{
                    <tr className="bg-white border-b border-slate-200">
                      <td className="py-2.5 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">PROGRAMAS LEGAIS</td>
                      <td className="py-2.5 px-4 text-left font-bold text-slate-500 italic">
-                        {result?.isRenewal ? 'Revisão e Manutenção Técnica' : (
+                        {result?.isUpdateMode ? 'Atualização Nova NR1 2026' : result?.isRenewal ? 'Revisão e Manutenção Técnica dos Programas' : (
                           <>
                             Elaboração PGR NR1 2026 <br/>
                             Elaboração PCMSO
@@ -306,7 +305,9 @@ export const ProposalView: React.FC<{
                         )}
                      </td>
                      <td className="py-2.5 px-4 border-l border-slate-100 bg-[#f8f9fa]">
-                        {isFidelityActive ? (
+                        {result?.isUpdateMode ? (
+                          <span className="text-[14px] font-black text-reque-navy">{formatCurrencyValueOnly(result?.programFee || 0)}</span>
+                        ) : isFidelityActive ? (
                           <div className="flex flex-col items-center">
                             <span className="text-[12px] font-black text-slate-400 line-through">De {formatCurrencyValueOnly(result?.originalProgramFee || 0)}</span>
                             <span className="text-[14px] font-black text-reque-orange uppercase">BONIFICADO*</span>
@@ -328,7 +329,7 @@ export const ProposalView: React.FC<{
                    {/* LINHA 2 - ASSINATURA */}
                    <tr className="bg-[#fcfdfe] border-b border-slate-200">
                      <td className="py-2.5 px-4 font-black text-slate-400 border-r border-slate-200 text-[10px] uppercase leading-tight">
-                        {isNoFidelity ? 'ASSINATURA MENSAL' : `ASSINATURA ${plan === PlanType.PRO ? 'MENSAL' : 'ANUAL'}`}
+                        {(isNoFidelity || result?.isUpdateMode) ? 'ASSINATURA MENSAL' : `ASSINATURA ${plan === PlanType.PRO ? 'MENSAL' : 'ANUAL'}`}
                      </td>
                      <td className="py-2.5 px-4 text-left font-bold text-slate-500 italic leading-snug">
                         Revisão Bianual dos riscos, Sistema de Gestão e eSocial
@@ -336,12 +337,12 @@ export const ProposalView: React.FC<{
                      <td className="py-2.5 px-4 border-l border-slate-100">
                         <div className="flex flex-col items-center">
                            <span className="text-[14px] font-black text-reque-navy mt-1 leading-none">
-                              {isNoFidelity ? `${formatCurrencyValueOnly(monthlyBase)}/mês` : `${formatCurrencyValueOnly(installmentValue)}${plan === PlanType.PRO ? '/mensal' : '/anual'}`}
+                              {(isNoFidelity || result?.isUpdateMode) ? `${formatCurrencyValueOnly(monthlyBase)}/mês` : `${formatCurrencyValueOnly(installmentValue)}${plan === PlanType.PRO ? '/mensal' : '/anual'}`}
                            </span>
                         </div>
                      </td>
                      <td className="py-2.5 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px] px-2 leading-tight">
-                        {isNoFidelity || plan === PlanType.PRO ? 'COBRANÇA RECORRENTE NO BOLETO' : (
+                        {(isNoFidelity || result?.isUpdateMode || plan === PlanType.PRO) ? 'COBRANÇA RECORRENTE NO BOLETO' : (
                           <>
                             {plan === PlanType.EXPRESS && 'EM ATÉ 12X NO CARTÃO COM JUROS'}
                             {plan === PlanType.ESSENCIAL && 'EM ATÉ 12X NO CARTÃO OU BOLETO COM JUROS'}
@@ -382,23 +383,23 @@ export const ProposalView: React.FC<{
                  <div className="p-2 bg-white border border-slate-200 rounded-xl shadow-sm"><CheckCircle2 className="w-5 h-5 text-reque-orange" /></div>
                  <div>
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">
-                      {isNoFidelity ? 'PAGAMENTO INICIAL DA OFERTA' : 'VALOR TOTAL DA OFERTA'}
+                      {(isNoFidelity || result?.isUpdateMode) ? 'PAGAMENTO INICIAL DA OFERTA' : 'VALOR TOTAL DA OFERTA'}
                     </span>
                     <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">INCLUI PROGRAMAS + CICLO INICIAL</p>
                  </div>
                </div>
                <div className="text-right relative z-10">
-                 <p className="text-[18px] font-[900] text-reque-navy leading-none">
+                 <p className="text-[22px] font-[900] text-reque-navy leading-none">
                    {formatCurrencyValueOnly(finalTotalWithInterest)}
                  </p>
                  <span className="text-[9px] font-black text-reque-orange uppercase tracking-widest">
-                    {isNoFidelity ? 'PAGAMENTO ÚNICO' : (result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE')}
+                    {(isNoFidelity || result?.isUpdateMode) ? 'PAGAMENTO ÚNICO' : (result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE')}
                  </span>
                </div>
                <div className="absolute right-0 top-0 h-full w-40 bg-[#190c59]/5 skew-x-[-15deg] translate-x-12"></div>
             </div>
 
-            {plan !== PlanType.PRO && (
+            {plan !== PlanType.PRO && !result?.isUpdateMode && (
               <div className="bg-white border border-slate-200 rounded-2xl p-2.5 shadow-sm">
                 <h4 className="text-[9px] font-black text-reque-navy uppercase mb-1.5 flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-reque-orange" /> {plan === PlanType.ESSENCIAL ? 'OPÇÕES DE PARCELAMENTO (CARTÃO DE CRÉDITO OU BOLETO BANCÁRIO)' : 'OPÇÕES DE PARCELAMENTO (CARTÃO DE CRÉDITO)'}
@@ -499,7 +500,7 @@ export const ProposalView: React.FC<{
                <div className="bg-[#f0f2f5] border border-slate-300 rounded-2xl p-4 space-y-3 shadow-inner">
                  <p className="text-[9px] font-black text-reque-navy uppercase tracking-widest border-b border-slate-300 pb-1.5">MODALIDADE FINANCEIRA</p>
                  <div className="text-[10px] font-bold text-slate-600 space-y-2">
-                   <p>Ciclo de Cobrança: <span className="text-reque-navy">{(isFidelityActive && (plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL)) ? 'Cobrança Anual' : result?.billingCycle}</span></p>
+                   <p>Ciclo de Cobrança: <span className="text-reque-navy">{(isFidelityActive && (plan === PlanType.EXPRESS || plan === PlanType.ESSENCIAL) && !result?.isUpdateMode) ? 'Cobrança Anual' : result?.billingCycle}</span></p>
                    <p>Meio de Pagamento Preferencial: <span className="text-reque-navy font-black">{plan === PlanType.ESSENCIAL ? 'BOLETO BANCÁRIO OU CARTÃO DE CRÉDITO' : (result?.paymentMethod || '').toUpperCase()}</span></p>
                    <div className="pt-2 mt-2">
                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">OBSERVAÇÕES FINANCEIRAS:</p>

@@ -1,3 +1,4 @@
+
 import { ProposalHistoryItem, User, AccessLogEntry } from './types';
 import { supabase } from './supabaseClient';
 
@@ -52,6 +53,7 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     cnpj: isCred ? (data.cnpj_cliente || data.cnpj) : (data.cnpj || ''),
     initialTotal: data.initial_total || data.initialTotal || 0,
     numEmployees: data.num_employees || 0,
+    // Fix: Alterado de external_lives_count para externalLivesCount para coincidir com a interface ProposalHistoryItem
     externalLivesCount: data.external_lives_count || 0,
     plan: data.plan || '',
     riskLevel: data.risk_level || '',
@@ -66,6 +68,8 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     margemAlvoAplicada: data.margem_alvo_aplicada,
     impostoAplicado: data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
+    // Recuperação segura do valor psicossocial (coluna física ou objeto JSONB)
+    valorAvulsoPsico: data.valor_avulso_psico || data.in_company_details?.valorAvulsoPsico,
     inCompanyDetails: isCred ? { 
       credenciadorUnits: data.unidades_customizadas || data.in_company_details?.credenciadorUnits,
       contractData: {
@@ -95,6 +99,7 @@ const mapUserData = (data: any): User => {
     canAccessInCompany: data.can_access_incompany !== undefined ? data.can_access_incompany : true,
     canAccessCalculator: data.can_access_calculator !== undefined ? data.can_access_calculator : true,
     canAccessCredenciador: data.can_access_credenciador !== undefined ? data.can_access_credenciador : false,
+    canAccessVendaAvulsaPsico: data.can_access_venda_avulsa_psico !== undefined ? data.can_access_venda_avulsa_psico : false,
     canGenerateProposal: data.can_generate_proposal || false
   };
 };
@@ -111,6 +116,7 @@ const sanitizeUserForDb = (user: User) => {
     can_access_incompany: user.canAccessInCompany,
     can_access_calculator: user.canAccessCalculator,
     can_access_credenciador: user.canAccessCredenciador,
+    can_access_venda_avulsa_psico: user.canAccessVendaAvulsaPsico,
     can_generate_proposal: user.canGenerateProposal
   };
 };
@@ -166,6 +172,14 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
       dbData.cpf_responsavel = cd.cpfResponsavel;
       dbData.unidade_atendimento = cd.unidadeAtendimento;
     }
+  } else if (item.type === 'venda_avulsa_psico') {
+    dbData.company_name = item.companyName;
+    dbData.cnpj = item.cnpj;
+    // FIX CIRÚRGICO: Armazena o valor psicossocial no JSONB in_company_details 
+    // para evitar erro de 'column not found' caso a coluna física não exista.
+    dbData.in_company_details = {
+      valorAvulsoPsico: item.valorAvulsoPsico
+    };
   } else {
     dbData.company_name = item.companyName;
     dbData.cnpj = item.cnpj;
@@ -174,6 +188,7 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     dbData.margem_atendimento_valor = item.margemAtendimentoValor;
     dbData.margem_alvo_aplicada = item.margemAlvoAplicada;
     dbData.imposto_aplicado = item.impostoAplicado;
+    // Fix: Corrected property name from 'comissaoApplied' to 'comissaoAplicada' to match interface
     dbData.comissao_aplicada = item.comissaoAplicada;
   }
 
@@ -281,6 +296,7 @@ export const StorageService = {
     if (updates.canAccessInCompany !== undefined) dbUpdates.can_access_incompany = updates.canAccessInCompany;
     if (updates.canAccessCalculator !== undefined) dbUpdates.can_access_calculator = updates.canAccessCalculator;
     if (updates.canAccessCredenciador !== undefined) dbUpdates.can_access_credenciador = updates.canAccessCredenciador;
+    if (updates.canAccessVendaAvulsaPsico !== undefined) dbUpdates.can_access_venda_avulsa_psico = updates.canAccessVendaAvulsaPsico;
     if (updates.canGenerateProposal !== undefined) dbUpdates.can_generate_proposal = updates.canGenerateProposal;
 
     const { error } = await supabase.from('reque_users').update(dbUpdates).eq('email', email);
