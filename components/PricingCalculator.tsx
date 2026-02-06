@@ -78,6 +78,16 @@ export const PricingCalculator: React.FC<{
       setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
       setClientDeliveryDate(initialData.clientDeliveryDate || '');
       setSpecialDiscount(initialData.specialDiscount || 0);
+
+      // RECUPERAÇÃO CIRÚRGICA DE DADOS DE ATUALIZAÇÃO
+      if (initialData.inCompanyDetails) {
+        const details = initialData.inCompanyDetails as any;
+        if (details.isUpdateMode) {
+          setIsUpdateMode(true);
+          setCurrentPlan(details.currentPlan || '');
+          setCurrentAssinatura(details.currentAssinatura || 0);
+        }
+      }
     }
   }, [initialData]);
 
@@ -150,7 +160,13 @@ export const PricingCalculator: React.FC<{
       isRenewal,
       specialDiscount,
       clientDeliveryDate,
-      docDeliveryDate: pricingResult.docDeliveryDate
+      docDeliveryDate: pricingResult.docDeliveryDate,
+      // PERSISTÊNCIA CIRÚRGICA DOS DADOS DE MAPEAMENTO
+      inCompanyDetails: isUpdateMode ? {
+        isUpdateMode: true,
+        currentPlan,
+        currentAssinatura
+      } : undefined
     };
     return onSaveHistory(item);
   };

@@ -1,4 +1,5 @@
 
+
 export enum PlanType {
   EXPRESS = 'SST Express',
   ESSENCIAL = 'SST Essencial',
@@ -116,6 +117,10 @@ export interface ProposalHistoryItem {
       cpfResponsavel: string;
       unidadeAtendimento: string;
     };
+    // Fix: Added missing fields for update mode to resolve type errors in PricingCalculator
+    isUpdateMode?: boolean;
+    currentPlan?: string;
+    currentAssinatura?: number;
   };
 }
 
