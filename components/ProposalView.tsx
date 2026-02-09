@@ -389,12 +389,14 @@ export const ProposalView: React.FC<{
                     <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block mb-0.5">
                       {(isNoFidelity || result?.isUpdateMode) ? 'PAGAMENTO INICIAL DA OFERTA' : 'VALOR TOTAL DA OFERTA'}
                     </span>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">INCLUI PROGRAMAS + CICLO INICIAL</p>
+                    <p className="text-[8px] text-slate-400 font-bold uppercase tracking-tight">
+                       {result?.isUpdateMode ? 'INCLUI ATUALIZAÇÃO DOS PROGRAMAS' : 'INCLUI PROGRAMAS + CICLO INICIAL'}
+                    </p>
                  </div>
                </div>
                <div className="text-right relative z-10">
                  <p className="text-[22px] font-[900] text-reque-navy leading-none">
-                   {formatCurrencyValueOnly(finalTotalWithInterest)}
+                   {formatCurrencyValueOnly(result?.isUpdateMode ? (result.programFee || 0) : finalTotalWithInterest)}
                  </p>
                  <span className="text-[9px] font-black text-reque-orange uppercase tracking-widest">
                     {(isNoFidelity || result?.isUpdateMode) ? 'PAGAMENTO ÚNICO' : (result?.billingCycle === BillingCycle.ANNUAL ? 'PLANO ANUAL ANTECIPADO' : 'PAGAMENTO RECORRENTE')}
@@ -566,7 +568,7 @@ export const ProposalView: React.FC<{
 
             <div className="mt-4 p-3 bg-[#f0f2f5] border border-slate-300 rounded-xl">
               <p className="text-[8px] font-black text-slate-500 italic uppercase leading-relaxed text-center tracking-widest">
-                * VALORES EXCLUSIVOS PARA REALIZAÇÃO NA UNIDADE INDICADA. SUJEITO A ALTERAÇÃO CONFORME REDE CREDENCIADA E REAJUSTES PERIÓDICOS.
+                * VALORES EXCLUSIVOS PARA REALIZAÇÃO NA UNIDADE INDICADA. SUJEITO A ALTERAÇÃO CONFORRE REDE CREDENCIADA E REAJUSTES PERIÓDICOS.
               </p>
             </div>
           </A4Page>
