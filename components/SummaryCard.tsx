@@ -18,7 +18,8 @@ import {
   Sparkles,
   RefreshCcw,
   Receipt,
-  Tag
+  Tag,
+  Truck
 } from 'lucide-react';
 
 interface SummaryCardProps {
@@ -150,7 +151,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
 
-  const monthlyBase = result.monthlyValue; // Modificado: Exibe o valor total somado (Base + Agendamento)
+  const monthlyBase = result.monthlyValue; 
   const diffSubscription = monthlyBase - currentAssinaturaValue;
 
   return (
@@ -250,6 +251,21 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
                   )}
                 </div>
               </div>
+
+              {result.hasTechnicalVisit && (
+                <div className="flex justify-between items-start py-3 border-b border-slate-50 animate-in slide-in-from-top-1 duration-300">
+                  <div className="flex gap-3">
+                    <div className="mt-0.5"><Truck className="w-4 h-4 text-slate-400" /></div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-700">Visita Técnica</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Taxa de deslocamento</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-black text-slate-700">{formatCurrency(result.technicalVisitFee || 0)}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-between items-start py-3 border-b border-slate-50">
                 <div className="flex gap-3">

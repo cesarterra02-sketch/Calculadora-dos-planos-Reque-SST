@@ -1,5 +1,3 @@
-
-
 export enum PlanType {
   EXPRESS = 'SST Express',
   ESSENCIAL = 'SST Essencial',
@@ -66,6 +64,18 @@ export interface PricingResult {
   specialDiscount?: number;
   isRenovação: boolean;
   totalWithDiscount: number;
+  // New fields for technical visit
+  technicalVisitFee?: number;
+  hasTechnicalVisit?: boolean;
+}
+
+export interface TechnicalVisitSettings {
+  hour_rate: number;
+  km_rate: number;
+  tax_rate: number;
+  margin_rate: number;
+  avg_speed: number;
+  exemption_limit: number;
 }
 
 export interface ProposalHistoryItem {
@@ -90,10 +100,15 @@ export interface ProposalHistoryItem {
   docDeliveryDate?: string;
   taxaInCompany?: number;
   margemAtendimentoValor?: number;
-  margemAlvoAplicada?: number; // Novo campo
+  margemAlvoAplicada?: number; 
   impostoAplicado?: number;
   comissaoAplicada?: number;
   valorAvulsoPsico?: number;
+  // New fields for technical visit persistence
+  hasTechnicalVisit?: boolean;
+  technicalVisitDistance?: number;
+  technicalVisitTolls?: number;
+  technicalVisitFee?: number;
   inCompanyDetails?: {
     profs?: ProfessionalInCompany[];
     vehicles?: VehicleInCompany[];
@@ -104,9 +119,7 @@ export interface ProposalHistoryItem {
     taxaInCompany?: number;
     receitaExames?: number;
     credenciadorExams?: any[];
-    // Fix: Added credenciadorUnits to the inCompanyDetails definition to resolve type errors in storage and calculators
     credenciadorUnits?: any[];
-    // Added contractData to the inCompanyDetails definition to resolve type errors in CredenciadorCalculator
     contractData?: {
       logradouro: string;
       fachada: string;
@@ -117,7 +130,6 @@ export interface ProposalHistoryItem {
       cpfResponsavel: string;
       unidadeAtendimento: string;
     };
-    // Fix: Added missing fields for update mode to resolve type errors in PricingCalculator
     isUpdateMode?: boolean;
     currentPlan?: string;
     currentAssinatura?: number;

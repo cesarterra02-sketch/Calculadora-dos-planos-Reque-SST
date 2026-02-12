@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { User, AccessLogEntry } from '../types';
+import { User, AccessLogEntry, TechnicalVisitSettings } from '../types';
 import { StorageService } from '../storageService';
 import { 
   Shield, 
@@ -18,7 +19,17 @@ import {
   UserCheck,
   Calculator,
   User as UserIcon,
-  Network
+  Network,
+  MapPin,
+  Check,
+  X,
+  Settings,
+  DollarSign,
+  TrendingUp,
+  Percent,
+  Timer,
+  // Fix: Adding missing Info icon import from lucide-react to resolve "Cannot find name 'Info'" error
+  Info
 } from 'lucide-react';
 
 interface AdminViewProps {
@@ -28,10 +39,16 @@ interface AdminViewProps {
 export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
   const [users, setUsers] = useState<Omit<User, 'password'>[]>([]);
   const [logs, setLogs] = useState<AccessLogEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'tech_visit'>('users');
   const [editingPassword, setEditingPassword] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Estados Visita Técnica
+  const [techVisitSettings, setTechVisitSettings] = useState<TechnicalVisitSettings>({
+    hour_rate: 36, km_rate: 1.5, tax_rate: 12.5, margin_rate: 50, avg_speed: 100, exemption_limit: 30
+  });
+  const [isUpdatingTech, setIsUpdatingTech] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -39,12 +56,14 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [u, l] = await Promise.all([
+    const [u, l, t] = await Promise.all([
       StorageService.getUsers(),
-      StorageService.getLogs()
+      StorageService.getLogs(),
+      StorageService.getTechnicalVisitSettings()
     ]);
     setUsers(u as Omit<User, 'password'>[]);
     setLogs(l);
+    if (t) setTechVisitSettings(t);
     setIsLoading(false);
   };
 
@@ -98,6 +117,18 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
     }
   };
 
+  const handleSaveTechSettings = async () => {
+    setIsUpdatingTech(true);
+    try {
+      await StorageService.updateTechnicalVisitSettings(techVisitSettings);
+      alert('Configurações de Visita Técnica salvas com sucesso!');
+    } catch (e: any) {
+      alert(`Erro: ${e.message}`);
+    } finally {
+      setIsUpdatingTech(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -113,18 +144,24 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
         </button>
       </div>
 
-      <div className="flex border-b border-slate-200">
+      <div className="flex flex-wrap border-b border-slate-200">
         <button 
           onClick={() => setActiveTab('users')}
-          className={`px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'users' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          className={`px-6 py-4 text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'users' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           <UserCog className="w-4 h-4" /> Gestão de Usuários
         </button>
         <button 
           onClick={() => setActiveTab('logs')}
-          className={`px-8 py-4 text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'logs' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+          className={`px-6 py-4 text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'logs' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
         >
           <History className="w-4 h-4" /> Log de Auditoria
+        </button>
+        <button 
+          onClick={() => setActiveTab('tech_visit')}
+          className={`px-6 py-4 text-[9px] font-black uppercase tracking-[0.2em] flex items-center gap-2 transition-all border-b-2 ${activeTab === 'tech_visit' ? 'border-reque-orange text-reque-navy bg-white' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+        >
+          <MapPin className="w-4 h-4" /> Visita Técnica
         </button>
       </div>
 
@@ -223,7 +260,7 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
             </tbody>
           </table>
         </div>
-      ) : (
+      ) : activeTab === 'logs' ? (
         <div className="space-y-4">
           <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
              <div>
@@ -284,6 +321,106 @@ export const AdminView: React.FC<AdminViewProps> = ({ onBack }) => {
                </table>
              </div>
           </div>
+        </div>
+      ) : (
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 animate-in fade-in duration-300">
+           <div className="flex items-center justify-between mb-8">
+              <div>
+                 <h3 className="text-lg font-black text-reque-navy uppercase tracking-tight flex items-center gap-3">
+                    <Settings className="w-6 h-6 text-reque-orange" /> Parâmetros de Visita Técnica
+                 </h3>
+                 <p className="text-xs text-slate-500 font-medium mt-1">Configure os valores base para cálculos de deslocamento global.</p>
+              </div>
+              <button 
+                onClick={handleSaveTechSettings}
+                disabled={isUpdatingTech}
+                className="px-6 py-3 bg-[#190c59] text-white rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 hover:bg-reque-blue transition-all disabled:opacity-50"
+              >
+                {isUpdatingTech ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Salvar Configurações
+              </button>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-1.5">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <DollarSign className="w-3.5 h-3.5 text-reque-orange" /> Custo Hora Técnica (R$)
+                 </label>
+                 <input 
+                   type="number" 
+                   value={techVisitSettings.hour_rate} 
+                   onChange={e => setTechVisitSettings({...techVisitSettings, hour_rate: parseFloat(e.target.value) || 0})}
+                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-reque-orange outline-none transition-all"
+                 />
+              </div>
+              <div className="space-y-1.5">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <Truck className="w-3.5 h-3.5 text-reque-orange" /> Custo KM (R$)
+                 </label>
+                 <input 
+                   type="number" 
+                   value={techVisitSettings.km_rate} 
+                   onChange={e => setTechVisitSettings({...techVisitSettings, km_rate: parseFloat(e.target.value) || 0})}
+                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-reque-orange outline-none transition-all"
+                 />
+              </div>
+              <div className="space-y-1.5">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <Percent className="w-3.5 h-3.5 text-reque-orange" /> Imposto (%)
+                 </label>
+                 <input 
+                   type="number" 
+                   value={techVisitSettings.tax_rate} 
+                   onChange={e => setTechVisitSettings({...techVisitSettings, tax_rate: parseFloat(e.target.value) || 0})}
+                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-reque-orange outline-none transition-all"
+                 />
+              </div>
+              <div className="space-y-1.5">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <TrendingUp className="w-3.5 h-3.5 text-reque-orange" /> Margem de Contribuição (%)
+                 </label>
+                 <input 
+                   type="number" 
+                   value={techVisitSettings.margin_rate} 
+                   onChange={e => setTechVisitSettings({...techVisitSettings, margin_rate: parseFloat(e.target.value) || 0})}
+                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-reque-orange outline-none transition-all"
+                 />
+              </div>
+              <div className="space-y-1.5">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <Timer className="w-3.5 h-3.5 text-reque-orange" /> Velocidade Média (km/h)
+                 </label>
+                 <input 
+                   type="number" 
+                   value={techVisitSettings.avg_speed} 
+                   onChange={e => setTechVisitSettings({...techVisitSettings, avg_speed: parseFloat(e.target.value) || 0})}
+                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-reque-orange outline-none transition-all"
+                 />
+              </div>
+              <div className="space-y-1.5">
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                   <MapPin className="w-3.5 h-3.5 text-reque-orange" /> Limite de Isenção (km)
+                 </label>
+                 <input 
+                   type="number" 
+                   value={techVisitSettings.exemption_limit} 
+                   onChange={e => setTechVisitSettings({...techVisitSettings, exemption_limit: parseFloat(e.target.value) || 0})}
+                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:border-reque-orange outline-none transition-all"
+                 />
+              </div>
+           </div>
+           
+           <div className="mt-10 p-6 bg-blue-50 rounded-2xl border border-blue-100">
+              <h4 className="text-xs font-black text-blue-700 uppercase mb-2 flex items-center gap-2">
+                 <Info className="w-4 h-4" /> Como funciona o cálculo:
+              </h4>
+              <p className="text-[11px] text-blue-600 font-medium leading-relaxed italic">
+                 Se ativado na calculadora, o sistema calcula o tempo ($Tempo = Distância / Velocidade$) e aplica: <br/>
+                 $Custo = (Tempo \times Hora) + (Distância \times KM) + Pedágios$. <br/>
+                 $Preço Final = Custo / (1 - (Imposto + Margem) / 100)$. <br/>
+                 Abaixo do Limite de Isenção, apenas Pedágios são cobrados se houver.
+              </p>
+           </div>
         </div>
       )}
 

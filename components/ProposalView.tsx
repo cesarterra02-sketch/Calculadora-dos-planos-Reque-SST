@@ -330,6 +330,22 @@ export const ProposalView: React.FC<{
                      </td>
                    </tr>
 
+                   {/* LINHA NOVA - VISITA TÉCNICA (OPCIONAL) */}
+                   {result.hasTechnicalVisit && (
+                    <tr className="bg-white border-b border-slate-200">
+                      <td className="py-2.5 px-4 font-black text-reque-navy uppercase border-r border-slate-200 text-[11px]">VISITA TÉCNICA</td>
+                      <td className="py-2.5 px-4 text-left font-bold text-slate-500 italic">
+                        Serviço pontual de deslocamento e atendimento local
+                      </td>
+                      <td className="py-2.5 px-4 border-l border-slate-100">
+                         <span className="text-[14px] font-black text-reque-navy">{formatCurrencyValueOnly(result.technicalVisitFee || 0)}</span>
+                      </td>
+                      <td className="py-2.5 px-4 font-black text-slate-400 border-l border-slate-200 uppercase tracking-widest text-[8px]">
+                         UNICA
+                      </td>
+                    </tr>
+                   )}
+
                    {/* LINHA 2 - ASSINATURA */}
                    <tr className="bg-[#fcfdfe] border-b border-slate-200">
                      <td className="py-2.5 px-4 font-black text-slate-400 border-r border-slate-200 text-[10px] uppercase leading-tight">

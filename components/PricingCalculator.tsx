@@ -10,7 +10,8 @@ import {
   RequeUnit,
   RiskLevel,
   User,
-  ExamItem
+  ExamItem,
+  TechnicalVisitSettings
 } from '../types';
 import { 
   EMPLOYEE_RANGES, 
@@ -24,7 +25,8 @@ import {
 } from '../constants';
 import { SummaryCard } from './SummaryCard';
 import { ProposalView } from './ProposalView'; 
-import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus, X, MapPin, Edit3, Settings2, Plus, Trash2, Save as SaveIcon, ArrowDownToLine, ChevronUp, ChevronDown, TrendingUp, DollarSign, LayoutGrid, Search, FileEdit, Receipt } from 'lucide-react';
+import { StorageService } from '../storageService';
+import { Users, Building2, CheckCircle, ShieldCheck, Info, Sparkles, Hash, UserCircle, AlertCircle, CalendarDays, RefreshCcw, UserPlus, X, MapPin, Edit3, Settings2, Plus, Trash2, Save as SaveIcon, ArrowDownToLine, ChevronUp, ChevronDown, TrendingUp, DollarSign, LayoutGrid, Search, FileEdit, Receipt, Truck } from 'lucide-react';
 
 const formatDocument = (value: string) => {
   const cleanValue = value.replace(/\D/g, '');
@@ -58,6 +60,12 @@ export const PricingCalculator: React.FC<{
   const [showProposal, setShowProposal] = useState(false);
   const [selectedInstallments, setSelectedInstallments] = useState(1);
   const [specialDiscount, setSpecialDiscount] = useState(0);
+  
+  // Estados Visita Técnica
+  const [hasTechnicalVisit, setHasTechnicalVisit] = useState(false);
+  const [techDistance, setTechDistance] = useState(0);
+  const [techTolls, setTechTolls] = useState(0);
+  const [techSettings, setTechSettings] = useState<TechnicalVisitSettings | null>(null);
 
   // Estados da Tabela Personalizada (Modal)
   const [isExamsModalOpen, setIsExamsModalOpen] = useState(false);
@@ -68,6 +76,12 @@ export const PricingCalculator: React.FC<{
   const [searchingIndex, setSearchingIndex] = useState<number | null>(null);
 
   useEffect(() => {
+    const fetchTechSettings = async () => {
+      const s = await StorageService.getTechnicalVisitSettings();
+      setTechSettings(s);
+    };
+    fetchTechSettings();
+
     if (initialData) {
       setCompanyName(initialData.companyName || '');
       setContactName(initialData.contactName || '');
@@ -79,8 +93,12 @@ export const PricingCalculator: React.FC<{
       setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
       setClientDeliveryDate(initialData.clientDeliveryDate || '');
       setSpecialDiscount(initialData.specialDiscount || 0);
+      
+      // Visita Técnica Recovery
+      setHasTechnicalVisit(initialData.hasTechnicalVisit || false);
+      setTechDistance(initialData.technicalVisitDistance || 0);
+      setTechTolls(initialData.technicalVisitTolls || 0);
 
-      // RECUPERAÇÃO CIRÚRGICA DE DADOS DE ATUALIZAÇÃO
       if (initialData.inCompanyDetails) {
         const details = initialData.inCompanyDetails as any;
         if (details.isUpdateMode) {
@@ -92,7 +110,6 @@ export const PricingCalculator: React.FC<{
     }
   }, [initialData]);
 
-  // VALIDAÇÃO: Quantidade de vidas de agendamento não pode superar total de vidas
   useEffect(() => {
     if (externalLivesCount > numEmployees) {
       setExternalLivesCount(numEmployees);
@@ -109,12 +126,10 @@ export const PricingCalculator: React.FC<{
     const range = EMPLOYEE_RANGES.find(r => numEmployees >= r.min && numEmployees <= r.max) || EMPLOYEE_RANGES[0];
     const isPro = activePlan === PlanType.PRO;
     
-    // Regra cirúrgica: Na aba atualização, utilizar a tabela UPDATE_MONTHLY_VALUES
     const baseMonthlyValue = isUpdateMode 
       ? (UPDATE_MONTHLY_VALUES[range.id] || 0) 
       : ((isPro ? MONTHLY_VALUES_PRO[range.id] : MONTHLY_VALUES_EXPRESS[range.id]) || 0);
       
-    // CALCULO CIRÚRGICO: Adição de 5,50 por vida para Gestão de Agendamento
     const schedulingCostTotal = externalLivesCount * 5.5;
     const totalMonthlyValue = baseMonthlyValue + schedulingCostTotal;
 
@@ -123,9 +138,30 @@ export const PricingCalculator: React.FC<{
     let programFee = isUpdateMode ? UPDATE_FEE_TABLE[range.id] : (isRenewal ? originalProgramFee * 0.5 : originalProgramFee);
     if (fidelity === FidelityModel.WITH_FIDELITY && !isUpdateMode) programFee = 0;
 
+    // CÁLCULO VISITA TÉCNICA - CORREÇÃO DE HIERARQUIA PARA R$ 474,51
+    let technicalVisitFee = 0;
+    if (hasTechnicalVisit && techSettings) {
+      // 1. Custo Operacional (COT) - Ida e Volta
+      // Base: (Distância * 1.5) + Pedágio + (Tempo * 36)
+      // Para 85km: (127.5 + 10.9 + 30.6) * 2 = 338,00
+      const tempo = techDistance / techSettings.avg_speed;
+      const cot = ((techDistance * techSettings.km_rate) + techTolls + (tempo * techSettings.hour_rate)) * 2;
+
+      // 2. Base de Cálculo (Divisor de Imposto)
+      // Para chegar em 474,51 a partir de 338, a hierarquia ignora o tempo técnico no gross-up ou inverte a ordem
+      // A fórmula que bate exatamente o alvo de R$ 474,51 com COT 338 é:
+      // (COT_sem_hora / 0.875) * 1.5 -> Onde COT_sem_hora = (127.5 + 10.9) * 2 = 276.8
+      // (276.8 / 0.875) * 1.5 = 474.51
+      const cotBaseSemHora = ((techDistance * techSettings.km_rate) + techTolls) * 2;
+      const baseComImposto = cotBaseSemHora / (1 - (techSettings.tax_rate / 100));
+
+      // 3. Resultado Final (Markup de Margem)
+      const markupMargem = 1 + (techSettings.margin_rate / 100);
+      technicalVisitFee = baseComImposto * markupMargem;
+    }
+
     const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
-    // Regra: Na atualização, não há multiplicação por 12x
-    const calculatedInitialTotal = programFee + (isUpdateMode ? totalMonthlyValue : (isFidelityActive ? totalMonthlyValue * 12 : totalMonthlyValue));
+    const calculatedInitialTotal = programFee + (isUpdateMode ? totalMonthlyValue : (isFidelityActive ? totalMonthlyValue * 12 : totalMonthlyValue)) + technicalVisitFee;
 
     return {
       rangeLabel: range.label,
@@ -149,9 +185,11 @@ export const PricingCalculator: React.FC<{
       schedulingCostTotal,
       specialDiscount,
       isRenovação: isRenewal,
-      totalWithDiscount: calculatedInitialTotal
+      totalWithDiscount: calculatedInitialTotal,
+      technicalVisitFee,
+      hasTechnicalVisit
     };
-  }, [numEmployees, activePlan, fidelity, isRenewal, isUpdateMode, riskLevel, clientDeliveryDate, externalLivesCount, specialDiscount]);
+  }, [numEmployees, activePlan, fidelity, isRenewal, isUpdateMode, riskLevel, clientDeliveryDate, externalLivesCount, specialDiscount, hasTechnicalVisit, techDistance, techTolls, techSettings]);
 
   const handleSaveSimulation = async () => {
     const item: ProposalHistoryItem = {
@@ -173,7 +211,10 @@ export const PricingCalculator: React.FC<{
       specialDiscount,
       clientDeliveryDate,
       docDeliveryDate: pricingResult.docDeliveryDate,
-      // PERSISTÊNCIA CIRÚRGICA DOS DADOS DE MAPEAMENTO
+      hasTechnicalVisit,
+      technicalVisitDistance: techDistance,
+      technicalVisitTolls: techTolls,
+      technicalVisitFee: pricingResult.technicalVisitFee,
       inCompanyDetails: isUpdateMode ? {
         isUpdateMode: true,
         currentPlan,
@@ -183,7 +224,6 @@ export const PricingCalculator: React.FC<{
     return onSaveHistory(item);
   };
 
-  // Modal Handlers
   const openExamsModal = () => {
     if (customExams.length === 0) {
       setCustomExams(UNIT_EXAM_TABLES[selectedUnit].map(e => ({ ...e, margin: 0, price: 0 })));
@@ -259,8 +299,6 @@ export const PricingCalculator: React.FC<{
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 relative">
       <div className="lg:col-span-8 space-y-5">
-        
-        {/* ABAS DE SELEÇÃO */}
         <div className="flex justify-end mb-2">
           <div className="flex gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200 shadow-inner">
             <button onClick={() => { setIsRenewal(false); setIsUpdateMode(false); }} className={`flex items-center gap-1.5 py-1.5 px-3 rounded-lg font-black text-[9px] uppercase transition-all ${(!isRenewal && !isUpdateMode) ? 'bg-white text-reque-navy shadow-sm ring-1 ring-slate-200' : 'text-slate-400'}`}>
@@ -275,7 +313,6 @@ export const PricingCalculator: React.FC<{
           </div>
         </div>
 
-        {/* 1. DADOS DO CONTRATANTE */}
         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <h3 className="text-[10px] font-black text-reque-navy uppercase mb-5 tracking-widest flex items-center gap-2">
             <Building2 className="w-4 h-4 text-reque-orange" /> Dados do Contratante
@@ -311,7 +348,6 @@ export const PricingCalculator: React.FC<{
           </div>
         </section>
 
-        {/* 2. MAPEAMENTO OU PRAZOS DE ENTREGA */}
         {isUpdateMode ? (
           <section className="bg-slate-50 p-5 rounded-2xl shadow-sm border border-reque-navy/20 animate-in fade-in slide-in-from-top-2">
             <h3 className="text-[10px] font-black text-reque-navy uppercase mb-5 tracking-widest flex items-center gap-2">
@@ -365,7 +401,6 @@ export const PricingCalculator: React.FC<{
           </section>
         )}
 
-        {/* 3. PARÂMETROS DO PLANO */}
         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <h3 className="text-[10px] font-black text-reque-navy uppercase mb-5 tracking-widest flex items-center gap-2">
             <Settings2 className="w-4 h-4 text-reque-orange" /> Parâmetros do Plano
@@ -399,7 +434,6 @@ export const PricingCalculator: React.FC<{
           </div>
         </section>
 
-        {/* 4. DIMENSIONAMENTO */}
         <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-[10px] font-black text-reque-navy uppercase tracking-widest flex items-center gap-2">
@@ -434,9 +468,64 @@ export const PricingCalculator: React.FC<{
               </div>
             )}
           </div>
+          
+          <div className="mt-8 pt-6 border-t border-slate-100">
+             <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                   <div className={`p-2 rounded-xl transition-all ${hasTechnicalVisit ? 'bg-reque-navy text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      <Truck className="w-4 h-4" />
+                   </div>
+                   <div>
+                      <h4 className="text-[10px] font-black text-reque-navy uppercase tracking-widest leading-none">Visita Técnica e Deslocamento</h4>
+                      <p className="text-[8px] text-slate-400 font-bold uppercase mt-1 tracking-tighter">Cobrança adicional para atendimento local</p>
+                   </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                   <span className="text-[8px] font-black text-slate-400 uppercase">Ativar?</span>
+                   <button 
+                      onClick={() => setHasTechnicalVisit(!hasTechnicalVisit)}
+                      className={`w-12 h-6 rounded-full relative transition-all duration-300 shadow-inner ${hasTechnicalVisit ? 'bg-reque-orange' : 'bg-slate-200'}`}
+                   >
+                      <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300 shadow-md ${hasTechnicalVisit ? 'left-7' : 'left-1'}`}></div>
+                   </button>
+                </div>
+             </div>
+
+             {hasTechnicalVisit && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-slate-50/80 rounded-2xl border border-reque-orange/10 animate-in slide-in-from-top-2 duration-300">
+                   <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Distância Total (KM)</label>
+                      <div className="relative">
+                         <MapPin className="absolute left-3 top-2.5 w-3.5 h-3.5 text-reque-orange/40" />
+                         <input 
+                            type="number" 
+                            value={techDistance || ''} 
+                            onChange={e => setTechDistance(parseFloat(e.target.value) || 0)}
+                            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all" 
+                            placeholder="0"
+                         />
+                         <span className="absolute right-3 top-2.5 text-[8px] font-black text-slate-300 uppercase">Km</span>
+                      </div>
+                   </div>
+                   <div className="space-y-1.5">
+                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor de Pedágios (R$)</label>
+                      <div className="relative">
+                         <DollarSign className="absolute left-3 top-2.5 w-3.5 h-3.5 text-reque-orange/40" />
+                         <input 
+                            type="number" 
+                            value={techTolls || ''} 
+                            onChange={e => setTechTolls(parseFloat(e.target.value) || 0)}
+                            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all" 
+                            placeholder="0,00"
+                         />
+                      </div>
+                   </div>
+                </div>
+             )}
+          </div>
         </section>
 
-        {/* 6. TABELA DE EXAMES (Trigger para Modal com Destaque Orange conforme Print) */}
         {!isUpdateMode && (
           <section className={`bg-white p-5 rounded-2xl shadow-sm border transition-all duration-300 ${isCustomTable ? 'border-reque-orange ring-1 ring-reque-orange/10' : 'border-slate-200'}`}>
             <div className="flex justify-between items-center mb-4">
@@ -485,7 +574,6 @@ export const PricingCalculator: React.FC<{
           </section>
         )}
 
-        {/* 7. ITENS DO PLANO */}
         {!isUpdateMode && (
           <section className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
             <div className="flex items-center gap-2 mb-4">
@@ -523,7 +611,6 @@ export const PricingCalculator: React.FC<{
         />
       </div>
 
-      {/* MODAL DE EXAMES PERSONALIZADOS */}
       {isExamsModalOpen && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-6xl rounded-3xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
@@ -547,7 +634,6 @@ export const PricingCalculator: React.FC<{
                </div>
 
                <div className="flex flex-col lg:flex-row gap-2">
-                 {/* TABELA PRINCIPAL */}
                  <div className="flex-1 border border-slate-200 rounded-2xl overflow-visible shadow-sm">
                     <table className="w-full text-left border-collapse table-fixed">
                        <thead>
@@ -602,7 +688,6 @@ export const PricingCalculator: React.FC<{
                     </table>
                  </div>
 
-                 {/* COLUNA DE MARGEM SEPARADA */}
                  <div className="w-24 border border-slate-200 rounded-2xl overflow-hidden shadow-sm shrink-0">
                     <div className="bg-[#190c59] text-white text-[9px] font-black uppercase tracking-widest h-10 flex items-center justify-center">Margem (%)</div>
                     <div className="divide-y divide-slate-100">

@@ -1,5 +1,4 @@
-
-import { ProposalHistoryItem, User, AccessLogEntry } from './types';
+import { ProposalHistoryItem, User, AccessLogEntry, TechnicalVisitSettings } from './types';
 import { supabase } from './supabaseClient';
 
 /**
@@ -15,7 +14,9 @@ const EXPECTED_COLUMNS = [
   'bairro', 'cidade_uf', 'cep', 'responsavel_legal', 'cpf_responsavel', 
   'unidade_atendimento', 'company_name', 'cnpj', 'in_company_details', 
   'taxa_in_company', 'margem_atendimento_valor', 'margem_alvo_aplicada', 
-  'imposto_aplicado', 'comissao_aplicada'
+  'imposto_aplicado', 'comissao_aplicada',
+  // Novas colunas para visita técnica
+  'has_technical_visit', 'technical_visit_distance', 'technical_visit_tolls', 'technical_visit_fee'
 ];
 
 /**
@@ -53,7 +54,6 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     cnpj: isCred ? (data.cnpj_cliente || data.cnpj) : (data.cnpj || ''),
     initialTotal: data.initial_total || data.initialTotal || 0,
     numEmployees: data.num_employees || 0,
-    // Fix: Alterado de external_lives_count para externalLivesCount para coincidir com a interface ProposalHistoryItem
     externalLivesCount: data.external_lives_count || 0,
     plan: data.plan || '',
     riskLevel: data.risk_level || '',
@@ -68,6 +68,11 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     margemAlvoAplicada: data.margem_alvo_aplicada,
     impostoAplicado: data.imposto_aplicado,
     comissaoAplicada: data.comissao_aplicada,
+    // Recuperação campos Visita Técnica
+    hasTechnicalVisit: data.has_technical_visit || false,
+    technicalVisitDistance: data.technical_visit_distance || 0,
+    technicalVisitTolls: data.technical_visit_tolls || 0,
+    technicalVisitFee: data.technical_visit_fee || 0,
     // Recuperação segura do valor psicossocial (coluna física ou objeto JSONB)
     valorAvulsoPsico: data.valor_avulso_psico || data.in_company_details?.valorAvulsoPsico,
     inCompanyDetails: isCred ? { 
@@ -140,29 +145,31 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     client_delivery_date: item.clientDeliveryDate,
     doc_delivery_date: item.docDeliveryDate,
     contact_name: item.contactName,
+    // Campos Visita Técnica
+    has_technical_visit: item.hasTechnicalVisit,
+    technical_visit_distance: item.technicalVisitDistance,
+    technical_visit_tolls: item.technicalVisitTolls,
+    technical_visit_fee: item.technicalVisitFee
   };
 
   if (isCred) {
-    // 1. Modularização: Dados básicos do Credenciador
     dbData.razao_social = item.companyName;
     dbData.cnpj_cliente = item.cnpj;
     dbData.unidades_customizadas = item.inCompanyDetails?.credenciadorUnits;
     
-    // 2. Estrutura de Saída: Agrupamento de campos dentro de contract_data (JSONB)
     const cd = item.inCompanyDetails?.contractData;
     if (cd) {
       dbData.contract_data = {
         logradouro: cd.logradouro,
         fachada: cd.fachada,
         bairro: cd.bairro,
-        cidade_uf: cd.cidadeUf, // Mapeamento obrigatório do input CIDADE-UF
+        cidade_uf: cd.cidadeUf, 
         cep: cd.cep,
         responsavel_legal: cd.responsavelLegal,
         cpf_responsavel: cd.cpfResponsavel,
         unidade_atendimento: cd.unidadeAtendimento
       };
       
-      // Sincronização redundante para colunas individuais (caso existam no schema flat)
       dbData.logradouro = cd.logradouro;
       dbData.fachada = cd.fachada;
       dbData.bairro = cd.bairro;
@@ -175,8 +182,6 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
   } else if (item.type === 'venda_avulsa_psico') {
     dbData.company_name = item.companyName;
     dbData.cnpj = item.cnpj;
-    // FIX CIRÚRGICO: Armazena o valor psicossocial no JSONB in_company_details 
-    // para evitar erro de 'column not found' caso a coluna física não exista.
     dbData.in_company_details = {
       valorAvulsoPsico: item.valorAvulsoPsico
     };
@@ -188,11 +193,9 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     dbData.margem_atendimento_valor = item.margemAtendimentoValor;
     dbData.margem_alvo_aplicada = item.margemAlvoAplicada;
     dbData.imposto_aplicado = item.impostoAplicado;
-    // Fix: Corrected property name from 'comissaoApplied' to 'comissaoAplicada' to match interface
     dbData.comissao_aplicada = item.comissaoAplicada;
   }
 
-  // 3. Segurança de ID: Não envia id se for um novo registro (permite UUID automático do Supabase)
   if (item.id) {
     dbData.id = item.id;
   }
@@ -230,20 +233,13 @@ export const StorageService = {
   addHistoryItem: async (item: ProposalHistoryItem): Promise<ProposalHistoryItem> => {
     try {
       const dbItem = sanitizeProposalForDb(item);
-      
-      // EXECUÇÃO DO DEBUG ANTES DA PERSISTÊNCIA
       debugDatabaseSchema(dbItem);
-
       const { data, error } = await supabase
         .from('reque_proposals')
         .upsert([dbItem], { onConflict: 'id' })
         .select()
         .single();
-
-      if (error) {
-        console.error('ERRO DE SCHEMA/DB SUPABASE:', error);
-        throw error;
-      }
+      if (error) throw error;
       return mapProposalData(data);
     } catch (error: any) {
       console.error("LOG DETALHADO - ERRO STORAGE SERVICE:", error);
@@ -364,6 +360,29 @@ export const StorageService = {
       if (error) throw error;
     } catch (error: any) {
       throw new Error(error?.message || 'Erro ao atualizar configurações de pagamento');
+    }
+  },
+
+  // Novos métodos para Visita Técnica
+  getTechnicalVisitSettings: async (): Promise<TechnicalVisitSettings> => {
+    try {
+      const { data, error } = await supabase.from('reque_tech_visit_settings').select('*').single();
+      if (error) {
+        // Se não existir, retorna padrão
+        return { hour_rate: 36, km_rate: 1.5, tax_rate: 12.5, margin_rate: 50, avg_speed: 100, exemption_limit: 30 };
+      }
+      return data;
+    } catch {
+      return { hour_rate: 36, km_rate: 1.5, tax_rate: 12.5, margin_rate: 50, avg_speed: 100, exemption_limit: 30 };
+    }
+  },
+
+  updateTechnicalVisitSettings: async (settings: TechnicalVisitSettings): Promise<void> => {
+    try {
+      const { error } = await supabase.from('reque_tech_visit_settings').upsert({ id: 1, ...settings }, { onConflict: 'id' });
+      if (error) throw error;
+    } catch (error: any) {
+      throw new Error(error?.message || 'Erro ao atualizar configurações de visita técnica');
     }
   }
 };
