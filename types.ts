@@ -1,3 +1,4 @@
+
 export enum PlanType {
   EXPRESS = 'SST Express',
   ESSENCIAL = 'SST Essencial',
@@ -64,9 +65,9 @@ export interface PricingResult {
   specialDiscount?: number;
   isRenovação: boolean;
   totalWithDiscount: number;
-  // New fields for technical visit
   technicalVisitFee?: number;
   hasTechnicalVisit?: boolean;
+  technicalVisitType?: 'reque' | 'local';
 }
 
 export interface TechnicalVisitSettings {
@@ -104,11 +105,22 @@ export interface ProposalHistoryItem {
   impostoAplicado?: number;
   comissaoAplicada?: number;
   valorAvulsoPsico?: number;
-  // New fields for technical visit persistence
+  // Campos Visita Técnica
   hasTechnicalVisit?: boolean;
   technicalVisitDistance?: number;
   technicalVisitTolls?: number;
   technicalVisitFee?: number;
+  technicalVisitType?: 'reque' | 'local';
+  technicalVisitLocalCost?: number;
+  technicalVisitDetails?: {
+    type: 'Reque' | 'Local';
+    cost: number;
+    finalValue: number;
+    params?: {
+      distance: number;
+      tolls: number;
+    }
+  };
   inCompanyDetails?: {
     profs?: ProfessionalInCompany[];
     vehicles?: VehicleInCompany[];

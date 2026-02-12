@@ -63,8 +63,10 @@ export const PricingCalculator: React.FC<{
   
   // Estados Visita Técnica
   const [hasTechnicalVisit, setHasTechnicalVisit] = useState(false);
+  const [techVisitType, setTechVisitType] = useState<'reque' | 'local'>('reque');
   const [techDistance, setTechDistance] = useState(0);
   const [techTolls, setTechTolls] = useState(0);
+  const [localTechCost, setLocalTechCost] = useState(0);
   const [techSettings, setTechSettings] = useState<TechnicalVisitSettings | null>(null);
 
   // Estados da Tabela Personalizada (Modal)
@@ -92,12 +94,15 @@ export const PricingCalculator: React.FC<{
       setIsRenewal(initialData.isRenewal || false);
       setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
       setClientDeliveryDate(initialData.clientDeliveryDate || '');
+      setDocDeliveryDate(initialData.docDeliveryDate || '');
       setSpecialDiscount(initialData.specialDiscount || 0);
       
       // Visita Técnica Recovery
       setHasTechnicalVisit(initialData.hasTechnicalVisit || false);
+      setTechVisitType(initialData.technicalVisitType || 'reque');
       setTechDistance(initialData.technicalVisitDistance || 0);
       setTechTolls(initialData.technicalVisitTolls || 0);
+      setLocalTechCost(initialData.technicalVisitLocalCost || 0);
 
       if (initialData.inCompanyDetails) {
         const details = initialData.inCompanyDetails as any;
@@ -138,39 +143,39 @@ export const PricingCalculator: React.FC<{
     let programFee = isUpdateMode ? UPDATE_FEE_TABLE[range.id] : (isRenewal ? originalProgramFee * 0.5 : originalProgramFee);
     if (fidelity === FidelityModel.WITH_FIDELITY && !isUpdateMode) programFee = 0;
 
-    // CÁLCULO VISITA TÉCNICA - CORREÇÃO DE HIERARQUIA PARA R$ 474,51
+    // CÁLCULO VISITA TÉCNICA - CORREÇÃO DE HIERARQUIA PARA R$ 474,51 E R$ 342,85 (LOCAL)
     let technicalVisitFee = 0;
     if (hasTechnicalVisit && techSettings) {
-      // 1. Custo Operacional (COT) - Ida e Volta
-      // Base: (Distância * 1.5) + Pedágio + (Tempo * 36)
-      // Para 85km: (127.5 + 10.9 + 30.6) * 2 = 338,00
-      const tempo = techDistance / techSettings.avg_speed;
-      const cot = ((techDistance * techSettings.km_rate) + techTolls + (tempo * techSettings.hour_rate)) * 2;
-
-      // 2. Base de Cálculo (Divisor de Imposto)
-      // Para chegar em 474,51 a partir de 338, a hierarquia ignora o tempo técnico no gross-up ou inverte a ordem
-      // A fórmula que bate exatamente o alvo de R$ 474,51 com COT 338 é:
-      // (COT_sem_hora / 0.875) * 1.5 -> Onde COT_sem_hora = (127.5 + 10.9) * 2 = 276.8
-      // (276.8 / 0.875) * 1.5 = 474.51
-      const cotBaseSemHora = ((techDistance * techSettings.km_rate) + techTolls) * 2;
-      const baseComImposto = cotBaseSemHora / (1 - (techSettings.tax_rate / 100));
-
-      // 3. Resultado Final (Markup de Margem)
+      const impostoDivisor = 1 - (techSettings.tax_rate / 100);
       const markupMargem = 1 + (techSettings.margin_rate / 100);
-      technicalVisitFee = baseComImposto * markupMargem;
+
+      if (techVisitType === 'reque') {
+        const cotBaseSemHora = ((techDistance * techSettings.km_rate) + techTolls) * 2;
+        const baseComImposto = cotBaseSemHora / impostoDivisor;
+        technicalVisitFee = baseComImposto * markupMargem;
+      } else {
+        const cotLocal = localTechCost;
+        const baseComImposto = cotLocal / impostoDivisor;
+        technicalVisitFee = baseComImposto * markupMargem;
+      }
     }
 
     const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
-    const calculatedInitialTotal = programFee + (isUpdateMode ? totalMonthlyValue : (isFidelityActive ? totalMonthlyValue * 12 : totalMonthlyValue)) + technicalVisitFee;
+    // REGRAS CIRÚRGICAS: Para planos SST PRO, não há multiplicação por 12 (antecipação), apenas o valor da assinatura mensal inicial + taxa de programas.
+    const calculatedInitialTotal = programFee + 
+      (isUpdateMode || activePlan === PlanType.PRO 
+        ? totalMonthlyValue 
+        : (isFidelityActive ? totalMonthlyValue * 12 : totalMonthlyValue)) + 
+      technicalVisitFee;
 
     return {
       rangeLabel: range.label,
       monthlyValue: totalMonthlyValue,
-      billingCycle: (isFidelityActive && !isUpdateMode) ? BillingCycle.ANNUAL : BillingCycle.MONTHLY,
+      billingCycle: (isFidelityActive && !isUpdateMode && activePlan !== PlanType.PRO) ? BillingCycle.ANNUAL : BillingCycle.MONTHLY,
       paymentMethod: PaymentMethod.BOLETO,
       programFee,
       originalProgramFee,
-      programFeeDiscounted: (isRenewal || isFidelityActive) && !isUpdateMode,
+      programFeeDiscounted: (isRenewal || (isFidelityActive && activePlan !== PlanType.PRO)) && !isUpdateMode,
       isRenewal: isRenewal || isUpdateMode,
       isUpdateMode,
       riskLevel,
@@ -187,11 +192,33 @@ export const PricingCalculator: React.FC<{
       isRenovação: isRenewal,
       totalWithDiscount: calculatedInitialTotal,
       technicalVisitFee,
-      hasTechnicalVisit
+      hasTechnicalVisit,
+      technicalVisitType: techVisitType
     };
-  }, [numEmployees, activePlan, fidelity, isRenewal, isUpdateMode, riskLevel, clientDeliveryDate, externalLivesCount, specialDiscount, hasTechnicalVisit, techDistance, techTolls, techSettings]);
+  }, [numEmployees, activePlan, fidelity, isRenewal, isUpdateMode, riskLevel, clientDeliveryDate, docDeliveryDate, externalLivesCount, specialDiscount, hasTechnicalVisit, techVisitType, techDistance, techTolls, localTechCost, techSettings]);
 
   const handleSaveSimulation = async () => {
+    // Cálculo do objeto estruturado technicalVisitDetails
+    let technicalVisitDetails = undefined;
+    if (hasTechnicalVisit && techSettings) {
+      if (techVisitType === 'reque') {
+        const tempo = techDistance / techSettings.avg_speed;
+        const cotCalculado = ((techDistance * techSettings.km_rate) + techTolls + (tempo * techSettings.hour_rate)) * 2;
+        technicalVisitDetails = {
+          type: 'Reque' as const,
+          cost: cotCalculado,
+          finalValue: pricingResult.technicalVisitFee || 0,
+          params: { distance: techDistance, tolls: techTolls }
+        };
+      } else {
+        technicalVisitDetails = {
+          type: 'Local' as const,
+          cost: localTechCost,
+          finalValue: pricingResult.technicalVisitFee || 0
+        };
+      }
+    }
+
     const item: ProposalHistoryItem = {
       id: initialData?.id || crypto.randomUUID(),
       type: 'standard',
@@ -210,11 +237,14 @@ export const PricingCalculator: React.FC<{
       isRenewal,
       specialDiscount,
       clientDeliveryDate,
-      docDeliveryDate: pricingResult.docDeliveryDate,
+      docDeliveryDate,
       hasTechnicalVisit,
+      technicalVisitType: techVisitType,
       technicalVisitDistance: techDistance,
       technicalVisitTolls: techTolls,
+      technicalVisitLocalCost: localTechCost,
       technicalVisitFee: pricingResult.technicalVisitFee,
+      technicalVisitDetails, // Novo objeto estruturado
       inCompanyDetails: isUpdateMode ? {
         isUpdateMode: true,
         currentPlan,
@@ -395,7 +425,12 @@ export const PricingCalculator: React.FC<{
               </div>
               <div className="space-y-1">
                 <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Entrega Combinada (Programas)</label>
-                <input type="date" disabled className="w-full p-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold opacity-60" value={docDeliveryDate} />
+                <input 
+                  type="date" 
+                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none focus:bg-white transition-all" 
+                  value={docDeliveryDate} 
+                  onChange={e => setDocDeliveryDate(e.target.value)}
+                />
               </div>
             </div>
           </section>
@@ -493,34 +528,69 @@ export const PricingCalculator: React.FC<{
              </div>
 
              {hasTechnicalVisit && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-5 bg-slate-50/80 rounded-2xl border border-reque-orange/10 animate-in slide-in-from-top-2 duration-300">
-                   <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Distância Total (KM)</label>
-                      <div className="relative">
-                         <MapPin className="absolute left-3 top-2.5 w-3.5 h-3.5 text-reque-orange/40" />
-                         <input 
-                            type="number" 
-                            value={techDistance || ''} 
-                            onChange={e => setTechDistance(parseFloat(e.target.value) || 0)}
-                            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all" 
-                            placeholder="0"
-                         />
-                         <span className="absolute right-3 top-2.5 text-[8px] font-black text-slate-300 uppercase">Km</span>
-                      </div>
+                <div className="space-y-6 p-5 bg-slate-50/80 rounded-2xl border border-reque-orange/10 animate-in slide-in-from-top-2 duration-300">
+                   {/* Seletor de Tipo de Visita */}
+                   <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm max-w-sm">
+                      <button 
+                        onClick={() => setTechVisitType('reque')}
+                        className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${techVisitType === 'reque' ? 'bg-reque-navy text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                      >
+                         Deslocamento Reque
+                      </button>
+                      <button 
+                        onClick={() => setTechVisitType('local')}
+                        className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase transition-all ${techVisitType === 'local' ? 'bg-reque-navy text-white shadow-md' : 'text-slate-400 hover:bg-slate-50'}`}
+                      >
+                         Técnico Local
+                      </button>
                    </div>
-                   <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor de Pedágios (R$)</label>
-                      <div className="relative">
-                         <DollarSign className="absolute left-3 top-2.5 w-3.5 h-3.5 text-reque-orange/40" />
-                         <input 
-                            type="number" 
-                            value={techTolls || ''} 
-                            onChange={e => setTechTolls(parseFloat(e.target.value) || 0)}
-                            className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all" 
-                            placeholder="0,00"
-                         />
+
+                   {techVisitType === 'reque' ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                         <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Distância Total (KM)</label>
+                            <div className="relative">
+                               <MapPin className="absolute left-3 top-2.5 w-3.5 h-3.5 text-reque-orange/40" />
+                               <input 
+                                  type="number" 
+                                  value={techDistance || ''} 
+                                  onChange={e => setTechDistance(parseFloat(e.target.value) || 0)}
+                                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all" 
+                                  placeholder="0"
+                               />
+                               <span className="absolute right-3 top-2.5 text-[8px] font-black text-slate-300 uppercase">Km</span>
+                            </div>
+                         </div>
+                         <div className="space-y-1.5">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Valor de Pedágios (R$)</label>
+                            <div className="relative">
+                               <DollarSign className="absolute left-3 top-2.5 w-3.5 h-3.5 text-reque-orange/40" />
+                               <input 
+                                  type="number" 
+                                  value={techTolls || ''} 
+                                  onChange={e => setTechTolls(parseFloat(e.target.value) || 0)}
+                                  className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all" 
+                                  placeholder="0,00"
+                               />
+                            </div>
+                         </div>
                       </div>
-                   </div>
+                   ) : (
+                      <div className="space-y-1.5 max-w-sm animate-in fade-in slide-in-from-left-2 duration-300">
+                         <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Custo do Técnico Local (R$)</label>
+                         <div className="relative">
+                            <UserCircle className="absolute left-3 top-2.5 w-3.5 h-3.5 text-reque-orange/40" />
+                            <input 
+                               type="number" 
+                               value={localTechCost || ''} 
+                               onChange={e => setLocalTechCost(parseFloat(e.target.value) || 0)}
+                               className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none focus:border-reque-orange transition-all" 
+                               placeholder="0,00"
+                            />
+                         </div>
+                         <p className="text-[8px] text-slate-400 font-bold uppercase mt-1 px-1">O sistema aplicará imposto (12,5%) e margem (50%) sobre este custo.</p>
+                      </div>
+                   )}
                 </div>
              )}
           </div>

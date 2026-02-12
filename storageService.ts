@@ -3,8 +3,6 @@ import { supabase } from './supabaseClient';
 
 /**
  * LISTA DE COLUNAS MAPEADAS PARA DEBUG
- * Utilizada para validar se o objeto de envio (payload) possui chaves que 
- * ainda não foram criadas fisicamente na tabela 'reque_proposals'.
  */
 const EXPECTED_COLUMNS = [
   'id', 'type', 'initial_total', 'created_by', 'num_employees', 'external_lives_count',
@@ -15,8 +13,8 @@ const EXPECTED_COLUMNS = [
   'unidade_atendimento', 'company_name', 'cnpj', 'in_company_details', 
   'taxa_in_company', 'margem_atendimento_valor', 'margem_alvo_aplicada', 
   'imposto_aplicado', 'comissao_aplicada',
-  // Novas colunas para visita técnica
-  'has_technical_visit', 'technical_visit_distance', 'technical_visit_tolls', 'technical_visit_fee'
+  'has_technical_visit', 'technical_visit_distance', 'technical_visit_tolls', 'technical_visit_final_value',
+  'technical_visit_type', 'technical_visit_local_cost'
 ];
 
 /**
@@ -41,7 +39,6 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
   if (!data) return data;
   const isCred = data.type === 'credenciador';
   
-  // Recupera dados do contrato priorizando o objeto JSONB contract_data, com fallback para colunas individuais
   const contractSource = data.contract_data || data;
   
   return {
@@ -59,6 +56,7 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     riskLevel: data.risk_level || '',
     fidelity: data.fidelity || '',
     isRenewal: data.is_renewal || false,
+    // Fix: Corrected property name from 'special_discount' to 'specialDiscount' to match the ProposalHistoryItem interface
     specialDiscount: data.special_discount || 0,
     selectedUnit: data.selected_unit || '',
     clientDeliveryDate: data.client_delivery_date,
@@ -70,10 +68,11 @@ const mapProposalData = (data: any): ProposalHistoryItem => {
     comissaoAplicada: data.comissao_aplicada,
     // Recuperação campos Visita Técnica
     hasTechnicalVisit: data.has_technical_visit || false,
+    technicalVisitType: data.technical_visit_type || 'reque',
     technicalVisitDistance: data.technical_visit_distance || 0,
     technicalVisitTolls: data.technical_visit_tolls || 0,
-    technicalVisitFee: data.technical_visit_fee || 0,
-    // Recuperação segura do valor psicossocial (coluna física ou objeto JSONB)
+    technicalVisitLocalCost: data.technical_visit_local_cost || 0,
+    technicalVisitFee: data.technical_visit_final_value || 0,
     valorAvulsoPsico: data.valor_avulso_psico || data.in_company_details?.valorAvulsoPsico,
     inCompanyDetails: isCred ? { 
       credenciadorUnits: data.unidades_customizadas || data.in_company_details?.credenciadorUnits,
@@ -129,7 +128,6 @@ const sanitizeUserForDb = (user: User) => {
 const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
   const isCred = item.type === 'credenciador';
   
-  // 1. Modularização: Dados básicos comuns
   const dbData: any = {
     type: item.type,
     initial_total: Number(item.initialTotal) || 0,
@@ -145,11 +143,12 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
     client_delivery_date: item.clientDeliveryDate,
     doc_delivery_date: item.docDeliveryDate,
     contact_name: item.contactName,
-    // Campos Visita Técnica
     has_technical_visit: item.hasTechnicalVisit,
+    technical_visit_type: item.technicalVisitType,
     technical_visit_distance: item.technicalVisitDistance,
     technical_visit_tolls: item.technicalVisitTolls,
-    technical_visit_fee: item.technicalVisitFee
+    technical_visit_local_cost: item.technicalVisitLocalCost,
+    technical_visit_final_value: item.technicalVisitFee
   };
 
   if (isCred) {
@@ -166,8 +165,8 @@ const sanitizeProposalForDb = (item: ProposalHistoryItem) => {
         cidade_uf: cd.cidadeUf, 
         cep: cd.cep,
         responsavel_legal: cd.responsavelLegal,
-        cpf_responsavel: cd.cpfResponsavel,
-        unidade_atendimento: cd.unidadeAtendimento
+        cpfResponsavel: cd.cpfResponsavel,
+        unidadeAtendimento: cd.unidadeAtendimento
       };
       
       dbData.logradouro = cd.logradouro;
@@ -363,12 +362,10 @@ export const StorageService = {
     }
   },
 
-  // Novos métodos para Visita Técnica
   getTechnicalVisitSettings: async (): Promise<TechnicalVisitSettings> => {
     try {
       const { data, error } = await supabase.from('reque_tech_visit_settings').select('*').single();
       if (error) {
-        // Se não existir, retorna padrão
         return { hour_rate: 36, km_rate: 1.5, tax_rate: 12.5, margin_rate: 50, avg_speed: 100, exemption_limit: 30 };
       }
       return data;

@@ -21,7 +21,8 @@ import {
   Users,
   Sparkles,
   Network,
-  LayoutGrid
+  LayoutGrid,
+  MapPin
 } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 
@@ -72,12 +73,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
     );
   });
 
-  // Estatísticas Consolidadas para Dashboard ADM (Todos os registros)
   const dashboardStats = useMemo(() => {
     const sellers: Record<string, { count: number, total: number }> = {};
     const types: Record<string, number> = { 'standard': 0, 'incompany': 0, 'credenciador': 0 };
     
-    // No perfil ADM visualizamos todos os registros sem filtro de data
     history.forEach(item => {
       const seller = item.createdBy || 'Sistema';
       if (!sellers[seller]) sellers[seller] = { count: 0, total: 0 };
@@ -124,7 +123,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
         </h2>
       </div>
 
-      {/* DASHBOARD DE ESTATÍSTICAS (APENAS ADM) */}
       {isAdmin && history.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 col-span-1 md:col-span-2">
@@ -136,7 +134,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* RANKING POR VENDEDOR */}
               <div className="space-y-3">
                 <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Criado Por</h4>
                 {dashboardStats.sellers.length === 0 ? (
@@ -157,7 +154,6 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                 ))}
               </div>
 
-              {/* RANKING POR TIPO */}
               <div className="space-y-3">
                 <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Por Tipo de Proposta</h4>
                 {dashboardStats.types.map(([type, count]) => (
@@ -303,6 +299,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ history, onEdit, onDel
                                 <Sparkles className="w-3 h-3 text-reque-navy opacity-50" />
                                 <span>{item.plan || 'Plano Personalizado'}</span>
                               </div>
+                              {item.hasTechnicalVisit && (
+                                <div className="flex items-center gap-1.5 text-reque-orange animate-in fade-in duration-300">
+                                   <Truck className="w-3 h-3 shrink-0" />
+                                   <span>Visita Técnica: {item.technicalVisitDetails?.type || (item.technicalVisitType === 'local' ? 'Local' : 'Reque')} - {formatCurrency(item.technicalVisitFee || 0)}</span>
+                                </div>
+                              )}
                             </>
                           )}
                        </div>
