@@ -172,8 +172,8 @@ export const ProposalView: React.FC<{
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
 
-  // Valor da assinatura base mensal para exibir quando "Sem Fidelidade" no Quadro 4
-  const monthlyBase = (result?.monthlyValue || 0) - (result?.schedulingCostTotal || 0);
+  // Valor da assinatura total (Base + Agendamento)
+  const monthlyTotal = (result?.monthlyValue || 0);
 
   const formatCurrencyValueOnly = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
@@ -341,7 +341,7 @@ export const ProposalView: React.FC<{
                      <td className="py-2.5 px-4 border-l border-slate-100">
                         <div className="flex flex-col items-center">
                            <span className="text-[14px] font-black text-reque-navy mt-1 leading-none">
-                              {(isNoFidelity || result?.isUpdateMode) ? `${formatCurrencyValueOnly(monthlyBase)}/mês` : `${formatCurrencyValueOnly(installmentValue)}${plan === PlanType.PRO ? '/mensal' : '/anual'}`}
+                              {(isNoFidelity || result?.isUpdateMode) ? `${formatCurrencyValueOnly(monthlyTotal)}/mês` : `${formatCurrencyValueOnly(installmentValue)}${plan === PlanType.PRO ? '/mensal' : '/anual'}`}
                            </span>
                         </div>
                      </td>

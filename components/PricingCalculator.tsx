@@ -73,6 +73,7 @@ export const PricingCalculator: React.FC<{
       setContactName(initialData.contactName || '');
       setCnpj(formatDocument(initialData.cnpj || ''));
       setNumEmployees(initialData.numEmployees || 1);
+      setExternalLivesCount(initialData.externalLivesCount || 0);
       setRiskLevel(initialData.riskLevel || RiskLevel.RISK_1);
       setIsRenewal(initialData.isRenewal || false);
       setSelectedUnit(initialData.selectedUnit || RequeUnit.PONTA_GROSSA);
@@ -91,6 +92,13 @@ export const PricingCalculator: React.FC<{
     }
   }, [initialData]);
 
+  // VALIDAÇÃO: Quantidade de vidas de agendamento não pode superar total de vidas
+  useEffect(() => {
+    if (externalLivesCount > numEmployees) {
+      setExternalLivesCount(numEmployees);
+    }
+  }, [numEmployees, externalLivesCount]);
+
   const activePlan = useMemo(() => {
     if (riskLevel === RiskLevel.RISK_1) return PlanType.EXPRESS;
     if (numEmployees <= 20) return PlanType.ESSENCIAL;
@@ -106,6 +114,10 @@ export const PricingCalculator: React.FC<{
       ? (UPDATE_MONTHLY_VALUES[range.id] || 0) 
       : ((isPro ? MONTHLY_VALUES_PRO[range.id] : MONTHLY_VALUES_EXPRESS[range.id]) || 0);
       
+    // CALCULO CIRÚRGICO: Adição de 5,50 por vida para Gestão de Agendamento
+    const schedulingCostTotal = externalLivesCount * 5.5;
+    const totalMonthlyValue = baseMonthlyValue + schedulingCostTotal;
+
     const originalProgramFee = PROGRAM_FEES_TABLE[range.id] || 0;
     
     let programFee = isUpdateMode ? UPDATE_FEE_TABLE[range.id] : (isRenewal ? originalProgramFee * 0.5 : originalProgramFee);
@@ -113,11 +125,11 @@ export const PricingCalculator: React.FC<{
 
     const isFidelityActive = fidelity === FidelityModel.WITH_FIDELITY;
     // Regra: Na atualização, não há multiplicação por 12x
-    const calculatedInitialTotal = programFee + (isUpdateMode ? baseMonthlyValue : (isFidelityActive ? baseMonthlyValue * 12 : baseMonthlyValue));
+    const calculatedInitialTotal = programFee + (isUpdateMode ? totalMonthlyValue : (isFidelityActive ? totalMonthlyValue * 12 : totalMonthlyValue));
 
     return {
       rangeLabel: range.label,
-      monthlyValue: baseMonthlyValue,
+      monthlyValue: totalMonthlyValue,
       billingCycle: (isFidelityActive && !isUpdateMode) ? BillingCycle.ANNUAL : BillingCycle.MONTHLY,
       paymentMethod: PaymentMethod.BOLETO,
       programFee,
@@ -134,7 +146,7 @@ export const PricingCalculator: React.FC<{
       isCustomQuote: false,
       commercialSummary: isUpdateMode ? `Upgrade Sugerido: ${activePlan}` : '',
       externalLivesCount,
-      schedulingCostTotal: 0,
+      schedulingCostTotal,
       specialDiscount,
       isRenovação: isRenewal,
       totalWithDiscount: calculatedInitialTotal
@@ -418,7 +430,7 @@ export const PricingCalculator: React.FC<{
                   </div>
                   <span className="text-3xl font-black text-reque-orange tracking-tighter">{externalLivesCount}</span>
                 </div>
-                <input type="range" min="0" max="100" value={externalLivesCount} onChange={e => setExternalLivesCount(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-reque-orange" />
+                <input type="range" min="0" max={numEmployees} value={externalLivesCount} onChange={e => setExternalLivesCount(parseInt(e.target.value))} className="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-reque-orange" />
               </div>
             )}
           </div>

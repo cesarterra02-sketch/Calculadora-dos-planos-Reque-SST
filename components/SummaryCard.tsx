@@ -150,7 +150,7 @@ export const SummaryCard: React.FC<SummaryCardProps> = ({
   const finalTotalWithInterest = baseTotal + interestAmount;
   const installmentValue = finalTotalWithInterest / selectedInstallments;
 
-  const monthlyBase = result.monthlyValue - (result.schedulingCostTotal || 0);
+  const monthlyBase = result.monthlyValue; // Modificado: Exibe o valor total somado (Base + Agendamento)
   const diffSubscription = monthlyBase - currentAssinaturaValue;
 
   return (
